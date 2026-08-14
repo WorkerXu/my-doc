@@ -1,121 +1,134 @@
 # LLM_trader／Semantic Signal LLM：基于新闻与 RAG 的语义交易信号系统
 
-## 1. 调研对象
+## 1. 调研对象与结论
 
 - 编号：57
 - 项目：LLM_trader / Semantic Signal LLM
 - 地址：https://github.com/qrak/LLM_trader
 - 调研基线：`master` 分支，提交 `8a0e60b2bb2638dbbd4212ce617a34111e35211f`
-- 重点源码：RSS 新闻采集、Crawl4AI 正文补全、异步并发、正文清洗与去重、缓存与内容升级、RAG 更新/检索、相关性评分、FastAPI Dashboard。
 
-LLM_trader 本质上是交易系统，新闻/RAG 只是其上下文子系统，所以它不能直接承担“1000 个技术博客全量历史归档 + 增量同步 + Web 管理”。可迁移价值主要来自几个工程模式：低成本 Feed 优先、正文不足才升级抓取、Browser 复用、失败降级、缓存兜底、依赖注入、评分策略隔离，以及 Dashboard 控制面。与此同时，它的内存任务、批次超时语义、URL/标题去重、文件缓存和查询热路径刷新也清楚暴露了平台化后必须修正的问题。
+`LLM_trader` 本质是交易系统，新闻/RAG 只是其上下文子系统，不能直接承担“1000 个技术博客全量历史归档 + 增量同步 + Markdown 知识库 + Web 管理”。但它提供了几组非常有价值的工程原型：
 
-## 2. 关键源码与调用链
+1. **Feed-first + 按需正文补全**：RSS 已有正文时直接使用，正文不足才调用 Crawl4AI。
+2. **多级降级与 stale-but-valid**：实时源失败时继续使用缓存，不把已有有效知识清空。
+3. **显式相关性策略**：title/body/category/tag 使用不同权重，再叠加正文密度、关键词共现、实体相关性和 freshness。
+4. **严格 Token budget**：上下文总预算和单文档预算都有约束。
+5. **SHA-256 增量向量索引**：代码/Markdown 索引按文件 hash 跳过未变化输入。
+6. **Embedding 兼容性探测**：能够检测向量维度不匹配并触发重建。
 
-重点阅读：
+同时，它也暴露出平台化后必须修正的问题：批次总超时会丢弃已成功结果、整批 Browser 超时会重复 fallback、标题硬去重有误删风险、URL hash 被当文章 ID、SSRF 校验只覆盖部分场景、ContextBuilder 遇到超预算候选直接 `break`、向量索引采用“先删旧 chunk 再 upsert”存在失败窗口。
+
+因此该项目适合作为“**增量采集、RAG 排序和投影增量化的参考实现**”，而不是历史知识库平台骨架。
+
+## 2. 与知识库相关的调用链
+
+重点源码：
 
 - `src/rag/news_ingestion/rss_primitives.py`
 - `src/rag/news_ingestion/rss_provider.py`
 - `src/rag/news_ingestion/crawl4ai_enricher.py`
 - `src/rag/news_ingestion/schema_mapper.py`
 - `src/rag/news_manager.py`
-- `src/rag/news_repository.py`
-- `src/rag/rag_engine.py`
 - `src/rag/scoring_policy.py`
+- `src/rag/context_builder.py`
+- `src/rag/code_vector_index.py`
 - `src/dashboard/server.py`
+- `tests/test_rss_provider_contract.py`
+- `tests/test_crawl4ai_enricher.py`
 
 主要数据流：
 
 ```text
-RSS Feed
-  │
-  ▼
-rss_primitives.fetch_source()
-  │ RSS 解析 / URL 归一化 / Feed 正文抽取
-  ▼
-RSSCrawl4AINewsProvider._fetch_raw_items()
-  │ 多源并发
-  ▼
-URL 去重 → 标题二次去重 → 时间排序
-  │
-  ├─ body 已足够长 ───────────────────────────┐
-  │                                           │
-  └─ body 过短 → Crawl4AIEnricher             │
-                   │                           │
-                   ├─ Crawl4AI / Playwright   │
-                   └─ aiohttp fallback        │
-                                               ▼
-                                  schema_mapper.to_article_schema()
-                                               │
-                                               ▼
-                                         NewsManager
-                                               │
-                                         NewsRepository
-                                               │
-                                               ▼
-                                           RagEngine
-                                               │
-                           Index / Context / ScoringPolicy
-                                               │
-                                               ▼
-                                     Dashboard / LLM 消费
+RSS Sources
+   │
+   ▼
+RSSCrawl4AINewsProvider.fetch_news()
+   │
+   ├─ 并发 fetch_source()
+   │      └─ RSS XML → normalized raw item
+   │
+   ├─ URL 去重
+   ├─ 规范化标题二次去重
+   ├─ 时间排序
+   │
+   ├─ body_text < min_chars ?
+   │       ├─ yes → Crawl4AIEnricher
+   │       │          ├─ AsyncWebCrawler + PruningContentFilter
+   │       │          └─ 失败 → aiohttp HTML extractor
+   │       └─ no  → 保留 Feed body
+   │
+   └─ schema_mapper.to_article_schema()
+          │
+          ▼
+NewsManager
+   ├─ 本地缓存 / fallback
+   ├─ URL-first merge
+   └─ body 更完整时替换短正文
+          │
+          ▼
+ContextBuilder + ArticleScoringPolicy
+   ├─ 字段/实体/分类/时间/质量评分
+   ├─ full-body 优先
+   └─ Token budget 装配
+          │
+          ▼
+LLM Prompt
 ```
 
-这个调用链的核心思想是“逐层提高成本”，但绝大多数状态都只存在于当前 Python 调用栈和本地文件中；博客知识库平台必须把每一层改造成持久、可恢复、可审计的阶段。
-
-## 3. RSS：把结构化 Feed 当作低成本入口
-
-`rss_primitives.py` 内置 Feed Source Registry，也允许配置覆盖 URL 或只启用部分来源。RSS 2.0 条目会读取：
-
-- `title`
-- `link`
-- `guid`
-- `description`
-- `content:encoded`
-- `dc:creator`
-- `pubDate`
-- `category`
-
-正文候选优先级为：
+项目另有独立向量索引链：
 
 ```text
-content:encoded > description > 空
+Python / Markdown files
+   ↓
+SHA-256 file hash
+   ↓ unchanged → skip
+AST / Markdown heading parsing
+   ↓
+semantic chunks
+   ↓
+SentenceTransformer batch embedding
+   ↓
+ChromaDB upsert
+   ↓
+semantic query
 ```
 
-并把来源写入 `body_source`。这一点很重要：Feed 全文、Feed 摘要、HTTP 页面、Browser DOM 都应当被视作不同 provenance 的 Content Candidate，不能直接混成一个最终字符串。
+两条链分别提供“内容采集增量化”和“索引增量化”的参考。
 
-### 3.1 Feed HTML 抽取并不是一次正则替换
+## 3. RSS：结构化 Feed 既是发现源，也是正文候选源
 
-正文抽取采用逐级降级：
+`rss_primitives.py` 会读取 RSS 的 `title`、`link`、`guid`、`description`、`content:encoded`、`dc:creator`、`pubDate`、`category`。正文优先级是：
 
-1. 优先 BeautifulSoup + lxml；
-2. 删除 `script/style/noscript/svg/header/nav/footer/aside/form`；
-3. 尝试 article-body/article-content/post-content/entry-content/main 等主体 selector；
-4. 从标题、段落、列表、blockquote 组装正文；
-5. BeautifulSoup 不可用时回退自定义 `HTMLParser`；
-6. 最后才进行粗粒度 strip-html。
+```text
+content:encoded > description > empty
+```
 
-值得迁移的是“多个 extractor/策略逐级产生候选”，而不是把项目当前最终字符串作为平台模型。长期知识库应保存每个候选和质量结果，支持规则更新后的离线重选。
+并记录 `body_source`。这点应直接迁移：Feed/Atom/JSON Feed 不应只提供 URL，还应产生低成本 `ContentCandidate`。
 
-### 3.2 URL 归一化是必要但不充分的
+### 3.1 HTML 抽取是多级降级
 
-项目会删除 fragment、常见 `utm_*`、`gclid`、`fbclid`、`mc_*` 等追踪参数并处理尾斜杠。这适合作为第一层语法归一化，但不能直接充当平台 canonical identity，因为还缺少站点级 AMP/print/mobile 规则、redirect、`rel=canonical`、镜像域名和内容证据。
+项目优先 BeautifulSoup+lxml，删除 `script/style/noscript/svg/header/nav/footer/aside/form`，再尝试 article-body/article-content/post-content/entry-content/main 等 selector；失败后回退自定义 `HTMLParser`，最后才粗粒度 strip-html。
+
+生产知识库应把这些输出作为不同 Extraction Candidate，并保存 extractor release、quality breakdown 和 provenance，而不是只保留最终字符串。
+
+### 3.2 URL normalization 只能作为 URL Candidate 规则
+
+项目会去 fragment、`utm_*`、`gclid`、`fbclid`、`mc_*` 等 tracking 参数并处理尾斜杠。这是有效的语法规范化，但不能直接决定 Document Identity。博客平台还要处理 redirect、`rel=canonical`、AMP/print、站点迁移、镜像域名和内容相似证据。
 
 ### 3.3 Feed 不能证明历史完整
 
-当前实现面向“最近新闻”，Feed 每次取有限条目。即使 Feed 抓取成功，也只能说明当前窗口的数据可见，不代表多年历史文章已被发现。因此博客平台必须明确分离：
+项目面向最近新闻，Feed 每次只取有限条目。对多年历史博客必须明确：
 
 ```text
 FeedItemObservation / Change Signal
-≠
-Coverage Exhaustion Evidence
+≠ Coverage Exhaustion Evidence
 ```
 
-Feed 可以显著降低增量成本，但全量历史仍要依赖 API、Sitemap、Archive、Category/Tag/Author、Docs Navigation 等 Provider。
+Feed 适合增量同步；历史 Coverage 仍要依赖 API、Sitemap、Archive、Category/Tag/Author、Docs Navigation 等 Provider。
 
-## 4. 多源异步并发：小规模可用，平台级存在结果丢失语义
+## 4. 多源异步并发：外层总超时是关键反例
 
-`RSSCrawl4AINewsProvider._fetch_raw_items()` 的核心形态是：
+`RSSCrawl4AINewsProvider._fetch_raw_items()` 使用：
 
 ```python
 await asyncio.wait_for(
@@ -124,120 +137,43 @@ await asyncio.wait_for(
 )
 ```
 
-每个 Feed 自己有 timeout，外层又有一个阶段总 timeout。单个 `fetch_source()` 会把错误包装为 `FetchResult`，这一点具备错误隔离意识。
+每个 Feed 自己能返回 `FetchResult` 隔离单源错误，但外层总超时后函数直接返回空列表。测试 `test_fetch_stage_timeout_returns_empty` 还把这一行为固定为契约。
 
-问题在于：**外层总超时后函数直接返回空列表。** 即使此前已有多个 Feed 成功完成，其结果也会因为聚合阶段超时而整体丢失。
-
-在 4 个新闻源中这属于可接受的 fail-soft；在 1000 个站点中会变成严重数据一致性问题。平台正确语义应是：
+如果 100 个站点已有 90 个完成、10 个未完成，平台不能丢掉前 90 个。正确语义是：
 
 - 每个 Source/Provider Task 独立持久化；
-- 完成一个立即落库，而不是等待大批次统一提交；
-- Run deadline 到达只终止未完成任务；
-- 已完成结果不可回滚为“空”；
-- Run 允许 `PARTIAL_SUCCESS`；
-- 后续只重试失败或过期任务。
+- 完成一个立即提交一个；
+- Run deadline 只影响未完成任务；
+- Run 可以 `PARTIAL_SUCCESS`；
+- 后续只重试失败任务。
 
-因此不能让 `asyncio.gather()` 的调用边界决定业务事务边界。业务完成事实必须先于 Python 协程生命周期存在。
+`asyncio.gather()` 的生命周期不能成为业务事务边界。
 
-## 5. Crawl4AI Enrichment：按质量信号升级抓取成本
+## 5. Crawl4AI Enrichment：按质量升级成本
 
-`Crawl4AIEnricher.enrich_items()` 只挑选：
+`Crawl4AIEnricher.enrich_items()` 只处理 URL 安全检查通过且 `body_text` 小于 `min_chars` 的条目，默认正文阈值约 400 字符。已有足够 Feed 正文时不启动 Browser。
 
-```text
-URL 通过基础安全检查
-AND
-当前 body_text 长度 < min_chars
-```
-
-默认 `min_chars` 约 400。也就是说 Feed 已经给出足够正文时，系统不会无条件启动浏览器。这是项目最值得迁移的工程思想之一。
-
-平台化后应把单一字符阈值升级为 Quality Gate：
+应抽象为：
 
 ```text
-Feed/API Content Candidate
-        │
-        ▼
-Quality Gate
-        ├─ Accept
-        └─ Need more evidence
-               │
-               ▼
-HTTP Snapshot + deterministic extractors
-        │
-        ▼
-Quality Gate
-        ├─ Accept
-        └─ Escalate
-               │
-               ▼
-Browser / Crawl4AI
-        │
-        ▼
-Quality Gate / Site Recipe / Manual
+Feed/API metadata
+→ Feed/API body
+→ HTTP page + deterministic extractor
+→ Browser/Crawl4AI
+→ Site Recipe / Manual
 ```
 
-质量至少综合正文长度、文本密度、标题相关度、导航/推荐/页脚比例、错误页 marker、代码/表格/图片完整度、发布时间/作者/canonical 合理性、Feed 与页面相似度、页面类型和历史 extractor 接受率。
+生产环境不应只看字符数，而要由版本化 Quality Policy 综合正文长度、文本密度、标题相关度、导航比例、错误页 marker、代码/表格/图片完整度、发布时间/作者/canonical、页面类型、Feed 与页面相似度等因素决定是否升级。
 
-## 6. Crawl4AI 的具体实现原理
+### 5.1 Browser 实例复用
 
-### 6.1 Browser 实例复用
+项目一个 `AsyncWebCrawler` 批量处理 URL，通过 `semaphore_count` 控制并发，并把 worker 数限制在最多 6，避免每篇文章启动/销毁 Chromium。
 
-`_enrich_crawl4ai_batch()` 一次创建 `AsyncWebCrawler`，再批量处理 URL，而不是每篇文章启动一次 Chromium。这样减少 Playwright 进程启动和销毁成本。
+平台应进一步把 Browser 拆成独立 Worker Pool：限制 page/context 数、内存、CPU、Browser seconds、单 domain 并发，并按 `max_tasks_per_browser`/生命周期 recycle。
 
-项目限制 Browser worker 数量：
+### 5.2 多候选提取
 
-```text
-worker_count = max(1, min(configured_concurrency, 6))
-```
-
-说明浏览器并发必须受严格资源约束。1000 站平台还应进一步限制：
-
-- 全局 Browser capacity；
-- 单 registrable domain 并发/QPS；
-- Source 并发；
-- 单 worker page/context 数；
-- 内存和 CPU；
-- browser-seconds budget；
-- Browser 生命周期与最大任务数。
-
-Browser 进程应定期 recycle，避免长期运行后的页面泄漏、cookie 污染和内存增长。
-
-### 6.2 Crawl4AI 运行配置
-
-项目使用的关键思路包括：
-
-```text
-BrowserConfig:
-  headless = true
-
-CrawlerRunConfig:
-  page_timeout
-  remove_overlay_elements = true
-  remove_consent_popups = true
-  semaphore_count = worker_count
-  magic = true
-  simulate_user = true
-  override_navigator = true
-  wait_until = load
-  delay_before_return_html = 1s
-```
-
-Markdown 使用 `DefaultMarkdownGenerator` + `PruningContentFilter`，动态阈值约 0.48，并设置很低的最小词数用于新闻正文过滤。
-
-这些值是项目经验参数，不应成为知识库全局常量。生产平台要将 Crawl4AI 版本、参数、等待策略和站点特殊 recipe 放入版本化 Route/Profile Release，通过 Adapter 隔离第三方 API 字段变化。
-
-### 6.3 输出不是“crawler success 就接受”
-
-`_extract_crawl4ai_body()` 会尝试：
-
-1. `fit_markdown`；
-2. `raw_markdown`；
-3. `markdown_with_citations`；
-4. `cleaned_html` / `html` 再抽取。
-
-候选经过文本清洗和最小长度检查，还会拒绝常见错误正文，如 page not found、404、oops 等。
-
-这体现出一个必须保留的边界：
+Crawl4AI 输出按 `fit_markdown`、`raw_markdown`、`markdown_with_citations`、`cleaned_html/html` 尝试，并拒绝 404/page-not-found 等错误正文。说明必须区分：
 
 ```text
 HTTP success
@@ -246,190 +182,71 @@ HTTP success
 ≠ Quality Accepted
 ```
 
-平台状态模型要把四者分开，否则 Web 运维无法判断失败发生在哪一层。
+### 5.3 Browser 失败回退 aiohttp
 
-### 6.4 批次 deadline 与重复 fallback 风险
+项目在 Crawl4AI 未安装、Browser session 失败、batch timeout、单条失败、正文不足时回退 aiohttp。可迁移的是“能力降级”思想；生产平台必须把每次 route 持久化为 `FetchRouteAttempt`，而不是只在内存 `try/except` 中决定下一步。
 
-项目按 URL 数量和 worker 数估算 wave count，再推导 batch timeout。这种“波次估算”可用于软 deadline，但不能作为平台 correctness 机制。
+### 5.4 整批 timeout 会重复 fallback
 
-如果 Crawl4AI 整批超时，当前实现可能把全部 target 再交给 aiohttp fallback。问题是浏览器批次里可能已经有部分 URL 请求成功，只是聚合结果未被消费，于是 fallback 会产生重复流量。
+`arun_many()` 被外层 `wait_for` 包裹。整批超时后，targets 可能全部重新走 aiohttp，即使部分 Browser 请求已经成功。这会产生重复流量和成本，也丢失部分成功事实。
 
-平台应把 fallback 显式建模成持久 `FetchRouteAttempt`：
+生产设计应逐 URL 落 `RouteAttempt/Snapshot`，只对明确未完成或质量失败的 URL fallback。
+
+### 5.5 Windows Event Loop 兼容的启示
+
+项目为 Windows SelectorEventLoop/Playwright subprocess 特别建立线程 + ProactorEventLoop。对平台更好的边界是：生产 Browser Worker 统一 Linux，Crawl4AI/Playwright runtime 通过 Adapter 隔离，不让平台差异污染 API/Scheduler 进程。
+
+## 6. Prompt Text 与知识库 Markdown 必须分开
+
+`Crawl4AIEnricher._clean_markdown_text()` 会删除图片、把 Markdown 链接退化为纯文本、去掉 heading marker，并压缩空白。这适合 LLM Prompt，却不适合作为长期知识库 Markdown。
+
+必须保持：
 
 ```text
-HTTP_STATIC
-   ↓ quality fail
-BROWSER_CRAWL4AI
-   ↓ runtime fail
-HTTP_ALT_EXTRACTOR
-   ↓
-SITE_RECIPE / MANUAL
+Canonical IR
+├─ Markdown Projection      # 保留 heading/link/image/code/table/list
+└─ Prompt Text Projection   # 面向 LLM 降噪
 ```
 
-每个 Attempt 独立记录请求次数、字节、Browser 秒数、Snapshot、错误和预算。只有明确未得到可用 Snapshot/候选的任务才进入下一 Route。
+站点专用 tail marker 和 selector 也不能硬编码，应进入不可变 `SiteProfileRelease`，支持 Web 预览、diff、回滚和旧 Snapshot replay。
 
-## 7. Windows 事件循环兼容：说明 Browser Runtime 不应泄漏到主控制面
+## 7. 去重和身份：可借鉴 URL-first，但不能硬合并标题
 
-项目专门检查 Windows 上当前是否是 `SelectorEventLoop`，因为 Playwright 需要启动子进程；必要时用 `asyncio.to_thread()` 创建独立线程，并在其中运行 `ProactorEventLoop`。
+### 7.1 URL-first 与 Content Upgrade
 
-这是很实用的兼容代码，同时也说明 Browser runtime 的平台差异很容易污染业务事件循环。生产推荐：
+NewsManager 合并时按 URL 去重；若旧正文很短而新正文更长，会用更完整正文更新。这一思想适合改造成：
 
-- Browser Worker 独立进程/容器；
-- Linux 作为标准生产运行环境；
-- API/Scheduler 不直接 import 和管理 Playwright 生命周期；
-- Crawl4AI/Playwright 只暴露统一 Adapter Contract。
+```text
+同 URL 新观察
+→ ContentCandidate
+→ Quality
+→ Canonical IR compare
+→ DocumentVersion(EXTRACTION_UPGRADE)
+```
 
-这样第三方运行时约束不会扩散到控制面。
+历史知识库不能原地覆盖旧正文。
+
+### 7.2 normalized title 硬去重不可采用
+
+项目把标题小写、去标点后作为二次去重键并保留正文更长的一条。短时新闻流可用，但长期博客中的 `Weekly Update`、`Release Notes`、`Changelog` 等标题会多年重复。
+
+标题相同只能生成 `DuplicateHint`，必须结合 canonical、redirect、发布时间、内容相似度等 Evidence 决策。
+
+### 7.3 URL 哈希不等于 Document ID
+
+`make_article_id()` 使用 URL SHA-256 前 16 位。新闻缓存可以接受；博客站点迁移、slug 修改后不能继续把 URL 当逻辑文章身份。必须区分 URL Candidate、Document、Document Version、Chunk。
 
 ## 8. SSRF 与 Redirect 关联
 
-### 8.1 当前 URL 安全检查不够完整
+项目能拒绝非 HTTP(S)、localhost、显式 private/loopback/link-local IP，但完整平台仍需要：DNS A/AAAA 解析后校验、redirect 每跳重验、DNS rebinding 防护、metadata ranges、端口/allowed origins、Browser 子资源 interception。
 
-`_is_safe_external_url()` 能拒绝非 HTTP(S)、localhost 以及 host 字面量为 private/loopback/link-local IP 的 URL，体现了安全意识。
+所有 Feed/HTTP/Browser/Asset 请求应统一走 Egress Policy。
 
-但 Web 管理端允许用户新增站点后，生产级 SSRF 防护必须进一步处理：
+另外，Crawl4AI batch 先按原 URL 建映射，返回结果后又使用 resolved/final URL 查 item；redirect 后可能匹配失败。平台必须始终以 `task_id/route_attempt_id/observation_id` 关联结果，final URL 只能作为 redirect/canonical Evidence。
 
-- DNS 解析后的 A/AAAA 地址；
-- redirect 每一跳重新校验；
-- DNS rebinding；
-- IPv4-mapped IPv6；
-- metadata service 地址；
-- 内部 DNS 域名；
-- 端口策略；
-- Browser 子请求网络拦截。
+## 9. Scoring Policy：可迁移的是策略隔离，不是交易新闻参数
 
-因此 Feed、HTTP、Browser、Asset、Webhook 都应统一走一个 Egress Policy，不能每个模块各自写“小型 URL 安全函数”。
-
-### 8.2 Redirect 后用 URL 反查请求存在脆弱性
-
-Crawl4AI batch 先用原 URL 建映射，结果返回后再根据 `result.url`/redirected URL 找原 item。如果抓取库返回 final URL，而原始 URL 不相同，就可能匹配失败，随后又被错误送入 fallback。
-
-平台必须使用：
-
-```text
-task_id / route_attempt_id / observation_id
-```
-
-作为关联主键；requested URL、redirect chain、final URL、canonical URL 都只是一次 Observation 的属性。这样站点迁移或 301 不会破坏任务身份。
-
-## 9. Schema、正文清洗、稳定 ID 与身份模型
-
-`schema_mapper.py` 使用：
-
-```text
-sha256(url)[:16]
-```
-
-生成确定性文章 ID。相比随机 UUID，这对下游稳定性有帮助，但“URL 稳定”仍不等于“逻辑文章身份稳定”。站点改 slug、换域名、迁移 CMS 后 URL 会变化。
-
-平台应拆分：
-
-```text
-URL Candidate ID
-Document ID
-Document Version ID
-Chunk ID
-```
-
-并支持多个 URL Alias 指向同一 Document。
-
-项目还维护大量通用和 CoinDesk 专用尾部 marker、市场 ticker、菜单/导航裁剪正则。它说明纯通用 extractor 最终一定会遇到站点特殊规则，但生产系统不能把这些规则永久硬编码在 schema mapper 中，而应进入 `SiteProfileRelease`：有版本、可回滚、可统计命中率、可对旧 Snapshot 离线 replay。
-
-### 9.1 Prompt-friendly 文本不能代替知识库 Markdown
-
-Crawl4AI 清洗会删除图片、去掉 Markdown heading marker、把链接变纯文本，这对 LLM prompt 压缩是合理的，但会破坏长期知识资产的结构。
-
-平台需要分离：
-
-```text
-Canonical IR            长期语义真相
-Markdown Projection     稳定可读归档
-Prompt Text Projection  面向 LLM 的压缩文本
-```
-
-Markdown 必须保留 heading、code fence、表格、图片、链接、blockquote、列表等必要结构。
-
-## 10. NewsManager / NewsRepository：缓存降级与“正文升级”
-
-`NewsRepository` 把文件持久化与 NewsManager 业务逻辑隔离，提供 recent load/save、按年龄过滤和 fallback cache。这个 Repository 边界值得迁移：上层不应直接操作存储细节。
-
-但当前后端是本地文件，只适合单机新闻缓存，不能作为 1000 站平台的事实层。平台应替换为 PostgreSQL + 对象存储，并保持 Repository/Service Contract。
-
-### 10.1 Provider 失败时使用旧缓存
-
-`NewsManager.fetch_fresh_news()` 在 provider 返回空或异常时，会使用较旧缓存作为 fallback。这是 RAG 可用性的正确思路：外部数据暂时失败，不应该把系统现有有效知识清空。
-
-知识库应把这个原则升级为：
-
-- 抓取失败不会删除 Accepted Document Version；
-- Search/Vector 继续使用最近成功 Projection；
-- UI 标记 freshness / source lag；
-- 只有明确删除、撤回或 tombstone 策略才移除内容。
-
-即“**stale-but-valid 优于 transient-empty**”。
-
-### 10.2 短正文后续升级
-
-`update_news_database()` 对同 URL 不是一律跳过：如果旧正文短于阈值而新正文更长，会原地更新旧记录。这非常符合真实抓取场景：第一次只有 RSS summary，之后页面抓取拿到全文。
-
-长期知识库不能原地覆盖，而应：
-
-1. 创建新的 Extraction Candidate；
-2. 重新经过 Quality；
-3. 生成 Canonical IR hash；
-4. 内容更完整时创建 `EXTRACTION_UPGRADE` Document Version；
-5. 原 Snapshot/Candidate/Version 全部保留；
-6. 只重建变化的 Markdown/Chunk/Embedding。
-
-## 11. RagEngine：依赖注入、并发刷新与查询热路径问题
-
-### 11.1 依赖注入和状态隔离
-
-`RagEngine` 的 NewsManager、IndexManager、ContextBuilder、MarketDataManager 等通过构造函数注入，而不是在引擎内部硬创建。这使组件容易测试和替换，平台的 Fetcher/Extractor/Retriever/Vector Store 也应沿用相同思路。
-
-### 11.2 更新锁和重试抑制
-
-引擎使用 `asyncio.Lock` 防止同进程重复刷新，并记录 `_last_update_attempt`，设置最小重试间隔，避免主循环刷新失败后查询路径立刻再次触发外部更新。
-
-这是防止“失败后热循环”的实用手段。不过 1000 站平台不能只靠进程内 Lock；应把刷新权、lease、idempotency key 和 retry/backoff 持久化，使多实例和进程重启下依然成立。
-
-### 11.3 独立 I/O 并发且隔离异常
-
-`refresh_market_data()` 使用 `asyncio.gather(..., return_exceptions=True)` 并行更新相互独立的数据源，并在新闻变化后重建索引。这比“一项失败导致全批失败”更合理，值得迁移为独立 Stage/Task。
-
-平台进一步要求每个任务完成即持久提交，不能把 Python gather 结果本身当事务。
-
-### 11.4 查询热路径可能触发更新，不适合 1000 站系统
-
-`retrieve_context()` 发现数据较旧时，可能调用 `update_if_needed()`，虽然有 5 分钟重试抑制，但这仍意味着一次用户查询可能间接等待外部更新逻辑。
-
-交易新闻规模小、时效强，这种设计可接受；博客知识库中，查询请求绝不能同步触发：
-
-- 站点抓取；
-- Browser；
-- 大规模重建索引；
-- 长时间第三方 API 调用。
-
-正确模式：
-
-```text
-Query
-  ↓
-读取最近成功 Search/Vector Projection
-  ↓
-返回结果 + projection_age/source_lag
-
-若 stale：
-  └─ 仅创建/合并异步 refresh task
-```
-
-这保证检索 SLA 不被源站状态拖垮。
-
-## 12. ScoringPolicy：把检索规则从编排层拆出来
-
-`ArticleScoringPolicy` 是本项目对知识库 RAG 很有价值的设计：相关性算法被独立为 policy，而不是散在 ContextBuilder 中。
-
-当前字段权重大致为：
+`ArticleScoringPolicy` 把相关性计算从 ContextBuilder 编排中拆出来。默认字段权重：
 
 ```text
 title      10
@@ -438,209 +255,284 @@ categories  5
 tags        4
 ```
 
-评分还组合：
-
-- keyword frequency；
-- category relevance；
-- domain-specific coin relevance；
-- important category；
-- recency；
-- body density；
-- 多关键词共现；
-- 标题/正文中的实体相关度。
-
-`RagEngine` 还会把完整正文候选排在短 summary 前面，再由 ContextBuilder 在 token budget 下选文章。
-
-### 12.1 可迁移的不是具体分数，而是“策略版本化”
-
-交易新闻的 recency 设计会让 24 小时之外内容快速失去价值，这完全不适合技术博客：一篇 5 年前的数据库原理文章可能比昨天的短新闻更权威。
-
-因此知识库应新增 `retrieval_policy_release`：
+关键词频次使用：
 
 ```text
-id
-version
-candidate_sources
-lexical_weight
-vector_weight
-field_weights
-freshness_policy
-source_priority_policy
-quality_policy
-full_body_boost
-reranker_config
-context_budget
+weight * (1 + log(1 + count))
+```
+
+比线性词频更能抑制重复关键词堆积。
+
+总分还组合 category、entity/coin、important category，并乘正文密度、多关键词共现、实体相关性和 freshness modifier。通用原则是：标题命中可高于正文、正文完整度可作为排序信号、多 query term 共现提高置信度、domain/entity feature 可进入 query-specific scoring。
+
+### 9.1 Freshness 不能照搬
+
+`calculate_recency_factor()` 在 24 小时内线性从 1 降到 0，最终 freshness 乘数为：
+
+```text
+0.3 + 0.7 * recency
+```
+
+因此 24 小时后新鲜度加成消失但仍保留 0.3 底分。交易新闻合理，技术知识不合理。技术博客应按 Query Intent/Document Type/Source 配置不同 freshness policy，例如“最新 API 变化”偏新，而“算法原理”几乎不衰减。
+
+### 9.2 Retrieval Policy 必须版本化
+
+字段权重、BM25/Vector 权重、freshness、source priority、quality/full-body boost、reranker、context budget 都应进入 `RetrievalPolicyRelease`，支持 replay、A/B 和回滚。
+
+## 10. ContextBuilder 与 Token Budget
+
+ContextBuilder 先在较宽候选池按 relevance 排序，再把正文达到阈值的 full-body item 提前，最后在：
+
+```text
+article_max_tokens
+max_context_tokens
+```
+
+约束下生成 prompt。过长正文会逐步裁剪并尽量回退到句子/段落边界。
+
+可迁移原则：
+
+- relevance 与 content quality 都参与 context assembly；
+- total token budget 和 per-document budget 必须同时存在；
+- 有结构化 Chunk 时直接以 chunk token count 装配，不应重新从全文字符串裁剪。
+
+### 10.1 Oversize 候选的 `break` 是缺陷
+
+当前 `build_context()` 遇到某候选加入后超出总预算时直接 `break`，会导致后面更短且有价值的候选永远不能进入上下文。
+
+生产算法应：
+
+```text
+oversize candidate
+→ 尝试缩小到允许 chunk/段落预算
+→ 仍不合适则 skip
+→ continue 后续候选
+```
+
+同时加入 source/document diversity 和每来源/每文档上限。
+
+## 11. Stale-but-valid 缓存与查询热路径
+
+NewsManager 在 Provider 返回空或异常时使用本地缓存 fallback。这一原则应升级为：
+
+```text
+源站暂时失败
+≠ 文档删除
+≠ 搜索索引失效
+```
+
+Accepted Version、Markdown、Search/Vector Projection 继续可用，只暴露 `source_lag`、`projection_age`、`stale`。
+
+交易系统可在查询附近触发数据更新；1000 站博客知识库查询热路径不能同步等待抓站、Browser、全量 index rebuild。Query 只消费最近成功 Projection；若 stale，只创建/合并后台 refresh task。
+
+## 12. CodebaseVectorIndexer：本次最重要的新增启发
+
+`src/rag/code_vector_index.py` 使用 ChromaDB + SentenceTransformer，对 Python 做 AST 结构切块，对 Markdown 按 heading section 切块，并使用 SHA-256 文件 hash 做 delta indexing。
+
+### 12.1 SHA-256 Delta Indexing
+
+流程：
+
+```text
+current_file_hash == indexed_file_hash
+    → skip
+否则
+    → parse chunks
+    → batch embedding
+    → upsert
+```
+
+这个原则应推广为知识库统一的 `Projection Input Fingerprint`：
+
+```text
+projection_input_hash = sha256(
+    canonical_ir_hash
+    + chunk_policy_release_id
+    + embedding_release_id
+    + projection_schema_release_id
+)
+```
+
+输入和策略都没变，就不重建 Markdown/Chunk/Embedding。这样可显著减少百万文档级的无意义重处理。
+
+### 12.2 结构感知 Chunk
+
+Python 按 class/function/method/docstring，Markdown 按 heading section。核心不是 AST 本身，而是“按原生语义结构切分”。博客应按 heading path → block group → token ceiling，代码 fence、表格、列表尽量保持原子性。
+
+### 12.3 Batch Embedding
+
+项目优先批量 embedding（例如 batch size 32），失败再逐条。生产平台应保留 batch 能力，但 batch policy 要进入 `EmbeddingRelease/RuntimePolicy`，根据 provider 限流、token 数、CPU/GPU 自适应。
+
+### 12.4 Embedding 维度不匹配检测
+
+Indexer 会用当前模型生成测试向量查询旧 collection；检测到 dimension/incompatible 错误时重建 collection。
+
+值得采用的是“模型指纹/维度变化必须显式检测”，但生产不能直接删除线上 collection。应使用 **Index Generation**：
+
+```text
+Active G1
+  ↓ embedding release changes
+Build Shadow G2
+  ↓ count/checksum/sample query verify
+Atomic alias switch G1 → G2
+  ↓ rollback window
+Retire G1
+```
+
+模型、revision、dimension、normalize、distance metric 都必须进入 `EmbeddingRelease`。
+
+### 12.5 先删旧 Chunk 再 Upsert 有失败窗口
+
+当前变化文件会先删除旧 chunks，再 parse/embed/upsert。如果 embedding 或 upsert 失败，旧索引已被删掉，产生空洞。
+
+生产应使用稳定 chunk key + 成功后 tombstone，或直接构建 staging/shadow generation 后原子切换。
+
+## 13. Dashboard 的可迁移设计
+
+项目 FastAPI Dashboard 使用 Router 分层、WebSocket、Admin Router、日志流、可选认证、CORS、CSP/HSTS/Referrer-Policy/Permissions-Policy、rate limit 和生命周期管理。
+
+博客平台可以借鉴“控制面 + 实时状态”的体验，但所有会影响抓取/抽取/质量/检索结果的配置不能直接热改全局 ini，而应发布不可变 Release。Web 至少展示 Source lag、Coverage、Run/Task、RouteAttempt、Browser 使用率、Extractor/Quality、Projection Generation、Retrieval Explain 和实时 worker/queue 状态。
+
+## 14. 对博客知识库方案的具体优化
+
+### 14.1 Projection Input Fingerprint
+
+每类投影保存：
+
+```text
+source_document_version_id
+projection_release_id
+input_hash
+state
+built_at
+```
+
+只有事实输入或处理策略真正变化才重建。
+
+### 14.2 Embedding Release
+
+至少记录：
+
+```text
+provider
+model
+model_revision
+vector_dimension
+normalize
+metric
+batch_policy
 created_at
 ```
 
-检索链推荐：
+### 14.3 Index Generation
+
+至少记录：
 
 ```text
-Metadata Filter
-  ↓
-BM25 + Vector Recall
-  ↓
-RRF / Weighted Merge
-  ↓
-Policy Scoring
-  ↓
-Optional Reranker
-  ↓
-Context Budget Selection
+id
+index_type
+embedding_release_id
+state
+expected_count
+actual_count
+build_started_at
+verified_at
+activated_at
+retired_at
 ```
 
-这样字段权重、新鲜度、质量、来源优先级都可重放、A/B 和回滚，而不是硬编码进业务代码。
+Embedding 模型/维度/metric 改变时创建新 generation，验证后原子切换，不破坏当前线上查询。
 
-### 12.2 Content Quality 与 Retrieval Quality 分离
+### 14.4 Context Assembly Policy Release
 
-正文长短可以作为检索排序信号，但不能替代 ingestion Quality。一个页面是否应被接受进知识库，与一次用户查询是否优先召回它，是两套不同决策：
-
-- Ingestion Quality：判断内容是不是合法、完整、可用文章；
-- Retrieval Policy：判断该 Accepted Version 对当前 query 是否最相关。
-
-二者必须独立版本化，避免“某次搜索偏好”反向决定历史文章是否进入知识库。
-
-### 12.3 稳定 Citation
-
-LLM_trader 主要记录当前 article URL；长期知识库需要把引用固定到：
+明确版本化：
 
 ```text
-document_id
-document_version_id
-chunk_id
-source_url
+total_token_budget
+per_document_token_budget
+max_documents
+max_chunks_per_document
+max_chunks_per_source
+full_body_quality_threshold
+diversity_policy
+oversize_policy
+citation_policy
 ```
 
-否则原页面修改后，历史回答无法复现。
+oversize 必须 trim/skip + continue，不能阻塞后续候选。
 
-## 13. Dashboard：FastAPI 控制面的可迁移设计
+### 14.5 Retrieval Explain
 
-`src/dashboard/server.py` 使用 FastAPI 组织 Dashboard，并具备：
-
-- 多 Router 分层；
-- `DashboardState`；
-- 日志流与 Console Buffer；
-- WebSocket Router；
-- Admin Router；
-- 可写配置封装；
-- 可选认证初始化；
-- CORS；
-- CSP/HSTS/Referrer-Policy/Permissions-Policy 等安全响应头；
-- API rate limit；
-- ETag 与 Cache-Control 策略；
-- 生命周期启动/关闭处理。
-
-这说明项目不仅做“抓取函数”，还重视运营可见性和控制面，这与博客知识库的 Web 管理需求高度相关。
-
-### 13.1 可直接借鉴的 Web 思路
-
-博客平台 Web 应实时展示：
-
-- Source 状态与 lag；
-- Coverage Provider 进度；
-- Run/Task stage；
-- queue depth / worker health；
-- route attempt；
-- Browser 使用率；
-- extractor/quality 结果；
-- 实时日志和告警。
-
-可通过 WebSocket/SSE 只推送状态变化，不让浏览器高频轮询整个任务表。
-
-### 13.2 “可写全局配置”要升级成不可变 Release
-
-LLM_trader 的 Dashboard 可以写应用配置，这对单应用很方便；但多站点抓取平台若直接在线修改全局 ini，会丢失“某个 Run 当时用了哪套规则”的可追溯性。
-
-因此 Web 中所有影响抓取、抽取、质量、检索的配置都应创建 immutable Release，Run 固定引用 Release ID，支持 diff、回滚和审计。
-
-## 14. 哪些设计可以迁移，哪些不能直接复制
-
-### 可迁移
-
-- Feed-first 的低成本结构化采集。
-- Feed 正文足够时跳过 Browser 的渐进式 enrichment。
-- Browser 实例复用和有限并发。
-- Crawl4AI 失败后的多路降级思想。
-- Repository/Service 分层。
-- 外部数据失败时使用最近有效缓存。
-- 短正文后来得到全文的 Content Upgrade 思想。
-- 依赖注入。
-- 独立 Scoring Policy。
-- token budget 下的 context selection。
-- FastAPI Dashboard、实时日志、WebSocket、安全响应头和 rate limit。
-
-### 不能直接复制
-
-- 仅靠最近 RSS 窗口作为数据发现。
-- 内存 asyncio task 作为任务真相。
-- stage timeout 后返回空集合。
-- 整批 Browser 超时后重新抓所有 target。
-- 字符数作为唯一正文质量标准。
-- URL hash 直接当逻辑文章身份。
-- normalized title 硬去重。
-- hardcode 站点尾部清洗规则。
-- 本地 JSON/文件缓存作为主存储。
-- 查询路径同步触发外部刷新。
-- 交易新闻 24 小时 recency 直接套到技术知识检索。
-
-## 15. 对博客知识库方案的具体优化
-
-### 15.1 Provider Contract
-
-所有 Sitemap/Feed/API/Archive Provider 统一支持 capability probe、durable cursor、candidate + evidence、explicit exhaustion，不把某个库的返回对象渗透到业务层。
-
-### 15.2 Progressive Enrichment
-
-正式采用：
+可选记录：
 
 ```text
-Coverage/Metadata
-→ Feed/API body
-→ HTTP deterministic extraction
-→ Browser/Crawl4AI
-→ Site Recipe / Manual
+lexical_score
+vector_score
+field_score
+quality_modifier
+freshness_modifier
+source_modifier
+rerank_score
+final_score
+retrieval_policy_release_id
 ```
 
-每次升级都由 Quality Policy 驱动，而不是固定全站 Browser。
+Web 才能回答“为什么这篇排在前面”。
 
-### 15.3 Partial-result-preserving Fanout
+### 14.6 增量投影指标
 
-所有 Source/Provider 结果完成即提交；Run 可以 partial success；禁止批次总 timeout 抹掉已经成功的事实。
+新增：
 
-### 15.4 Durable Route Fallback
+```text
+projection_hash_hit_ratio
+chunks_reused_total
+embedding_reused_total
+embedding_rebuild_total
+index_generation_build_seconds
+index_generation_verify_fail_total
+context_candidate_skipped_oversize_total
+context_source_diversity
+```
 
-Route 失败与 fallback 都持久化为 `FetchRouteAttempt`，可从进程崩溃和重启中恢复，并避免不必要重复请求。
+## 15. 可采用与不可直接采用
 
-### 15.5 Immutable Content Upgrade
-
-Feed summary → HTTP 正文 → Browser 正文的提升统一表示为 Candidate + Version，不原地覆盖历史。
-
-### 15.6 Retrieval Policy Release
-
-将字段权重、BM25/Vector 权重、freshness、source priority、quality/full-body boost、reranker、context budget 版本化。检索策略变化只重建/重评分投影，不修改 Accepted Content。
-
-### 15.7 Retrieval Hot Path 解耦
-
-查询只消费最近成功 Projection；源站/索引刷新交给 Scheduler。数据旧时返回 freshness，而不是在请求线程执行 Browser 或全量同步。
-
-### 15.8 Stale-but-valid Cache
-
-短暂抓取失败不清空搜索索引或知识版本。显式记录 source lag、projection age 和 error，保障知识库连续可用。
-
-### 15.9 Web 实时运维与安全控制
-
-Dashboard 增加 WebSocket/SSE 的 Run/Task/worker 状态，配合 RBAC、Audit、CSP、rate limit。所有可编辑规则都发布为 Release，而不是直接覆盖运行中的配置。
+| 项目机制 | 结论 | 知识库落地方式 |
+|---|---|---|
+| RSS `content:encoded` 正文候选 | 采用 | Feed Observation + ContentCandidate |
+| 正文不足才 Crawl4AI | 采用并增强 | Quality Gate 驱动 route escalation |
+| Browser 批量复用 | 采用 | 独立 Browser Worker Pool |
+| aiohttp fallback | 采用思想 | 持久化 RouteAttempt |
+| source-specific tail marker | 采用 | 版本化 SiteProfileRelease |
+| prompt-friendly Markdown 清洗 | 仅用于 LLM | 与 Markdown Projection 分离 |
+| URL-first dedup | 部分采用 | URL Candidate 层使用 |
+| normalized title 硬去重 | 不采用 | 只生成 DuplicateHint |
+| URL hash 作为 article id | 不采用 | Document/Version/URL ID 分离 |
+| 字段权重 + log 词频 | 采用思想 | RetrievalPolicyRelease |
+| 24h 新闻 freshness | 不直接采用 | Query Intent/Document Type 策略化 |
+| full-body 优先 | 采用 | Retrieval/Context feature |
+| 严格 Token budget | 采用 | 基于 chunk token count |
+| oversize 后 `break` | 不采用 | trim/skip + continue |
+| SHA-256 增量向量化 | 强烈采用思想 | Projection Input Fingerprint |
+| embedding 维度检测 | 采用 | EmbeddingRelease fingerprint |
+| 维度不匹配直接删 collection | 不采用 | Shadow Index Generation + alias switch |
+| 先删旧 chunks 后 upsert | 不采用 | generation/staging 或成功后 tombstone |
+| 批次 `wait_for(gather)` 超时返空 | 不采用 | durable partial-result fanout |
+| 本地文件 cache | 仅单机参考 | PG + Object Storage Truth Store |
 
 ## 16. 最终结论
 
-LLM_trader 的新闻/RAG 子系统不适合直接当作 1000 站技术博客爬虫平台，但它提供了几组非常有价值的工程原型：
+LLM_trader 证明以下组合在真实应用中有效：
 
-1. Feed 中已有结构化正文时先使用低成本候选；
-2. 只有正文不足才升级 Crawl4AI/Browser；
-3. Browser 应复用而不是每 URL 启停；
-4. 外部 Provider 失败时保留最近有效数据；
-5. 短正文后续可升级成更完整内容；
-6. RAG 评分策略应与编排分离；
-7. Dashboard 应同时承担监控、控制和安全边界。
+```text
+低成本结构化源
++ 按需正文 enrichment
++ 多级 fallback
++ 显式 relevance scoring
++ Token budget
++ 向量语义检索
++ 缓存降级
+```
 
-真正平台化时，需要把这些“进程内模式”提升为“持久化协议”：Coverage、Task/Lease、Route Attempt、Snapshot、Candidate、Document Version、Retrieval Policy Release 和 Projection freshness 全部成为可查询、可恢复、可回放的状态。这样才能同时满足全量历史抓取、长期增量同步、可扩展站点接入、Web 管理和稳定 RAG 的要求。
+但它的目标是“少量新闻源、短时间窗口、单应用交易决策”，而博客知识库目标是“1000+ 站点、多年历史、可证明 Coverage、长期增量、版本追溯、Web 运维、可重放处理”。因此应吸收其数据面技巧，再由平台级 Coverage Evidence、Task/Lease、Snapshot、Version、Policy Release、Projection Fingerprint 和 Index Generation 解决规模化可靠性问题。
+
+本次最重要的方案优化是：**把项目的 SHA-256 delta indexing 上升为知识库统一的 Projection Input Fingerprint，并把其向量维度恢复逻辑升级为可验证、可回滚的 Index Generation；同时把 ContextBuilder 中隐式的全文优先与 Token 装配规则正式版本化。**
