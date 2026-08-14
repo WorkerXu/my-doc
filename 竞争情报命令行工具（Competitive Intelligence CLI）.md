@@ -50,6 +50,8 @@ cintel scrape seo
 
 另一个工程风险是仓库同时保留根目录 `scrapers/`、`utils/`、`main.py` 与真正被 `pyproject.toml` 打包的 `competitive_intel/scrapers/`、`competitive_intel/utils/`、`competitive_intel/cli.py`。两套实现已经出现差异，例如打包版 Sitemap 抓取包含 URL 校验与 50MB 流式下载限制，而根目录版本并不完全一致。生产系统必须明确“可执行代码唯一来源”，构建、测试、审计都针对同一 package tree，避免修复了副本 A、生产实际运行副本 B 的漂移问题。
 
+还存在一个容易被“代码用了 async”掩盖的运行时问题：`cmd_scrape_sitemap()` 的内部 `async run()` 以及 `analyze_and_scrape_sitemap()` 都会直接调用同步的 `fetch_sitemap()`，而该函数内部使用 `requests.get()`。因此在真正进入页面并发抓取前，Sitemap 的 DNS、连接、下载、重试等待全部会阻塞 event loop。单次 CLI 基本可接受，但长生命周期服务端 Worker 中会导致同进程其他协程饿死，放大慢站、超时和 429 的影响。生产实现应优先使用 `httpx.AsyncClient`/`aiohttp`；如果第三方库只能提供同步接口，则应隔离到有上限的 Blocking-I/O 线程池或独立 Worker，并对线程池队列同样施加 backpressure，不能直接在主 event loop 调用同步网络函数。
+
 ## 4. Sitemap 抓取实现
 
 `competitive_intel/scrapers/sitemap_analyzer.py` 的核心流程是：
@@ -148,6 +150,21 @@ UNKNOWN
 ```
 
 但分类结果必须带置信度和规则版本，并保持可解释。
+
+### 4.5 同步 I/O 混入异步路径
+
+项目的 Sitemap 获取函数是同步 `requests`，但上层调用链已经进入 `asyncio.run()` 和 async 方法。其技术原理问题不是“同步库不能用”，而是“阻塞调用占用了事件循环线程”：当一个请求慢 20 秒时，同一 loop 中所有原本可继续执行的协程都无法获得执行机会。
+
+生产系统需要把 I/O 类型作为 Adapter contract 的一部分：
+
+```text
+ASYNC_NATIVE      可直接运行在 asyncio Worker
+BLOCKING_IO       只能进入 bounded blocking pool / 独立 Worker
+CPU_BOUND         进入进程池或 CPU Worker
+BROWSER           进入 Browser Worker
+```
+
+这样调度器可以从运行时层面阻止同步网络调用误入 async Worker，而不是依靠开发者记忆。
 
 ## 5. 并发模型
 
@@ -259,7 +276,13 @@ async with AsyncWebCrawler(...)
 - 单文件越来越大；
 - 无细粒度版本和审计。
 
-因此知识库平台必须使用 PostgreSQL 管任务/版本/元数据，S3/MinIO 放 raw/DOM/Markdown 大对象，不能沿用单 JSON 文件作为状态真相源。
+更具体地看，`save_homepage_data()` 与 `save_feature_data()` 都采用“读取整个 JSON -> 内存修改 -> 直接覆盖原文件”的 read-modify-write 模式，没有文件锁、临时文件 + 原子 rename、事务或 compare-and-swap。两个并发任务即使分别抓取不同 URL，也可能发生 lost update；进程在写入中途崩溃还可能留下截断 JSON。对长期知识库，持久化不能只保证“最终写了文件”，还要保证任务状态与对象引用之间的原子性。
+
+项目还有一个很容易被忽略的身份冲突：`create_feature_name()` 只取 URL path 最后一段作为 key，并把 `-`、`.` 替换为 `_`。例如 `/blog/setup` 与 `/docs/setup` 会得到相同 key `setup`，后写结果可静默覆盖前写结果。技术知识库绝不能把标题、slug 或 URL path 尾段当作内部身份键；应以 `url_id`、`article_id`、规范化 URL hash 和 attempt/snapshot id 作为主键，slug 只用于展示。
+
+此外 JSON 内容没有显式 schema version，Agent/CLI 升级后字段语义变化只能靠调用方猜测。生产 Adapter 输出应携带 `adapter_output_schema_version` 和 runtime/extraction release，保证旧 snapshot 可以用原 schema 解释，也能离线迁移或 replay。
+
+因此知识库平台必须使用 PostgreSQL 管任务/版本/元数据，S3/MinIO 放 raw/DOM/Markdown 大对象，不能沿用单 JSON 文件作为状态真相源。对象写入建议采用“内容寻址临时对象 -> 校验 hash/size -> 数据库事务登记 artifact/snapshot -> 标记 COMPLETE”的两阶段提交语义；重复任务以 hash/idempotency key 复用已有对象，不原地覆盖已完成 snapshot。
 
 ## 9. 可直接吸收的设计
 
@@ -271,6 +294,8 @@ async with AsyncWebCrawler(...)
 6. CLI/Agent 只负责发起动作，采集执行层保持确定性接口。
 7. 文件名和 URL 都需要专门的安全校验层。
 8. 安装包运行代码必须只有一个 source of truth，并通过构建产物/contract test 验证实际导入路径。
+9. 抓取 Adapter 应显式声明运行时类型（async/blocking/CPU/browser），避免阻塞工作混入 event loop。
+10. 结果对象应携带稳定内部 ID 和 schema/release 信息，展示 slug 不能承担 identity。
 
 ## 10. 不应直接照搬的设计
 
@@ -286,6 +311,9 @@ async with AsyncWebCrawler(...)
 10. `stream=True` 后仍把完整 Sitemap 拼回内存并构造整棵 XML DOM。
 11. 仅靠 `>=` 依赖下界重建生产抓取运行时，或让 HTTP Worker 与 Browser 重依赖共用同一镜像。
 12. 同一功能保留两套可执行源码并允许实现漂移。
+13. 在 async Worker 的事件循环线程里直接执行 `requests` 等同步网络 I/O。
+14. 通过 URL 最后一段、标题或 slug 生成内部 map key，允许不同 URL 静默覆盖。
+15. read-modify-write 整个 JSON 后原地覆盖，且不提供事务、原子 rename 或 schema version。
 
 ## 11. 对博客知识库技术方案的具体优化
 
@@ -331,8 +359,18 @@ HTTP/Sitemap/Feed Worker 使用最小依赖镜像；Browser/Crawl4AI Worker 使�
 
 CI 必须验证实际安装 wheel/container 中只存在预期 package tree，测试导入路径与生产一致；禁止 legacy/root 副本成为第二套未受控实现。runtime bundle 记录最终 wheel/hash，而不仅是源码 commit。
 
+### 11.11 Async Runtime Purity
+
+HTTP/Sitemap/Feed Worker 默认只允许 async-native 网络客户端。Adapter 注册时声明 `runtime_class=ASYNC_NATIVE|BLOCKING_IO|CPU_BOUND|BROWSER`；调度器按类型路由。同步第三方 SDK 必须进入有界 Blocking-I/O pool 或独立 Worker，线程池队列长度、并发和超时都可观测，禁止直接阻塞主 event loop。CI 可通过 lint/contract test 阻止 `requests`、同步 urllib 等出现在 async-native Worker 的网络执行路径。
+
+### 11.12 稳定身份、Schema 与原子 Artifact Commit
+
+所有抓取结果使用 `url_id + attempt_id + snapshot_id` 标识，禁止使用标题、slug、URL path 尾段作为更新 key。Adapter 输出带 `adapter_output_schema_version`、`runtime_bundle_release`、`fetch_profile_release`。
+
+大对象先写内容寻址临时 key 并校验 hash/size，再在 PostgreSQL 事务中写 `fetch_snapshot/artifact_object` 元数据和状态，成功后对象视为不可变 COMPLETE；Worker 崩溃后根据幂等 key 重试或复用对象。这样可避免本地 JSON read-modify-write 的 lost update、半写文件和 silent overwrite，同时保证 replay 能准确解释旧版本数据。
+
 ## 12. 结论
 
 该项目不是为百万级博客归档设计的，但它在 Sitemap 安全保护、URL 分类、有界并发、Agent 与抓取工具职责分离、Crawl4AI optional dependency 等方面提供了可复用思路。
 
-对博客知识库最重要的改进，是把项目中的“递归 + 硬上限 + 本地内存状态 + 单机 JSON”升级为“持久化 Sitemap 任务树 + 真流式解析 + execution slice 续跑 + durable frontier + 分布式状态机”；把“入口 URL 预检查”升级为“Admission 决策 + Egress 连接时强制执行”；把“optional extra”升级为“HTTP 与 Browser 运行时物理隔离”。同时保留 size limit、cycle detection、bounded concurrency 和安全校验的基本思想。这样既能防止异常站点拖垮系统，也不会因为安全预算导致历史文章被静默截断，并能降低重型抓取依赖的供应链与运行时风险。
+对博客知识库最重要的改进，是把项目中的“递归 + 硬上限 + 本地内存状态 + 单机 JSON”升级为“持久化 Sitemap 任务树 + 真流式解析 + execution slice 续跑 + durable frontier + 分布式状态机”；把“入口 URL 预检查”升级为“Admission 决策 + Egress 连接时强制执行”；把“optional extra”升级为“HTTP 与 Browser 运行时物理隔离”。本次进一步补强两条生产级约束：一是 async Worker 必须保持事件循环纯净，阻塞网络 I/O 只能进入受控的 blocking runtime；二是内部身份、结果 schema 与 artifact 写入必须稳定、版本化、原子化，不能用 slug key 和覆盖式 JSON 形成隐式数据丢失。这样既能防止异常站点拖垮系统，也不会因为安全预算导致历史文章被静默截断，并能降低重型抓取依赖、并发写入和长期回放的运行风险。
