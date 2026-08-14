@@ -4,24 +4,25 @@
 
 - 项目：https://github.com/NhanPhamThanh-IT/Deepnews-Summarizer
 - 调研基线：`main`，commit `e5782b4212b59e63a5996546168016504a658130`
-- 仓库状态：已归档，MIT License
+- 仓库状态：已归档
+- License：MIT
 - 核心抓取代码：`local/utils/scrapper.py`、`local/utils/text_preprocessing.py`
-- 摘要代码：`local/utils/summarize.py`
-- 站点配置：`local/config.json`
+- Local 摘要代码：`local/utils/summarize.py`
+- Local 站点配置：`local/config.json`
 - Local Web：`local/pages/01_Daily_News.py`、`local/pages/02_Custom_Fetch.py`
-- 部署版：`deploy/backend/main.py`、`deploy/backend/scraper.py`、`deploy/frontend/*`
-- 模型与数据：`models/preprocessing/preprocessing.py`、`models/finetuning/bart.py`、`models/finetuning/led.py`
-- 依赖：`local/requirements.txt`
+- Deploy Backend：`deploy/backend/main.py`、`deploy/backend/scraper.py`
+- 模型训练：`models/preprocessing/preprocessing.py`、`models/finetuning/bart.py`、`models/finetuning/led.py`
+- Local 依赖：`local/requirements.txt`
 
-Deepnews-Summarizer 是一个教学/课程型的“新闻列表发现 → 单文章抓取 → 摘要 → Web 展示”项目，不具备 1000 个博客长期知识库所需的 durable frontier、全量覆盖证明、增量同步、版本留存、离线重处理、跨站公平调度和持久运维能力，因此不适合作为生产底座。
+Deepnews-Summarizer 本质上是一个面向课程/演示场景的“新闻列表发现 → 单文章抓取 → 摘要 → Web 展示”应用。它没有 1000 个技术博客长期知识库所需的 durable frontier、Provider Coverage Evidence、全量历史回灌、增量 checkpoint、版本留存、不可变网络 Snapshot、离线重处理、跨站公平调度、持久任务状态和故障恢复，因此不适合直接作为生产底座。
 
-它最有价值的地方是同时提供了正例和反例：正例是配置驱动站点、列表发现与文章抓取分离、自定义 URL 即时抓取、前后端拆分、可替换摘要模型；反例是每次新建重型 Runtime、把 Markdown 压平成单段、固定 token 生切摘要、同步/异步桥接、把摘要当作正文返回、硬编码 CNN Selector、无持久状态，以及模型训练数据处理缺乏可重复性与数据契约。
+它的价值在于同时提供了可复用思路和典型反例。可复用思路包括：配置驱动站点、列表发现与详情抓取分离、自定义 URL Targeted Fetch、前后端拆分、抓取引擎与摘要模型可替换。典型反例包括：每次抓取创建新的浏览器 Runtime、把 Markdown 全局压平成单段文本、固定 token 生切摘要、同步函数包裹 async、在 async 路径中执行阻塞式外部 AI 调用、把摘要以 `content` 字段冒充正文、站点 Selector 硬编码、无持久状态、训练数据不可重复和“模型声明长上下文但实际仍截断为 1024 token”。
 
-本次结论：现有博客知识库方案的 Source Registry、Site Profile Studio、Targeted Fetch、Immutable Snapshot、Canonical IR、Derived AI Artifact、Runtime Pool 方向正确；在此基础上还应进一步补齐 **AI Recipe Release、Model/Dataset/Runtime Release、模型有效上下文 Attestation、摘要块级 lineage、模型训练数据可重复性、生产摘要质量验证和依赖供应链锁定**。
+对博客知识库方案最重要的结论是：**抓取、Canonical 内容、Markdown、检索 Projection、AI 输入和 AI 摘要必须是不同表示层；AI 永远只能作为 Accepted Document Version 的派生层，不能替代原文真相层。**
 
-## 2. 两套执行架构
+## 2. 项目整体执行架构
 
-项目包含 Local 与 Deploy 两套实现。
+项目同时保留 Local 和 Deploy 两套实现，二者技术栈不同，但业务路径相似。
 
 ### 2.1 Local 版本
 
@@ -30,179 +31,231 @@ Streamlit
   -> config.json
   -> Crawl4AI AsyncWebCrawler
   -> Markdown
-  -> Markdown 正则抽链接 / CSS Selector 抽正文
-  -> 文本压平
+  -> 列表页：Markdown 正则提取链接
+  -> 文章页：CSS Selector 提正文
+  -> 全局空白压平
   -> 本地 BART 摘要
   -> Streamlit 展示
 ```
 
-`local/config.json` 配置 CNN 分类页 URL 和 `.container__link--type-article`。`01_Daily_News.py` 读取 tabs，先调用 `get_links_from_homepage()`；用户点击 More details 后再调用 `get_content_from_direct_url()`。
-
-`02_Custom_Fetch.py` 接收任意 URL，点击按钮后同步等待抓取与摘要完成。这一产品形态非常接近生产管理端中的 Targeted Fetch / Probe，但执行模型不能照搬。
+Local 版本的抓取核心集中在 `local/utils/scrapper.py`。列表页和文章页都创建 `BrowserConfig`、`CrawlerRunConfig` 和新的 `AsyncWebCrawler` 上下文；列表页使用调用者传入的 CSS Selector，文章页则固定使用 `.vossi-paragraph`。
 
 ### 2.2 Deploy 版本
 
 ```text
 Streamlit frontend
   -> FastAPI
-     -> httpx + BeautifulSoup
-     -> CNN CSS Selector
+     -> httpx
+     -> BeautifulSoup
+     -> CNN 固定 Selector
      -> OpenAI summary
+     -> JSON
 ```
 
 FastAPI 暴露：
 
-- `GET /scrape`：列表页发现文章；
-- `GET /scrape-article`：抓单文章并直接返回摘要。
+- `GET /scrape`：抓 CNN 分类页并返回文章标题、URL；
+- `GET /scrape-article`：抓单篇正文，立即调用 OpenAI 摘要，然后把摘要放在 `content` 字段返回。
 
-部署版从 Crawl4AI 降级为 `httpx + BeautifulSoup`，说明抓取引擎只是执行方式，不应成为业务模型本身。生产系统应把 HTTP、Crawl4AI、Playwright、PDF/OCR 都放在统一 Engine Adapter 后面。
+Deploy 版不再依赖 Crawl4AI，而改用 `httpx + BeautifulSoup`。这说明项目自身已经证明“抓取引擎只是执行实现，不应成为业务数据模型”。生产方案应继续把 HTTP、Crawl4AI、Playwright、PDF/OCR 等放在统一 Engine Adapter 后面。
 
-## 3. Site Config 与抓取逻辑解耦
+## 3. Site Config：方向正确，但粒度远远不够
 
-项目把分类页 URL、tab 名称和列表 selector 放进 `local/config.json`，避免把每个来源完全写死在页面代码里。这个方向应升级为版本化 Site Profile：
+`local/config.json` 把 CNN 分类页 URL、tab 名称和列表 Selector 放进配置：
+
+```text
+source/category URL
++ list selector
+```
+
+这比完全硬编码到页面代码更可维护，但生产系统需要升级成不可变的 Site Profile Release，而不是直接读一个可变 JSON 文件。
+
+推荐 Profile 至少包含：
 
 ```yaml
 site_profile:
+  identity:
+    allowed_hosts: []
+    canonical_rules: []
   discovery:
+    sitemap_rules: []
+    feed_rules: []
+    api_rules: []
+    archive_rules: []
     list_urls: []
     list_selectors: []
-    article_link_rules: []
-  extraction:
-    title_rules: []
-    body_rules: []
-    author_rules: []
-    date_rules: []
-    remove_rules: []
-  routing:
+    link_accept_rules: []
+    link_reject_rules: []
+  fetch:
     http_first: true
     browser_escalation_rules: []
+    headers: {}
+    timeout_policy: {}
+  extraction:
+    title_rules: []
+    author_rules: []
+    published_at_rules: []
+    updated_at_rules: []
+    body_rules: []
+    remove_rules: []
   quality:
     expected_selectors: []
     min_text_chars: 300
+    min_block_count: 3
 ```
 
-与 demo 配置不同，生产 Profile 必须有 JSON Schema/Pydantic 校验、Draft/Release、Golden URL、Snapshot replay、diff、审批、回滚和审计；配置文件本身不能直接成为运行真相源。
+生产 Profile 必须支持 Draft/Release、Schema 校验、Golden URL、Snapshot Replay、diff、审批、回滚和审计。配置只是行为定义，运行时还必须保存本次 Task 实际解析得到的 `resolved_profile_release_id` 和 Effective Config。
 
-## 4. Crawl4AI 生命周期与缓存语义
+## 4. 浏览器生命周期：每 URL 创建 Runtime 不适合规模化
 
-`local/utils/scrapper.py` 每次调用都会：
+`local/utils/scrapper.py` 的两个抓取函数都会在每次调用时：
 
-1. 创建 `BrowserConfig(headless=True)`；
-2. 创建 `CrawlerRunConfig(...)`；
+1. 创建新的 `BrowserConfig`；
+2. 创建新的 `CrawlerRunConfig`；
 3. 进入新的 `AsyncWebCrawler` 上下文；
-4. 单 URL 执行 `crawler.arun()`；
-5. 退出上下文并销毁 Runtime。
+4. 执行一次 `arun()`；
+5. 退出上下文并释放 Runtime。
 
-对交互式 demo 足够，但百万 URL 场景会重复支付 Chromium 启动、Context 初始化、JS Runtime 初始化等固定成本。
+对交互式 demo 可接受，对数百万 URL 会不断重复支付 Chromium 进程启动、浏览器上下文初始化、JS Runtime 初始化、TLS/DNS/连接预热等固定成本。
 
-生产实现应为：
+生产实现应采用长期 Runtime：
 
 ```text
 Browser Worker Process
   -> long-lived Browser Runtime
      -> Context Pool
-        -> Page lease
+        -> Page Lease
 ```
 
-Site/Profile 决定 Context 隔离级别；任务结束释放 lease，不销毁整个浏览器。
+任务只租用 Page/Context，正常完成后归还；仅在崩溃、内存泄漏、站点隔离策略或 Release 切换时重建 Runtime。
 
-项目还把 `CacheMode.BYPASS` 作为常用设置。生产系统不能把“总是重新抓”当作最新性保证，而应拆成：
+HTTP 也一样。Deploy 版每个函数都创建新的 `httpx.AsyncClient()`，无法充分复用连接池。生产 HTTP Worker 应维护长期 `AsyncClient`，并配置 keep-alive、per-host connection limit、DNS/TLS 复用、超时、重试、限流和熔断。
 
-- Feed/Sitemap/API Change Signal；
-- ETag / Last-Modified；
-- conditional request；
-- immutable Fetch Snapshot；
-- body hash / Canonical IR hash；
-- 浏览器静态资源缓存；
-- Snapshot Replay。
+## 5. CacheMode.BYPASS 不是“最新性”方案
 
-## 5. 同步/异步桥接风险
+Local 抓取把 `CacheMode.BYPASS` 作为默认逻辑。它只意味着尽量重新访问页面，不等于拥有正确的增量同步语义。
 
-`get_links_from_homepage()` 与 `get_content_from_direct_url()` 对外是同步函数，内部定义 async helper，然后：
+长期知识库需要把“是否需要抓正文”与“抓到什么正文”分开：
 
-- 无 event loop 时 `asyncio.run()`；
-- 已有 event loop 时 `asyncio.run_coroutine_threadsafe(..., loop).result()`。
+```text
+Change Signal
+  -> Feed updated/GUID
+  -> Sitemap lastmod
+  -> API cursor/version
+  -> ETag / Last-Modified
+  -> conditional GET
+  -> body hash
+  -> Canonical IR hash
+  -> Freshness Observation
+```
 
-如果调用线程就是该 loop 所在线程，`.result()` 会阻塞线程，而 coroutine 又需要同一 loop 推进，存在死锁或不可预测行为。
+如果内容未变化，不应重复生成 Document Version、Chunk、Embedding 和摘要；只记录一次 Freshness Observation 即可。浏览器自己的静态资源缓存也不应和业务层 Snapshot/Freshness 混为一谈。
 
-生产系统应“async all the way”到 Worker 边界：
+## 6. 同步/异步桥接存在阻塞与死锁风险
+
+`get_links_from_homepage()` 和 `get_content_from_direct_url()` 对外是同步函数，内部定义 async helper，然后根据当前线程是否已有 event loop 选择：
+
+- 没有 loop：`asyncio.run(...)`；
+- 已有运行中的 loop：`asyncio.run_coroutine_threadsafe(..., loop).result()`。
+
+如果调用线程本身就是该 loop 所在线程，`.result()` 会阻塞当前线程，而 coroutine 又依赖同一个 loop 推进，存在死锁风险。
+
+Deploy 版还有另一层问题：`scrape_direct_cnn_article_content()` 是 async，但内部调用同步 `summarize()`；`summarize()` 又发起阻塞式 OpenAI 调用。也就是说，一个慢 AI 请求可以直接占住 Web 进程的 event loop。
+
+生产系统应该遵循：
 
 ```text
 Web/API Command
   -> PostgreSQL Run/Task
-  -> Outbox/Queue
+  -> Transactional Outbox
+  -> Queue
   -> async Worker
   -> persisted Outcome
-  -> SSE/WebSocket/轮询显示状态
+  -> SSE/WebSocket/轮询展示结果
 ```
 
-禁止在 Web 请求线程中直接等待几十秒浏览器、GPU 模型或外部 LLM；短任务也必须经过标准任务链路，只是优先级更高。
+网络、浏览器、OCR、Embedding、本地 GPU 推理和外部 AI 都不能在 Web 请求线程里长时间同步等待。
 
-## 6. Discovery：从 Markdown 反向解析链接的问题
+## 7. Discovery：DOM → Markdown → Regex 会丢失发现证据
 
-列表页抓取先由 Crawl4AI 生成 Markdown，再通过正则抽 `[title](url)`。这条链是：
+列表页先由 Crawl4AI 把 DOM 转成 Markdown，再用 `extract_links_from_markdown()` 从 Markdown 正则提取链接。这条链实际是：
 
 ```text
-DOM -> Markdown -> Regex -> URL
+DOM
+ -> Markdown Projection
+ -> Regex
+ -> URL
 ```
 
-问题在于 DOM 转 Markdown 已经丢掉部分结构，再反向抽链接会损失：
+问题是 Markdown 已经是降维后的表示，转换时会损失：
 
-- `href_raw` 与 base URL 语义；
-- DOM/CSS 位置；
-- `rel`、data-*；
-- 同一 URL 在不同区块出现的多重证据；
-- list item/container 上下文。
+- 原始 `href` 与 base URL 解析上下文；
+- DOM 位置和 CSS/XPath 位置；
+- `rel`、data-* 等属性；
+- 列表卡片所在栏目；
+- 同一 URL 在多个区块出现的多条独立 Evidence；
+- 原始页面顺序和父子关系。
 
-`extract_links_from_markdown()` 还使用 set 去重，会丢失页面原始顺序，而且 set 的输出顺序不应承担业务语义。
+`extract_links_from_markdown()` 还把 `(title, url)` 放进 set 去重。set 适合做临时唯一化，不适合承担业务顺序和发现证据。
 
-生产 Discovery 应保存：
+生产 Discovery 应直接从 DOM/Feed/Sitemap/API 产生：
 
 ```text
-URL Identity
-+ 多条 Discovery Evidence
+URL Candidate
++ Discovery Evidence[]
 ```
 
-Evidence 至少含 parent URL、href raw/resolved、anchor、DOM/CSS position、rel、observed_at、snapshot_id、provider_release。同一 URL 可以唯一，但 Evidence 不应被覆盖。
+Evidence 至少记录：
 
-## 7. 固定 Selector 与漂移
+- `parent_url`；
+- `href_raw`；
+- `href_resolved`；
+- anchor/title；
+- DOM/CSS/XPath position；
+- provider；
+- provider_release；
+- `snapshot_id`；
+- `observed_at`；
+- 分类/作者/分页上下文。
 
-Local 正文抓取把 `.vossi-paragraph` 写死在 `get_content_from_direct_url()`，Deploy 版也把 CNN 列表与正文 Selector 写死。
+URL 可以去重，但 Evidence 不能被覆盖。
 
-这会把“某一时刻 CNN DOM”错误地升级为“所有 URL 的正文规则”。对 1000 个技术博客必须将 selector 放入 Site Profile，并对 0 命中进行语义诊断：
+## 8. 固定 `.vossi-paragraph` 是典型站点漂移风险
 
-- 页面正常但无正文；
-- selector drift；
-- 页面类型不对；
-- challenge/WAF；
-- fetch incomplete；
-- 规则错误。
+Local 和 Deploy 的文章正文都依赖 CNN 的 `.vossi-paragraph`。这会把“某个时间点某个站点的 DOM 结构”误当成稳定协议。
 
-因此 Web 管理端需要 selector hit trend、Golden URL smoke test 和 Snapshot shadow replay。
+对 1000 个技术博客，正文规则必须进入 Site Profile，并对 0 命中做语义诊断，而不是简单返回空字符串：
 
-## 8. Canonical 内容不能被 NLP 预处理污染
-
-`merge_in_one_paragraph()` 本质是：
-
-```python
-re.sub(r'\s+', ' ', content).strip()
+```text
+EMPTY_EXPECTED
+EMPTY_UNEXPECTED
+SELECTOR_DRIFT
+WRONG_PAGE_TYPE
+CHALLENGE_PAGE
+FETCH_INCOMPLETE
+PARSER_ERROR
+POLICY_BLOCKED
 ```
 
-然后该结果直接送给摘要模型。
+管理端需要持续展示 Selector hit rate、正文字符数分布、block 数分布、Golden URL smoke test、Profile release 前后 replay 差异。规则漂移应被当成可观测事件，而不是“偶尔抓不到”。
 
-新闻纯文本摘要还能勉强接受，但技术博客中这会破坏：
+## 9. `merge_in_one_paragraph()` 会破坏技术内容结构
 
-- heading；
-- 段落边界；
-- list 层级；
+`local/utils/text_preprocessing.py` 里的 `merge_in_one_paragraph()` 使用全局空白折叠，把所有换行和连续空白压成一个空格。
+
+对新闻纯文本摘要尚可接受，但对技术博客会破坏：
+
+- heading 与章节边界；
+- Markdown 列表层级；
 - fenced code block；
-- Python/YAML 等缩进；
+- Python/YAML/Makefile 等缩进；
 - Markdown table；
-- shell 输出；
+- shell/日志输出；
 - JSON/config；
-- quote。
+- blockquote；
+- 段落语义。
 
-生产知识库必须先形成结构保真的 Canonical IR：
+生产系统必须先形成结构保真的 Canonical IR，例如：
 
 ```json
 {
@@ -215,270 +268,377 @@ re.sub(r'\s+', ' ', content).strip()
 }
 ```
 
-Markdown 是 IR 的确定性 Projection。AI 需要纯文本时，生成独立 `AI_INPUT_TEXT`，并保留 `block_id -> text span` 映射；AI Projection 可以有自己的空白规范化，但绝不能反向覆盖 Canonical IR/Markdown。
+Markdown 是 Canonical IR 的确定性 Projection。AI 如果需要纯文本，应该生成独立 `AI_INPUT_TEXT` Projection；AI Projection 可以规范空白，但必须保留 `block_id -> text span` 映射，且绝不能反向覆盖 Canonical IR 或 Markdown。
 
-## 9. BART 摘要链路：map-only 的局限
+## 10. Local BART 摘要的实际原理
 
-`local/utils/summarize.py` 在 import 时加载 `pipeline("summarization")` 和 tokenizer。每篇文章：
+`local/utils/summarize.py` 在模块 import 时加载 Hugging Face `pipeline("summarization")` 和 BART tokenizer。每篇文章处理步骤是：
 
-1. 全文 tokenize，不截断；
-2. 每 1000 token 固定切块；
-3. 每块 `max_length=100`、`min_length=30`、`do_sample=False`；
-4. 每块独立摘要；
-5. 直接用空格拼接所有摘要。
+1. 全文 tokenization，不截断；
+2. 按固定 1000 token 切块；
+3. 每块单独 decode 回文本；
+4. 每块独立生成约 30~100 token 的摘要；
+5. 把所有块摘要直接用空格拼接。
 
-优点是确定性强、实现简单；但存在：
+这实际上是一个 **map-only summarization**，没有真正的 reduce 阶段。
 
-- 固定 token 边界可能截断句子/章节；
-- 无 heading/block 语义；
-- 无 overlap，跨边界事实可能丢失；
-- 无 reduce，长文最后仍可能产生很长摘要；
-- 各块可能重复事实；
-- 代码与正文会混入同一摘要输入；
-- 无块级 lineage，不能解释某句摘要来自哪些原文块。
+优点：
 
-生产摘要应采用：
+- 实现简单；
+- 单块输入可控；
+- `do_sample=False`，输出相对稳定；
+- 模型在进程 import 时加载，避免每次请求重新加载权重。
+
+缺点：
+
+- 1000-token 边界不理解 heading、段落或句子；
+- 没有 overlap，跨边界事实容易丢失；
+- 没有 reduce，文章越长最终摘要越长；
+- 不同块之间可能重复相同事实；
+- 代码、日志、表格和自然语言被混在同一种输入里；
+- 没有 chunk-level lineage，无法解释最终一句摘要来自哪些原文块；
+- 没有输入 hash/输出 hash，失败重试不能复用已完成 map 结果。
+
+生产摘要应改成：
 
 ```text
 Accepted Document Version
-  -> AI_INPUT_TEXT / block projection
-  -> block-aware chunk planner
-  -> map artifacts
-  -> optional reduce artifact
-  -> factual/coverage validation
-  -> final Derived Artifact
+  -> AI Input Projection
+  -> block-aware Chunk Plan
+  -> Map Artifact[]
+  -> optional hierarchical Reduce Artifact[]
+  -> factuality/coverage/format validation
+  -> Final Derived Artifact
 ```
 
-每个 map chunk 保存稳定 `chunk_id`、block range、input hash、model recipe、输出；最终摘要可回溯到原文 block。
+每个 chunk 保存：`chunk_id`、block range、token count、input hash、recipe release、model release、runtime release、输出、耗时和错误。这样单块失败可独立重试，Recipe 升级也可精确重建。
 
-## 10. Deploy 版把 summary 当 content：表示层混淆
+## 11. 摘要不能伪装成正文
 
-`deploy/backend/scraper.py` 的 `scrape_direct_cnn_article_content()` 在抓取正文后立即调用 OpenAI，`/scrape-article` 最终把摘要放在 `{ "content": ... }` 中返回。
-
-这会造成严重的 Representation Ambiguity：上游调用者无法从字段名判断这是原文、清洗正文还是摘要。
-
-生产 API 必须显式区分：
+Deploy 的 `scrape_direct_cnn_article_content()` 抓到正文后立即调用 OpenAI，FastAPI `/scrape-article` 最终返回：
 
 ```text
-raw_snapshot
+{"content": <summary>}
+```
+
+这里 `content` 实际是摘要，不是原文，也不是清洗正文。这会制造 Representation Ambiguity：调用者无法从字段名判断拿到的是网络响应、正文、Markdown 还是 AI 输出。
+
+生产 API 必须明确区分：
+
+```text
+fetch_snapshot
+rendered_dom_snapshot
 extraction_candidate
-canonical_document
+canonical_document_version
 markdown_projection
+ai_input_projection
 summary_artifact
 ```
 
-禁止把 summary 伪装成 `content`，也禁止把 AI 成功当成文章抓取成功的必要条件。
+任何 AI 成功都不能成为“抓取成功”的必要条件。抓取主链路先独立完成并接受 Document Version，再异步触发 AI。
 
-## 11. HTTP 实现的生产缺口
+## 12. Deploy HTTP 路径的生产缺口
 
-部署版每个请求都新建 `httpx.AsyncClient()`，且缺少完整的 timeout、持久重试、per-host limiter、validator、Snapshot、robots/policy admission、状态语义和漂移诊断。
+`deploy/backend/scraper.py` 的 HTTP 抓取属于最小 demo：
 
-生产正确形态是：
+- 每次新建 `AsyncClient`；
+- 未形成统一 timeout policy；
+- 无 retry/backoff；
+- 无 per-host limiter；
+- 无 robots/policy admission；
+- 无 SSRF 检查；
+- 无 ETag/Last-Modified；
+- 无 Snapshot；
+- 无响应体 hash；
+- 无 content-type/page-type validator；
+- 无 challenge/WAF 诊断；
+- 无重定向安全检查；
+- 无阶段级 Typed Outcome。
+
+生产 HTTP-first 的正确含义不是“只用 httpx”，而是：
 
 ```text
 HTTP Worker
   -> long-lived AsyncClient
-  -> per-host concurrency/rate limit
+  -> admission/policy
+  -> per-host rate/concurrency limit
   -> conditional request
-  -> redirect/policy validation
-  -> immutable response snapshot
-  -> Typed FetchOutcome
-  -> Extraction Worker
-  -> Browser escalation when evidence exists
+  -> redirect validation
+  -> immutable Fetch Snapshot
+  -> typed FetchOutcome
+  -> extraction
+  -> quality gate
+  -> evidence-driven Browser escalation
 ```
 
-HTTP-first 是生产优化，不是“简化版爬虫”；只有与持久状态、证据、Quality Gate、升级链结合才成立。
+Browser 只在 HTTP 证据表明动态渲染、正文缺失或页面挑战时升级，不能默认所有站点都启动浏览器。
 
-## 12. Web 产品形态可直接升级
+## 13. Web 产品形态值得保留，但执行方式必须改造
 
-项目的 Daily News / Custom Fetch 很适合演化成：
+项目的 Daily News 和 Custom Fetch 两种交互，和生产管理端的两个核心入口非常接近。
 
-### 12.1 Site Profile Studio
+### 13.1 Daily News → Source / Provider 管理
 
-管理员编辑 URL、CSS/XPath、metadata、remove rules、fetch route；点击测试后创建 Probe Run，并展示：
+可以演化成：
 
-- HTTP/browser trace；
-- Snapshot；
-- selector hit count；
-- discovered URLs；
-- candidate fields；
-- Canonical IR；
-- Markdown；
-- quality score；
-- current release vs draft diff。
+- Source 列表与健康状态；
+- Provider Coverage；
+- 最近同步时间；
+- 新增/更新/未变化/失败计数；
+- Drift 告警；
+- 历史 Backfill 进度；
+- 增量 checkpoint。
 
-### 12.2 Targeted Fetch
+### 13.2 Custom Fetch → Targeted Fetch
 
-任意 URL 输入不能绕过生产主链路：
+任意 URL 输入必须走标准生产主链路：
 
 ```text
 URL
+ -> normalization
  -> SSRF/policy validation
- -> Site/Profile resolution
+ -> Source/Profile resolution
  -> persistent TARGETED_FETCH Task
  -> Fetch Snapshot
  -> Extract
  -> Canonical IR
  -> Quality
+ -> Identity
  -> Preview/Accept
 ```
 
-### 12.3 同 Snapshot 的策略比较
+不能像 demo 一样在 Web 请求内直接启动浏览器和模型并阻塞等待。
 
-CSS/XPath、Readability/Trafilatura、Crawl4AI、LLM extraction 的比较必须消费同一 Fetch Snapshot，不能分别访问源站，否则无法区分“策略差异”和“页面内容变化”。
+### 13.3 同 Snapshot 策略比较
 
-## 13. 模型训练数据处理存在可重复性与正确性问题
+CSS/XPath、Readability/Trafilatura、Crawl4AI、LLM extraction 的比较必须消费同一 Snapshot。如果每种策略各自重新访问源站，就无法区分“抽取策略差异”和“网页在两次请求之间发生变化”。
 
-`models/preprocessing/preprocessing.py` 提供了 TF-IDF/cosine 分析、采样和分层拆分思路，但源码里有几处不能忽略的训练数据风险。
+## 14. 模型训练数据预处理存在可重复性和正确性问题
 
-### 13.1 `tokenized_highlights` 实际取了 article
+`models/preprocessing/preprocessing.py` 暴露了几个对生产 MLOps 很有启发的反例。
 
-代码写的是：
+### 14.1 随机抽样没有固定 seed
 
-```python
-tokenized_df['tokenized_article'] = df['article'].apply(...)
-tokenized_df['tokenized_highlights'] = df['article'].apply(...)
-```
+代码先把 CNN/DailyMail 的 train/test/validation 合并，然后执行约 12% 随机采样，但没有固定 `random_state`。同一份代码重复执行会得到不同子集，后续训练结果自然无法精确复现。
 
-第二行仍读取 `article`，不是 `highlights`。后续 `highlights_token_count` 因而实际上也是 article token count，按 article/highlights 长度过滤的逻辑失去原意；词汇分层也没有真实观察摘要 target。
+生产 Dataset Release 必须记录：
 
-这说明模型流水线必须有数据契约测试，而不能只看训练成功：
+- 原始数据集版本/hash；
+- 过滤规则版本；
+- random seed；
+- split manifest；
+- 最终样本 id 列表/hash；
+- 预处理代码 commit；
+- 依赖和镜像 digest。
 
-- 必须断言 source/target 字段不同且 schema 正确；
-- 采样前后做字段统计与随机样本审阅；
-- preprocessing 单测加入 known fixture；
-- 数据转换输出 manifest/hash。
+### 14.2 `tokenized_highlights` 实际使用了 article 字段
 
-### 13.2 随机采样缺少固定 seed
+预处理脚本构建 `tokenized_highlights` 时再次读取 `article`，而不是 `highlights`。因此后续的 highlights token count 实际变成 article token count，所谓“摘要长度过滤”并没有按目标摘要执行。
 
-`df.sample(frac=0.12)` 没有 `random_state`，同一代码重跑会得到不同子集。后续再讨论模型指标时，如果不知道训练样本到底是哪一批，模型 release 不可重现。
+这种错误说明训练数据转换不能只依靠 notebook 目测，必须有 Dataset Contract Test，例如：
 
-生产 Model Release 必须绑定：
+- source/target 字段非同列；
+- 样本 id 一致；
+- target 长度分布合理；
+- source != target 比例；
+- split 不重叠；
+- schema 与 null 检查。
 
-```text
-dataset_release
-source dataset hash
-preprocess code commit
-random seed
-split manifest
-training config
-model artifact hash
-container image digest
-metrics
-```
+### 14.3 采样后索引与布尔过滤存在对齐风险
 
-### 13.3 “overlap” 指标与命名并不等价
+`df.sample()` 默认保留原索引，而后生成的 cosine DataFrame 使用新的 RangeIndex。再用后者的布尔 Series 过滤前者时，存在 pandas 索引对齐不一致的风险。生产预处理应显式 `reset_index(drop=True)` 或使用稳定 sample id join，禁止依赖隐式 DataFrame index 语义。
 
-代码把每条样本 vocab 与 `global_vocab` 取交集，再除以全局词表大小。由于样本 vocab 本身就是全局词表子集，结果更接近“该样本词表占全局词表比例”，不是通常意义的 train/validation vocabulary overlap。再叠加 highlights 字段错误，不能把该结果当成可靠的数据分层保证。
+### 14.4 “全局词表 overlap”指标退化
 
-## 14. BART 与 LED：声明能力不等于有效运行能力
+脚本先把所有样本词汇 union 成 `global_vocab`，然后对每个样本计算 `len(x & global_vocab) / len(global_vocab)`。由于每个样本的 `x` 本来就是 global vocab 的子集，交集等于自身，本质更接近“样本词汇量占全局词汇量比例”，并不能证明 train/validation/test 的语义覆盖质量。
 
-项目同时有：
+这类自定义数据质量指标必须先明确统计含义，并配测试样本验证公式行为。
 
-- `facebook/bart-large`；
-- `allenai/led-base-16384`。
+## 15. BART/LED 训练揭示“声明上下文长度 ≠ 实际有效上下文”
 
-但 `models/finetuning/led.py` 的 preprocessing 仍把输入 `max_length` 设置为 1024。也就是说，模型名声明 16384 长上下文，并不代表训练/推理链真正使用了 16384。
+项目同时有 BART 和 `allenai/led-base-16384` 训练脚本。LED 名称暗示 16K 长上下文，但实际 `preprocess_function()` 仍对输入设置 `max_length=1024` 并 `truncation=True`。
 
-另外 LED 脚本与 BART 基本共用模板，没有显式表达长文模型特有的 global attention 策略。这并不意味着代码一定无法训练，但它证明：**README/模型名称的 capability 不能替代 Runtime Attestation。**
+因此运行事实是：**这个训练路径实际只消费最多 1024 token，而不是 16384 token。**
 
-生产 AI Model/Recipe Release 应记录：
-
-- tokenizer release；
-- declared context window；
-- effective input max tokens；
-- truncation policy；
-- reserved output/prompt budget；
-- model-specific attention/config；
-- generation params；
-- quantization；
-- runtime hardware；
-- batch/concurrency；
-- warmup/capability test 结果。
-
-长上下文模型升级前必须用 Golden Document 验证“有效输入真的没有被静默截到 1024”。
-
-## 15. 量化实验与真正 Serving 路径是两回事
-
-BART/LED fine-tuning 脚本在训练完成后的评估阶段使用 `BitsAndBytesConfig(load_in_4bit=True, ...)` 重新加载模型，但 Local UI 的 `summarize.py` 是直接从 Hugging Face model id 加载 `pipeline`。
-
-因此“代码库里有 4bit”不等于“Web 摘要服务正在 4bit 运行”。生产系统要把实验代码、模型 Artifact 和 Serving Release 分开：
+这对博客知识库非常关键。不能只在数据库里记录 `model_name` 或厂商宣称的 context window，必须记录 Runtime Attestation：
 
 ```text
-Model Artifact Release
-+ Inference Runtime Release
-+ Quantization Release
-+ AI Recipe Release
+tokenizer release
+input projection
+configured max_length
+actual token count
+truncated token count
+attention/global-attention policy
+dtype
+quantization
+device
+generation config
+library versions
+model weight hash
 ```
 
-Web/Worker 只解析已经发布的 Runtime Release，运行时记录实际 device、dtype、quantization、model hash，避免把设计意图当运行事实。
+长上下文模型只有在数据预处理、attention 配置、显存策略和推理参数都真正启用时才算“有效长上下文”。
 
-## 16. 摘要质量：ROUGE/BERTScore 不足以证明生产事实正确
+## 16. 训练与推理配置被混在脚本里，不利于 Release 管理
 
-fine-tuning 脚本使用 ROUGE 与 BERTScore，这对带 reference 的离线 benchmark 有价值，但它们主要衡量与参考摘要的词面/语义相似度，不能单独证明生产摘要没有幻觉、没有遗漏关键限制条件、没有改写代码/版本号。
+BART/LED 脚本把模型名、Kaggle 路径、训练参数、量化配置、评估和模型保存写在同一 notebook 风格文件中。生产上应该拆成：
 
-面向技术博客，应把两类评估分开。
+```text
+Dataset Release
+Model Training Recipe Release
+Model Artifact
+Model Evaluation Artifact
+Runtime Release
+AI Recipe Release
+```
 
-离线 Model/Recipe Benchmark：
+其中：
 
-- ROUGE/BERTScore；
-- factuality benchmark；
-- 长文 coverage；
-- 代码/命令/版本号保真；
-- latency、GPU memory、cost。
+- Dataset Release 决定训练数据；
+- Training Recipe 决定训练超参数；
+- Model Artifact 是权重/tokenizer/hash；
+- Evaluation Artifact 保存离线指标；
+- Runtime Release 决定如何加载和执行模型；
+- AI Recipe 决定面向某类文档如何切块、提示、reduce 和校验。
 
-在线 Derived Artifact Validation：
+这样才能区分“模型权重变了”“推理量化方式变了”“Prompt/Chunk 变了”还是“输入文档变了”。
 
-- 输出非空与长度边界；
-- block coverage；
-- 摘要句到 block/source span 的证据映射；
-- 关键实体/版本号与原文一致性；
-- 高风险断言检查；
-- model timeout/cost guardrail。
+## 17. ROUGE/BERTScore 不能单独证明生产摘要正确
 
-摘要可以失败或进入 REVIEW_REQUIRED，但绝不能使 Accepted Document Version 回滚。
+训练脚本使用 ROUGE 和 BERTScore 对参考摘要做离线评估。这些指标适合模型实验，但对知识库生产摘要仍不足以证明：
 
-## 17. 依赖与供应链可重复性
+- 事实没有幻觉；
+- 版本号/命令/函数名没有改写错误；
+- 代码事实没有丢失；
+- 风险声明、限制条件没有漏掉；
+- 长文不同章节覆盖均衡；
+- 摘要中的每个断言可回溯原文。
 
-`local/requirements.txt` 同时存在：
+生产 AI 质量应额外维护：
 
-- 一部分精确 pin；
-- 一部分完全不写版本；
-- `fastapi/httpx/beautifulsoup4/uvicorn` 等重复条目；
-- 文件还带 BOM。
+- citation/block lineage coverage；
+- unsupported claim 检查；
+- entity/version/code-token preservation；
+- section coverage；
+- truncation rate；
+- duplicate fact rate；
+- human review sample；
+- Golden Corpus 回归。
 
-这对 demo 影响有限，但长期抓取平台中同一源码在不同时间安装出不同依赖组合，会导致浏览器行为、HTML 解析、Markdown 输出和模型结果漂移。
+摘要可失败、可重试、可降级，但不能影响原文 Document Version 的接受状态。
 
-生产 release 应要求：
+## 18. 模型领域不匹配：新闻摘要不能直接等价技术博客摘要
+
+项目训练数据来自 CNN/DailyMail 新闻摘要，内容风格与技术博客明显不同。技术博客中常包含：
+
+- API 名称；
+- 版本号；
+- 命令；
+- 文件路径；
+- 错误码；
+- 代码块；
+- 配置；
+- benchmark；
+- 注意事项和兼容性条件。
+
+新闻摘要模型倾向于自然语言压缩，可能把这些高价值技术 token 当成噪声。生产系统不能把某个新闻摘要模型写死成默认知识库摘要器，应使用 AI Model Registry + Recipe Registry，并按文档类型做路由和评估。
+
+## 19. 依赖供应链不可重复
+
+`local/requirements.txt` 只对部分依赖固定版本，Crawl4AI、aiohttp、BeautifulSoup、lxml、nltk、numpy、pydantic 等大量包没有 pin，同时还有重复依赖条目。
+
+这会导致：
+
+- 同一 requirements 在不同日期得到不同依赖树；
+- Crawl4AI/Playwright 行为变化；
+- parser 输出漂移；
+- 模型与 tokenizer 版本变化；
+- 难以重放历史结果。
+
+生产 Release 至少需要：
 
 - lockfile；
 - container image digest；
+- Python/OS/Browser 版本；
 - SBOM；
-- crawler/browser/model/runtime 的依赖版本；
-- Capability Test；
-- 旧 release 可回滚；
-- Snapshot replay 验证输出差异。
+- 模型/tokenizer hash；
+- Playwright browser revision；
+- Crawl4AI/Trafilatura 版本；
+- 构建 provenance。
 
-## 18. 对博客知识库方案的最终优化项
+## 20. 对 1000 技术博客知识库的能力映射
 
-结合上述源码，建议最终方案明确落下以下设计：
+| 能力 | Deepnews-Summarizer | 生产知识库要求 |
+|---|---|---|
+| 多站点配置 | 基础 JSON URL/Selector | 版本化 Site Profile + Adapter |
+| 全历史发现 | 分类页列表 | Sitemap/Feed/API/Archive/内链/Gap Discovery + Coverage Evidence |
+| 增量同步 | 无 | checkpoint + conditional fetch + overlap + reconcile |
+| 持久任务 | 无 | Run/Task durable state + lease/heartbeat |
+| 跨站公平调度 | 无 | host quota + priority + fairness + backpressure |
+| HTTP 抓取 | 基础 httpx | 长期连接池 + policy + Snapshot + typed outcome |
+| Browser 抓取 | 每次创建 Crawl4AI runtime | Browser Runtime Pool + evidence escalation |
+| 正文抽取 | 固定 CNN selector | 多 Extractor + Profile + Replay + Drift |
+| 内容结构 | 压平文本 | Canonical IR + deterministic Markdown |
+| 版本历史 | 无 | append-only Document Version |
+| 资产归档 | 无 | Asset Pipeline + hash + object storage |
+| 搜索 | 无 | OpenSearch + vector + hybrid/rerank |
+| Web 管理 | Streamlit demo | Control Plane + Source/Profile/Run/Quality/Drift/Assets |
+| Targeted Fetch | 有交互雏形 | 持久标准流水线 |
+| AI 摘要 | BART/OpenAI 直连 | Derived Artifact + Recipe/Model/Runtime Release |
+| AI lineage | 无 | chunk/map/reduce lineage |
+| MLOps | notebook 脚本 | Dataset/Training/Model/Eval/Runtime Release |
+| 可重复构建 | 部分依赖未锁 | lockfile/image digest/SBOM |
 
-1. Site Profile Studio：从 `config.json` 升级为 Draft/Release/Golden/Replay/Approval/Rollback。
-2. Targeted Fetch：保留任意 URL 调试体验，但永远经过 Admission、Task、Snapshot、Quality、Audit。
-3. HTTP/Browser/Model Runtime Pool：所有重型资源长生命周期复用。
-4. Canonical IR 与 AI_INPUT_TEXT 完全分离，禁止 NLP 预处理污染知识库真相。
-5. Derived AI 使用 block-aware map/reduce，并保存 chunk/block lineage。
-6. AI Provider Adapter 同时支持远程 LLM 和本地 HF Model Service，不把模型 import 写进抓取 Worker。
-7. 新增 `ai_recipe_release`、`ai_model_release`、`dataset_release`、`runtime_release`。
-8. Model Release 绑定数据 manifest、seed、split、preprocess commit、镜像 digest 和 benchmark。
-9. Runtime Attestation 记录有效 context、truncation、attention、quantization、device、generation config。
-10. AI API 使用显式 Artifact 类型，禁止把摘要字段命名成原始 `content`。
-11. 参考指标和生产 factual/coverage validation 分层。
-12. 依赖通过 lockfile/image digest/SBOM 固化。
-13. Web 中增加同一 Document Version 的 AI Recipe/Model 对比、质量、成本和 lineage 查看。
+## 21. 应纳入博客知识库最终方案的设计
 
-## 19. 最终判断
+### 21.1 保留并升级的设计
 
-Deepnews-Summarizer 最适合作为“小型端到端产品原型与反例集合”阅读，而不是作为可扩容爬虫平台复用。它验证了配置驱动、列表发现/文章抓取分离、Custom Fetch、Web 可视化、可替换摘要模型这些产品方向；同时它也清楚暴露了从 demo 走向 1000 站生产系统时必须补上的持久调度、增量、证据链、结构保真、Runtime 池化、模型 lineage 和可重复模型工程。
+1. 配置驱动站点 → Site Profile Release。
+2. 列表发现与单文章抓取分离 → Discovery Route 与 Article Fetch Route。
+3. Crawl4AI 与 httpx 都可执行抓取 → Crawler Engine Adapter。
+4. Custom Fetch → 标准 `TARGETED_FETCH`。
+5. 本地模型与远程 OpenAI 可切换 → AI Model/Runtime Registry。
+6. Web 交互 → Control Plane + 异步任务状态。
 
-对最终博客知识库而言，最重要的边界仍然是：**原始 Snapshot + Canonical IR + Document Version 才是知识真相；Markdown、搜索索引、Embedding、摘要、标签和 Digest 都是可重建 Projection/Derived Artifact。** 在 AI 层还必须进一步做到“模型声明能力不等于有效运行能力”，所有上下文长度、截断、量化、训练数据和评估结果都要绑定到可验证 Release。
+### 21.2 必须禁止的实现方式
+
+1. 不把 Markdown 先压平再作为 Canonical 内容。
+2. 不从 Markdown 正则反向恢复 Discovery 证据。
+3. 不在所有文章上硬编码单一 Selector。
+4. 不为每个 URL 重启浏览器 Runtime。
+5. 不在 async Web 路径执行阻塞式 AI 调用。
+6. 不把摘要写入模糊的 `content` 字段。
+7. 不让 AI 摘要成功与否决定抓取成功与否。
+8. 不用模型名称推断有效上下文。
+9. 不允许训练数据随机采样无 seed、无 manifest。
+10. 不允许生产依赖只写浮动版本。
+
+### 21.3 新增工程能力
+
+1. `AI_INPUT_TEXT` 独立 Projection，保留 block span lineage。
+2. block-aware Chunk Planner，支持 heading/paragraph/code/table 语义。
+3. Map/Reduce AI Artifact 持久化，单块可重试与复用。
+4. AI Recipe Release、AI Model Release、Dataset Release、Runtime Release 分离。
+5. Runtime Attestation 保存真实 tokenizer/truncation/context/device/quantization/generation 参数。
+6. 模型训练保存 dataset hash、sample manifest、seed、代码 commit、镜像 digest。
+7. AI 质量同时检查 factuality、技术 token 保真、section coverage 和 lineage coverage。
+8. Model Runtime Pool/外部 AI Client Pool 与抓取 Worker 隔离伸缩。
+9. Targeted Fetch、批量同步、离线 Replay 共用同一 Artifact Contract。
+10. 依赖 lockfile、镜像 digest、SBOM 和能力测试进入 Release Gate。
+
+## 22. 最终评价
+
+Deepnews-Summarizer 适合作为“抓取 + 摘要 + Web 展示”的教学参考，不适合作为 1000 站点博客知识库的运行底座。
+
+它对最终方案最有价值的贡献不是某个具体库，而是帮助明确了几个架构边界：
+
+- 抓取引擎可以替换，业务真相层不能跟着替换；
+- Site Config 必须升级为有版本、有测试、有回滚的 Profile；
+- 原始内容、Canonical IR、Markdown、AI 输入和摘要必须分层；
+- 长文摘要需要 block-aware map/reduce 和完整 lineage；
+- 本地模型、远程 LLM、训练数据和推理 Runtime 都必须被独立版本化；
+- “模型理论能力”必须由真实 Runtime Attestation 证明；
+- Web 端的自定义抓取只是命令入口，不应成为同步执行器；
+- 生产可重复性既包括抓取规则，也包括依赖、模型、数据集和训练过程。
+
+这些约束应作为长期知识库平台的默认工程规则，而不是某个站点的特殊补丁。
