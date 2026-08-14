@@ -99,7 +99,7 @@ Network Snapshot / Rendered DOM
 
 原因：
 
-- Markdown 生成规则以后会变化；如果只保存 Markdown，重新改 cleaner 时只能重新抓源站。
+- Markdown 生成规匙以后会变化；如果只保存 Markdown，重新改 cleaner 时只能重新抓源站。
 - 文章中的 Pruning/BM25 本质上是内容解释策略，不应和网络访问强绑定；保存 Snapshot 后可以离线反复调参。
 - 对技术博客，代码缩进、表格、列表层级、引用和公式都属于正文数据，不能用通用 whitespace normalize 粗暴压平。
 - BM25 “fit markdown”适合某个查询下的阅读/检索投影，不适合替代完整正文真相，否则会永久丢失当时查询不相关但以后可能需要的内容。
@@ -196,10 +196,12 @@ tokenizer_revision
 normalization
 pooling
 distance_metric
-batch_config
+document/query prompt policy
+truncation policy
+output precision / quantization policy
 ```
 
-模型升级导致维度或语义空间变化时不能原地混写。应使用新 namespace/index，完成 backfill 后切流，旧 index 再回收。
+模型升级导致维度或语义空间变化时不能原地混写。应使用新 namespace/index，完成 backfill 后切流，旧 index 再回收。这里应特别区分“改变向量语义的 Model Release”和“只改变吞吐的 Execution Release”：batch size、Worker concurrency、设备池等如果不改变向量结果，不应该导致整库 Embedding Cache 失效；反之，精度/量化/runtime 变化若使向量超出允许误差，就必须升级 Model Release。
 
 ### 5.3 Embedding cache 以内容 hash 为核心
 
@@ -210,6 +212,12 @@ embedding_cache_key = hash(chunk_content_hash, embedding_model_release_id)
 ```
 
 这样标题元数据变化但正文 chunk 未变时可以复用 embedding。
+
+### 5.4 批处理是执行配置，不是模型语义
+
+文章在 Python 外层按 64 条文本切 batch，再调用 `embedder.encode(texts)`。这能限制一次传入的列表长度，但并不自动证明底层模型推理的内部 batch size 就是 64；SentenceTransformer 等 runtime 自己还有 batch 参数和设备内存约束。因此生产系统应显式记录 `embedding_execution_release`，并把实际 batch 配置传给 runtime。
+
+更稳妥的执行方式是按总 token budget + item cap 组批，而不是全局固定“64 条”：短 Chunk 可以提高 batch，长代码块/长文本自动缩批；发生 OOM 时按策略二分批次并使用稳定 Chunk ID 幂等重试。写入向量库前还应校验结果数量、维度、NaN/Inf、向量与 Chunk 的一一映射，避免“任务成功但少了若干向量”的静默数据损坏。
 
 ## 6. 文章刷新逻辑的关键缺陷
 
@@ -313,11 +321,20 @@ heading_path
 chunk_content_hash
 projection_release_id
 embedding_model_release_id
-retrieval_score
 retrieval_method
+rank
+score_kind
+score_direction
+raw_score
+normalized_score
+distance_metric
 ```
 
 最终答案的 citation 应指向确定的 Document Version/Chunk，而不是只指向会持续变化的 URL。这样一周后重放同一 Analysis Manifest，仍能定位当时使用的文本。
+
+还要避免把不同向量库的 score 当成同一种数值。文章用 `1 - distance` 生成 similarity 适合某些特定距离定义，但不能成为平台通用 Contract；cosine distance、L2 distance、inner product、BM25 score、reranker logit 的范围与“越大/越小越好”语义不同。平台应保存 raw score、score kind/direction 和 metric，由版本化 Adapter 负责归一化与融合，并保留原始排序证据。
+
+Chunk size、Embedding Model、Hybrid 权重和 Reranker 的选择也不能凭文章示例参数拍板。应建立冻结 RAG Eval Suite，以 Recall@K、MRR/nDCG、citation hit/context precision、延迟和成本比较候选 Release，达到门禁后再切 current。
 
 ## 9. ScrapeGraphAI / LLM Extraction 的正确位置
 
@@ -357,7 +374,7 @@ LLM 结果仍需绑定 Snapshot、Prompt/Schema Release、Model Release 和质�
 - Vector index 参数；
 - Reconcile 频率。
 
-容量规划必须用真实站点分布做 benchmark，指标按 Source/Route/Stage 分桶，而不是使用文章中的单一吞吐值。
+容量规划必须用真实站点分布做 benchmark，指标按 Source/Route/Stage 分桻，而不是使用文章中的单一吞吐值。
 
 ## 11. 对现有博客知识库技术方案的具体优化
 
@@ -373,6 +390,8 @@ LLM 结果仍需绑定 Snapshot、Prompt/Schema Release、Model Release 和质�
 8. **Web 管理补充 Chunk/Embedding 页面**：查看某 Document Version 的 chunk diff、embedding model、projection release、stale/rebuild 状态和引用 lineage。
 9. **向量库降级为可重建 Projection**：PostgreSQL/S3 仍保存真相；Chroma/pgvector/OpenSearch/Qdrant 等只作为检索实现。
 10. **刷新从 fixed full recrawl 改为 Change Signal + Reconcile**：Feed/Sitemap/API/HTTP 条件请求触发正文抓取，周期 Reconcile 负责兜底。
+11. **Embedding Execution Release + 自适应批处理**：把 batch/device/concurrency 与模型语义 Release 分离，按 token budget 组批，OOM 缩批幂等重试，并校验向量完整性。
+12. **Retrieval Score Contract + RAG Eval Gate**：保留不同后端的 raw score/metric/方向语义，用冻结 Eval Suite 对 Chunk/Embedding/Search/Reranker Release 做离线门禁，不能用通用 `1-distance` 或教学 benchmark 直接决定生产参数。
 
 ## 12. 最终判断
 
@@ -380,4 +399,4 @@ LLM 结果仍需绑定 Snapshot、Prompt/Schema Release、Model Release 和质�
 
 但其代码不应直接扩展到 1000 站点：进程内 BFS、URL 级状态、随机 Chunk UUID、固定时间全量重抓、先 delete 后 add、向量库承担唯一状态、只用 URL 引用，都无法满足长期知识库的完整性、幂等、版本化、增量成本和可重放要求。
 
-生产方案应保留文章的“RAG-ready 内容投影”思想，同时把整个链路升级为：**Coverage 可证明、Frontier 可恢复、Snapshot 可重放、Version append-only、Chunk 可确定重建、Embedding 可增量复用、Vector index 可删除重建、RAG 引用固定版本、Crawl4AI 通过版本化 Adapter 隔离。**
+生产方案应保留文章的“RAG-ready 内容投影”思想，同时把整个链路升级为：**Coverage 可证明、Frontier 可恢复、Snapshot 可重放、Version append-only、Chunk 可确定重建、Embedding 可增量复用且执行批处理可独立调优、Vector index 可删除重建、检索 score 语义可解释、RAG Release 有冻结评测门禁、RAG 引用固定版本、Crawl4AI 通过版本化 Adapter 隔离。**
