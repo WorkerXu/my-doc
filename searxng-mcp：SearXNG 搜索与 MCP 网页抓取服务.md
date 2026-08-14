@@ -3,7 +3,7 @@
 - 编号：33
 - 项目地址：https://github.com/TadMSTR/searxng-mcp
 - 调研基线：`main` 分支，代码树 `07d5102093feb7a7dd62886f29aae8c276dbc345`
-- 重点代码：`src/fetch.ts`、`src/routing.ts`、`src/domain-db.ts`、`src/cache.ts`、`src/crawl.ts`、`src/ssrf-guard.ts`、`src/extractors/*`
+- 重点代码：`src/fetch.ts`、`src/routing.ts`、`src/domain-db.ts`、`src/cache.ts`、`src/crawl.ts`、`src/fetch-utils.ts`、`src/http-transport.ts`、`src/ssrf-guard.ts`、`src/extractors/*`
 
 ## 1. 项目定位
 
@@ -47,7 +47,9 @@ URL
 
 ### 3.1 Cache 先行但 fail-soft
 
-`src/cache.ts` 使用 Valkey/Redis 兼容后端。关键点不是缓存本身，而是它明确给连接和命令设置超时、重试上限；缓存后端卡死时，`cacheGet()` 会退化成 cache miss，而不是拖死整个搜索/抓取请求。`cacheSet()` 也是 best-effort，不让缓存故障影响主业务结果。
+`src/cache.ts` 使用 Valkey/Redis 兼容后端。关键点不是缓存本身，而是它明确给连接和命令设置 `commandTimeout`、`connectTimeout`、`maxRetriesPerRequest`；缓存后端卡死时，`cacheGet()` 会退化成 cache miss，而不是拖死整个搜索/抓取请求。`cacheSet()` 也是 best-effort，不让缓存故障影响主业务结果。
+
+v3.16 进一步给缓存错误增加节流日志，连接失败日志会对 URL 凭证做脱敏，`cachePing()` 也复用同一套短超时，因此健康检查本身不会因为缓存卡死而无限挂住。
 
 这解决了常见的“缓存从性能组件变成可用性单点”问题。但对于长期知识库不能照搬其“缓存内容即主要可复用内容”的边界：Redis 应只作为性能层，真正不可变的抓取证据必须落在 S3/MinIO，业务状态与索引状态落 PostgreSQL。
 
@@ -97,6 +99,18 @@ Content Success: 得到符合文章质量门槛的正文
 ```
 
 如果浏览器返回一个“Enable JavaScript”“Access denied”或 200 状态的空壳页面，只能算 transport hit，不能算 content hit。自适应路由统计应该主要使用“可接受正文”的成功率，而不是单纯 HTTP 成功率。
+
+### 3.5 Metadata side-channel 的隐藏成本
+
+`fetch.ts` 在进入 tier cascade 后，会并行启动 `fetchRawHtmlForMetadata(url)`，主 tier 成功后再等待这份 HTML，用于 JSON-LD、OpenGraph 和 Readability 的后处理。这能隐藏额外请求的延迟，但没有消除额外网络访问本身。
+
+对研究型 MCP 工具，这种做法可以接受；对 1000 站点长期同步则要特别治理：如果主 route 本来已经拿到 Raw HTML/Rendered DOM，再额外请求一次只是为了 metadata，会放大站点流量、限流风险、成本和内容版本不一致风险。更合理的生产规则是：
+
+1. 主 route 能提供 HTML/DOM 时，metadata、链接和正文抽取必须共享同一 Snapshot；
+2. 主 route 只提供 Markdown/API 正文、确实没有源表示时，才允许独立 `METADATA_PROBE`；
+3. 独立 Probe 应采样、限频、缓存并有单独预算，不应每篇文章无条件执行；
+4. Probe 的运行事实要按独立 `operation_type` 记录，不能污染 `ARTICLE_FETCH` 的 route 成功率；
+5. 主内容与 Probe 来自不同时间点时，字段 provenance 必须明确，不得假设二者天然属于同一版本。
 
 ## 4. 域名能力数据库与自适应路由
 
@@ -166,7 +180,7 @@ site_capability_observation
 - site_id
 - host_key
 - path_scope
-- operation_type        # DISCOVERY_FETCH / ARTICLE_FETCH / ASSET_FETCH
+- operation_type        # DISCOVERY_FETCH / ARTICLE_FETCH / METADATA_PROBE / ASSET_FETCH
 - route_id
 - route_release_id
 - attempted_at
@@ -184,7 +198,7 @@ site_capability_observation
 - trace_id
 ```
 
-Observation 不做覆盖更新，保留原始事实。
+Observation 不做覆盖更新，保留原始事实。`METADATA_PROBE` 必须和正文抓取分开统计，因为“拿到一份可解析 HTML metadata”与“得到可接受正文”是不同能力。
 
 ### 5.2 Route Capability Projection
 
@@ -336,6 +350,8 @@ Fast Path 的目标不是“绕过主链路”，而是更快地产生符合相�
 8. **固定长度返回适合 MCP，不适合归档。** 知识库存全量内容；截断只属于查询/API Projection。
 9. **域名级 route stats 太粗。** 至少支持 host/path/operation scope。
 10. **只记录成功/失败不足以驱动优化。** 要记录正文质量、成本、延迟、blocker、render-required 等语义。
+11. **Metadata side-channel 不应默认每次都独立联网。** 能复用 Snapshot 就必须复用，不能用“并行请求不增加主链路延迟”掩盖源站流量和一致性成本。
+12. **资源边界不能只限制公网 HTML。** 内部 Firecrawl/Crawl4AI/SearXNG/Reranker/LLM 的 JSON/文本响应同样必须设置字节上限、deadline 和取消传播。
 
 ## 11. 推荐路由算法
 
@@ -403,12 +419,54 @@ Fast Path 的目标不是“绕过主链路”，而是更快地产生符合相�
 
 这样新增第 1001 个网站时，管理员不必猜“应该用 Crawl4AI 还是 Playwright”，系统可先探测再逐步学习。
 
-## 13. 结论
+## 13. v3.16 可靠性与资源边界治理
 
-searxng-mcp 最有价值的不是 SearXNG 或 MCP 接口本身，而是三组可迁移的工程思想：
+### 13.1 有界读取不是单个抓取器的实现细节
+
+`fetch-utils.ts` 把 Raw HTML 最大读取量限制为 2 MiB，达到上限后主动取消剩余 body，避免超大响应进入 JSDOM 后产生内存放大。v3.15.1 还把 Firecrawl/Crawl4AI 单页 tier 的 JSON 返回从无界 `res.json()` 改为“有界文本读取 + JSON.parse”。
+
+这个原则应提升为平台级 Contract：**所有网络和 IPC 边界都必须是有界的。** 不仅公网 HTML，包括内部 Firecrawl/Crawl4AI、SearXNG、Reranker、Embedding、LLM、对象存储签名下载、Provider API 都要有：
+
+- connect/read/total deadline；
+- request body 与 response body 最大字节；
+- Content-Type/解压膨胀限制；
+- cancellation propagation；
+- 超限后的明确错误分类，而不是 OOM 或任务假死。
+
+`crawl.ts` 中 Firecrawl crawl job 的启动/轮询控制响应仍有直接 `res.json()` 路径，这恰好说明“修过某几个 HTTP 调用”不能视为完成治理；应该由统一 HTTP Adapter/SDK Contract 强制，而不是依赖调用方自觉。
+
+### 13.2 长生命周期资源必须有 hard cap、idle eviction 与 in-flight 保护
+
+`http-transport.ts` 对 MCP session map 做了三层保护：
+
+1. 定期清理长时间无活动 session；
+2. 超过最大 session 数时回收最久未使用且非 busy 的 session；
+3. 维护 `inFlight` 计数，长任务执行期间不允许被 idle sweep 或容量回收误杀，完成后再刷新 activity 时间。
+
+这不是 MCP 专属技巧，对博客知识库的 Browser Context Pool、HTTP session、DNS resolver cache、模型 runtime handle、临时下载对象、WebSocket/SSE session 都适用。只做“空闲超时”会误杀长任务，只做“最大数量”又可能回收正在工作中的对象；必须同时存在容量上限、空闲回收、busy pin 和最终释放。
+
+### 13.3 健康检查要区分活着、可接单和依赖降级
+
+项目 `/health` 通过有界 `cachePing()` 返回 cache up/degraded 和当前 session 数，避免健康检查自己被卡死。长期知识库应进一步把语义拆开：
+
+- **liveness**：进程/Event Loop/Worker 是否还活着；
+- **readiness**：是否能安全接收本类型新任务；
+- **dependency degraded**：缓存、搜索、reranker、AI 等非关键依赖是否降级；
+- **critical dependency unavailable**：PostgreSQL/S3 等当前任务必须依赖的真相源是否不可用。
+
+例如 Valkey 故障若系统设计为 fail-soft，不应直接把 HTTP 抓取 Worker 判死并触发重启风暴；应该降低 readiness 或显示 degraded，由业务按依赖性质决定是否继续。
+
+### 13.4 日志本身也属于安全边界
+
+v3.16 在缓存连接失败日志里对带密码的 Valkey URL 做凭证脱敏，并对重复错误日志节流。目标系统的 URL、Authorization、Cookie、代理凭证、Secret Manager reference、对象存储签名 URL 同样要做结构化 redaction；高频站点故障需要按 site/error fingerprint 节流，否则日志洪泛会反过来成为稳定性问题。
+
+## 14. 对最终技术方案的优化结论
+
+searxng-mcp 最有价值的不是 SearXNG 或 MCP 接口本身，而是四组可迁移的工程思想：
 
 1. **多路 Fetch Adapter + fast path + fallback cascade**，让不同站点类型用最合适的抓取方式；
 2. **Domain Capability Observation + adaptive routing**，把真实运行数据变成后续路由依据；
-3. **fail-soft、可观测、SSRF/robots 防护和人工 override**，让抓取能力可以长期运维。
+3. **fail-soft、可观测、SSRF/robots 防护和人工 override**，让抓取能力可以长期运维；
+4. **有界网络读取、资源池容量治理和 side-channel 预算化**，避免系统在 1000 站点规模下因为隐藏的第二次请求、卡死依赖或无界进程内状态失稳。
 
-对于博客知识库，应该把这些能力升级为更耐久的架构：PostgreSQL 保存 append-only Observation 和 RouteDecision，Redis 只缓存投影；自适应路由同时考虑内容质量、成本、延迟与探索；Coverage 与 Fetch Capability 分离；所有 route 最终产出统一不可变 Snapshot，Discovery、Extraction、Quality 与 Markdown Projection 都基于同一证据链执行。这样才适合 1000 站点、百万级文档和多年增量同步，而不是把研究型抓取 cascade 直接放大运行。
+对于博客知识库，应该把这些能力升级为更耐久的架构：PostgreSQL 保存 append-only Observation 和 RouteDecision，Redis 只缓存投影；自适应路由同时考虑内容质量、成本、延迟与探索；Coverage 与 Fetch Capability 分离；所有 route 最终产出统一不可变 Snapshot，Discovery、Metadata、Extraction、Quality 与 Markdown Projection 尽量基于同一证据链执行；确需独立 side-channel 时显式建模、限频和审计。这样才适合 1000 站点、百万级文档和多年增量同步，而不是把研究型抓取 cascade 直接放大运行。
