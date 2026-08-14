@@ -491,6 +491,29 @@ INSERT INTO articles_fts(articles_fts) VALUES('rebuild')
 
 `purge_duplicates()` 删除后出现的记录，无法保留 provenance。
 
+### 21.8 滑动窗口发现源缺少持久化 checkpoint 与断档恢复
+
+Finviz 主新闻页和 RSS 都属于典型的“滑动窗口型 Provider”：每次轮询只能看到来源当前仍保留的一段条目。项目以固定周期重新抓入口，然后依赖标题去重，但没有为每个 Provider 保存持久化 cursor、watermark、最后成功时间、重叠窗口或连续性状态。
+
+这意味着抓取进程如果停机时间超过来源的可见窗口，某些条目可能在下一次启动前已经从首页/RSS 消失，它们从未进入 SQLite，后面的正文重试、FTS、去重都无法补救。这里丢失的是 **discovery evidence**，不是 fetch task，所以普通重试机制解决不了。
+
+对长期知识库，Discovery Provider 应单独保存 `discovery_provider_state`，至少包含：
+
+- `provider_instance_id`
+- `provider_type` 与 `source_url`
+- `cursor_or_guid`
+- `watermark_time`
+- `last_success_at`
+- `last_item_observed_at`
+- `overlap_window`
+- `retention_hint`
+- `continuity_state`：ok/gap_suspected/reconciling
+- `checkpoint_version`
+
+每次增量运行都从上一 checkpoint 开始，并保留有界 overlap；新 checkpoint 应与本轮 discovery outcome 一起可靠落库。若 `last_success_at` 与当前时间间隔超过该 Provider 的已知/估计保留窗口，或 watermark 出现异常跳跃/回退，应标记 `gap_suspected`，自动触发更宽的 Sitemap、归档页、站内索引、公开索引或历史回灌 reconciliation。
+
+更重要的是，RSS、首页新闻流这类 windowed Provider 只能证明“近期增量被观察到”，不能单独作为 Full Backfill 的历史完备证据。历史覆盖需要由可枚举到终点的 Sitemap/Archive/API 等 Provider 单独证明。
+
 这些问题不是在否定该项目；恰恰说明它作为“运行中真实脚本”比理想化 demo 更有调研价值。
 
 ## 22. 对博客知识库技术方案的直接优化结论
@@ -507,6 +530,7 @@ INSERT INTO articles_fts(articles_fts) VALUES('rebuild')
 8. **可信指标语义**：数据库 outcome 驱动 discovered/admitted/inserted/published 等指标，不能用调用次数代替成功状态。
 9. **Enrichment 独立版本化**：关键词规则、Embedding、LLM 分类都属于可重建派生层，失败不阻塞 canonical Markdown。
 10. **请求 provenance 完整化**：snapshot 保存 fetcher/request profile release、实际 request headers hash、redirect chain、transport escalation reason。
+11. **Discovery Provider checkpoint 与断档恢复**：对 RSS/首页等滑动窗口来源持久化 cursor/watermark、overlap 与 continuity state，检测停机跨窗后自动触发补漏；windowed Provider 不得被误判为历史全量完成证据。
 
 ## 23. 总结
 
@@ -515,6 +539,7 @@ INSERT INTO articles_fts(articles_fts) VALUES('rebuild')
 - HTTP 与 Browser 必须分层；
 - Browser 必须代际回收；
 - Feed 是发现和摘要来源，不代表全文；
+- 滑动窗口型 Feed/首页需要 checkpoint、水位与断档补漏，固定轮询本身不能保证增量无丢失；
 - retry 必须由 durable `next_attempt_at` 驱动；
 - 标题不能作为文章身份；
 - 近似重复不能直接物理删除；
@@ -523,4 +548,4 @@ INSERT INTO articles_fts(articles_fts) VALUES('rebuild')
 - 同步 I/O 会让 asyncio 名存实亡；
 - schema、指标、配置删除和文件写入这些“非爬虫核心”问题，最终往往决定长期系统是否可靠。
 
-因此，对博客知识库方案最合理的吸收方式，是保留其“分层 Fetch、资源自愈、域公平、低成本规则分类”的工程思想，同时用 PostgreSQL durable state、不可变对象存储、版本化规则、显式迁移、HA 调度和严格生命周期模型替换单机脚本式实现。
+因此，对博客知识库方案最合理的吸收方式，是保留其“分层 Fetch、资源自愈、域公平、低成本规则分类”的工程思想，同时用 PostgreSQL durable state、不可变对象存储、版本化规则、显式迁移、HA 调度、Provider checkpoint 与严格生命周期模型替换单机脚本式实现。
