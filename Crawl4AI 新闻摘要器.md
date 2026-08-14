@@ -1,99 +1,246 @@
 # Crawl4AI 新闻摘要器
 
-## 1. 调研对象
+## 1. 调研对象与结论
 
 - 编号：54
 - 项目：`cf2018/crawl4ai_news_summarizer`
 - 地址：https://github.com/cf2018/crawl4ai_news_summarizer
-- 项目形态：Flask Web + Crawl4AI 深度抓取 + Gemini 分析
-- 关键依赖：Crawl4AI 0.7.0、Playwright 1.53.0、Flask 3.1.1、google-genai 1.25.0
-- 核心代码：`app/crawler.py`、`app/routes.py`、`app/genai.py`
+- 项目形态：Flask Web + Crawl4AI + Gemini
+- 固定依赖：Crawl4AI 0.7.0、Playwright 1.53.0、Flask 3.1.1、google-genai 1.25.0
+- 核心代码：`app/crawler.py`、`app/routes.py`、`app/genai.py`、`app/templates/index.html`
 
-本项目不是面向大规模长期同步设计的爬虫平台，而是一个“输入站点 + 主题 Prompt，优先抓取相关页面，再交给 Gemini 汇总”的轻量原型。它最有价值的部分不是直接复用其代码，而是验证了一个适合加入博客知识库平台的辅助能力：**相关性优先发现（Best-First）可以显著缩短站点接入、人工探索和专题抓取的首屏等待时间，但它必须与历史完整性枚举严格隔离，不能承担 FULL_BACKFILL 的 Coverage 判定。**
+这个仓库是一个很小的交互式原型，目标是“输入站点和主题 Prompt，在有限页面预算中抓网页，再把 Markdown 交给 Gemini 生成回答”。它不是为 1000 个站点的长期全量归档、增量同步或知识库治理设计的生产系统。
 
-## 2. 实际执行链路
+本项目最值得吸收的不是代码本身，而是四类架构启示：
 
-项目的主流程可以还原为：
+1. 相关性优先探索适合作为 `FOCUSED_DISCOVERY`，但不能承担历史 Coverage；
+2. 会联网的 head/SEO 过滤器必须显式建模成 `METADATA_PROBE`；
+3. Web 交互应该创建持久 Run/Job，并渐进返回结果，而不是把 Browser + LLM 绑在一个 HTTP 请求内；
+4. **第三方抓取库的“score”“priority”“max_pages”等语义必须做版本级契约验证，不能仅凭类名或文档推断。** 项目固定的 Crawl4AI 0.7.0 在 Best-First 排序方向和候选截断上存在会改变业务含义的实现细节。
+
+另外，本项目当前 Web 页面还有一个直接的控制绑定缺陷：正常点击 “Deep Crawl” 实际仍会走 Simple Scrape，因此必须把“前端控件 → API Command → Run Type → Effective Config”纳入强类型契约和审计。
+
+## 2. 代码结构与两条执行链路
+
+### 2.1 设计意图中的 Deep Crawl 链路
+
+`app/crawler.py` 定义了：
 
 ```text
-用户提交 URL + prompt + depth + Gemini Token
-  -> Flask POST 请求
-  -> run_deep_crawl()
-  -> asyncio.run(deep_crawl())
-  -> AsyncWebCrawler
-  -> BestFirstCrawlingStrategy
-     -> DomainFilter
-     -> URLPatternFilter
-     -> ContentTypeFilter
-     -> SEOFilter
-     -> KeywordRelevanceScorer
-  -> stream=True 持续产生 CrawlResult
-  -> 在进程内收集全部结果 markdown
-  -> "\n\n" 拼成一个大 Context
-  -> Gemini 2.0 Flash Lite
-  -> 同一个 HTTP 请求返回页面
+root URL + prompt + max_depth/max_pages
+ -> FilterChain
+    -> DomainFilter
+    -> URLPatternFilter
+    -> ContentTypeFilter
+    -> SEOFilter
+ -> KeywordRelevanceScorer
+ -> BestFirstCrawlingStrategy
+ -> AsyncWebCrawler.arun(stream=True)
+ -> CrawlResult.markdown
 ```
 
-抓取配置核心为：
+核心配置：
 
 ```python
-BestFirstCrawlingStrategy(
-    max_depth=max_depth,
-    max_pages=max_pages,
-    filter_chain=filter_chain,
-    url_scorer=scorer,
+filter_chain = FilterChain([
+    DomainFilter(allowed_domains=[url.split('/')[2]]),
+    URLPatternFilter(patterns=["*", "*blog*", "*article*", "*news*"]),
+    ContentTypeFilter(allowed_types=["text/html"]),
+    SEOFilter(threshold=0.3, keywords=prompt.split())
+])
+
+scorer = KeywordRelevanceScorer(
+    keywords=prompt.split(),
+    weight=0.8
+)
+
+config = CrawlerRunConfig(
+    deep_crawl_strategy=BestFirstCrawlingStrategy(
+        max_depth=max_depth,
+        max_pages=max_pages,
+        filter_chain=filter_chain,
+        url_scorer=scorer
+    ),
+    stream=True,
+    page_timeout=30000
 )
 ```
 
-并设置 `stream=True` 与 `page_timeout=30000`。默认 `max_depth=2`、`max_pages=15`。
-
-这意味着它的目标不是“把站点所有文章枚举出来”，而是在有限页面预算内，尽快找出更像用户 Prompt 的 URL。
-
-## 3. Best-First 的技术原理与适用边界
-
-Crawl4AI 的 Best-First 深度抓取会维护待访问 URL frontier，并对发现到的 URL 计算 score，优先访问高分 URL。相比 BFS 按层扫描、DFS 沿分支深入，Best-First 更适合：
-
-- 专题研究；
-- 站点初始探测；
-- 快速找到疑似文章页；
-- 交互式 Web 搜索；
-- 在固定预算内优先取得高价值样本。
-
-但是 `max_pages` 与 `max_depth` 本质上是**执行预算**，不是完整性证据。对 1000 站点全量历史归档，如果把 Best-First 的“队列跑完/达到 15 页”当成历史抓取完成，会系统性漏掉：
-
-- URL 不含主题关键词的旧文章；
-- 低 SEO 分但正文有效的文章；
-- 目录层级较深的历史页；
-- 年月归档中的冷门文章；
-- 没有规范 meta/canonical/schema 的自建博客；
-- Prompt 词汇与 URL slug 不一致的页面。
-
-因此在知识库方案中，Best-First 应只承担“优先级”，不能承担“是否存在”的判断。
-
-## 4. 项目中几个容易被误解的实现细节
-
-### 4.1 KeywordRelevanceScorer 实际只检查 URL 字符串
-
-项目使用：
+抓取成功结果在进程内被收集为：
 
 ```python
-KeywordRelevanceScorer(keywords=prompt.split(), weight=0.8)
+{
+    'url': result.url,
+    'title': result.metadata.get('title', ''),
+    'score': result.metadata.get('score', 0),
+    'depth': result.metadata.get('depth', 0),
+    'markdown': result.markdown
+}
 ```
 
-Crawl4AI 0.7.0 的实现并不会读取正文、标题或 anchor context，而是把 URL 转小写后，统计关键词是否直接出现在 URL 字符串中，然后按命中词比例计算分数。
+### 2.2 当前 Web UI 的实际链路：Deep Crawl 控件失效
 
-因此：
+`index.html` 中两个按钮分别提交：
+
+```html
+<button name="action" value="deep">Deep Crawl</button>
+<button name="action" value="simple" onclick="document.getElementById('simple').value='1'">Simple Scrape</button>
+<input type="hidden" name="simple" id="simple" value="1">
+```
+
+但 `routes.py` 根本不读取 `action`，而是读取：
+
+```python
+simple = request.form.get('simple', None)
+...
+if simple or depth == 1:
+    # Simple scrape
+else:
+    results = run_deep_crawl(...)
+```
+
+因为隐藏字段 `simple` 默认始终是字符串 `"1"`，在 Python 条件判断中恒为真，所以**正常页面提交时不论点击 Deep Crawl 还是 Simple Scrape，都会进入 Simple Scrape 分支**。
+
+因此，仓库 README/UI 所表达的交互与实际后端行为并不一致。`run_deep_crawl()` 只有在调用方构造一个不带 `simple` 或带空值的 POST 时才可能从这个路由进入。
+
+这不是单纯的前端小 Bug，而是生产控制面的典型风险：如果业务模式依赖隐藏字段、字符串真值或未使用的 action 参数，UI 显示的操作和后端实际 Run Type 可能长期不一致。
+
+生产系统应使用：
 
 ```text
-Prompt = "distributed systems"
-URL = /posts/raft-consensus
+UI action enum
+ -> Pydantic Command Schema
+ -> server-side authorization + validation
+ -> requested_run_type/requested_config
+ -> config resolver
+ -> effective_run_type/effective_config
+ -> durable Run
 ```
 
-即便正文高度相关，只要 URL 中没有 `distributed` 或 `systems`，该 scorer 仍可能给 0 分。
+禁止用 `if request.form.get("flag")` 这种 truthy string 决定核心运行模式。
 
-这说明生产方案不能把该 score 命名成“内容相关度”。更准确的语义是 `url_keyword_priority_score`，只能作为调度 hint。
+## 3. Crawl4AI 0.7.0 Best-First 的真实实现语义
 
-### 4.2 URLPatternFilter 中的 `*` 使后续模式失去筛选意义
+项目 `requirements.txt` 固定 `Crawl4AI==0.7.0`，因此必须分析该版本，而不能拿后续版本的实现替代。
+
+### 3.1 它使用 `asyncio.PriorityQueue` 小根堆
+
+v0.7.0 的 `BestFirstCrawlingStrategy` 把队列项定义成：
+
+```text
+(score, depth, url, parent_url)
+```
+
+Python `asyncio.PriorityQueue` 按元组从小到大弹出，所以**更小的 score 会更早被处理**。
+
+实现中发现新 URL 后直接：
+
+```python
+new_score = self.url_scorer.score(new_url) if self.url_scorer else 0
+await queue.put((new_score, new_depth, new_url, new_parent))
+```
+
+没有对 score 取负，也没有额外 comparator。
+
+### 3.2 项目的 KeywordRelevanceScorer 却是“越相关分越高”
+
+v0.7.0 `KeywordRelevanceScorer` 的逻辑是：
+
+```text
+URL 中没有关键词 -> 0.0
+命中全部关键词     -> 1.0
+部分命中           -> matches / keyword_count
+```
+
+再乘项目配置的 `weight=0.8`。
+
+也就是说项目的业务直觉是：
+
+```text
+0.8 = 更相关
+0.0 = 不相关
+```
+
+但 v0.7.0 Best-First 的小根堆实际优先级是：
+
+```text
+0.0 先抓
+0.8 后抓
+```
+
+因此**这个固定版本上的“Best-First + KeywordRelevanceScorer”实际上会优先处理低相关分 URL，而不是高相关分 URL**。这与项目“根据 Prompt 优先找相关新闻”的意图相反。
+
+后续 Crawl4AI 源码已经出现把 score 取负后入队的实现，但对于本项目不能用后续行为替代固定依赖的事实。生产系统必须以实际 `runtime_release` 为准。
+
+### 3.3 v0.7.0 还会在打分前按剩余页面预算截断链接
+
+`link_discovery()` 在一个页面发现若干有效链接后先计算：
+
+```python
+remaining_capacity = self.max_pages - self._pages_crawled
+```
+
+然后：
+
+```python
+if len(valid_links) > remaining_capacity:
+    valid_links = valid_links[:remaining_capacity]
+```
+
+之后这些保留下来的 URL 才进入 scorer 和 priority queue。
+
+这意味着假设首页有 100 个内部链接、剩余预算 14：
+
+1. 先按页面 DOM/解析顺序保留前 14 个；
+2. 后 86 个候选直接消失；
+3. scorer 根本没有机会比较全部 100 个 URL；
+4. 即使第 100 个 URL 与 Prompt 最相关，也不会进入 frontier。
+
+所以 v0.7.0 在小 `max_pages` 下的行为不只是“预算有限”，还存在**pre-score truncation 导致的 DOM 顺序偏置**。
+
+生产 `FOCUSED_DISCOVERY` 应把两个步骤拆开：
+
+```text
+Fetched page
+ -> enumerate all observable links
+ -> normalize/dedupe
+ -> persist Candidate + Evidence
+ -> local/probe scoring
+ -> normalized priority
+ -> fetch budget admission
+```
+
+页面 fetch 预算可以限制“接下来抓多少页”，但不应在已经拿到一个页面的链接后，先按 DOM 顺序裁掉候选再打分。
+
+### 3.4 生产系统必须定义自己的 Priority Contract
+
+不能把第三方库的 `score` 原样当调度优先级。建议统一内部语义：
+
+```text
+raw_score
+  = 第三方 scorer 原生输出
+
+normalized_priority
+  = 经过 priority_adapter_release 转换后的 [0,1]
+  = 数值越大越应该先处理
+
+scheduler_key
+  = (-normalized_priority, next_due, depth, discovered_at, canonical_url)
+```
+
+这样可以把“第三方用大分优先还是小分优先”“是否需要取负”“是否归一化”等差异封装在 Adapter Release 中。
+
+每个版本发布前必须有语义契约测试：给定高分 URL 与低分 URL，断言高 `normalized_priority` 的 URL 确实先被调度。
+
+## 4. FilterChain 的实现与隐含成本
+
+### 4.1 FilterChain 是 AND 语义
+
+同步 Filter 只要一个返回 False 就提前拒绝；异步 Filter 会被收集后 `asyncio.gather()`，最终要求全部为 True。
+
+因此 Domain、URL Pattern、Content Type、SEO 都通过才会进入 frontier。
+
+### 4.2 `URLPatternFilter(["*", ...])` 实际恒真
 
 项目配置：
 
@@ -101,259 +248,436 @@ URL = /posts/raft-consensus
 URLPatternFilter(patterns=["*", "*blog*", "*article*", "*news*"])
 ```
 
-Crawl4AI 0.7.0 的 `URLPatternFilter` 对多个 pattern 采用“任一匹配即通过”。其中 `*` 能匹配所有 URL，因此该配置实际上不会把 URL 限制到 blog/article/news 路径。
+v0.7.0 会把 glob 转换成正则，并对多个 pattern 做“任一命中即通过”。`*` 可匹配任意 URL，因此后面的 `*blog*`、`*article*`、`*news*` 不再具有筛选效果。
 
-正确做法应二选一：
+生产系统应在 Profile Preflight 中检查：
 
-1. 真正做硬过滤时移除 `*`，只保留经过站点验证的 pattern；
-2. 更推荐在通用知识库中把路径 pattern 变成**加分项而非排除条件**，避免未知站点的文章 URL 不含 `blog/article/news` 时被漏掉。
+- 恒真 pattern；
+- 恒假 pattern；
+- include/exclude 相互覆盖；
+- 通配符吞掉后续规则；
+- 正则灾难性回溯风险；
+- 规则对 Golden Corpus 的实际召回/误杀。
 
-### 4.3 SEOFilter 会为候选 URL 额外读取 `<head>`
+未知站点默认把 path pattern 作为 soft Priority Hint，而不是 hard filter。
 
-Crawl4AI 0.7.0 的 `SEOFilter.apply()` 会调用 `HeadPeekr.peek_html(url)` 读取候选页面 head，再依据以下因素打分：
+### 4.3 `KeywordRelevanceScorer` 只看 URL，不看正文
 
-- title 长度；
-- title 是否包含关键词；
-- meta description 长度；
-- canonical；
-- robots/noindex；
-- schema.org JSON-LD；
-- URL 结构。
+项目：
 
-项目阈值是 `0.3`。
-
-这带来两个重要结论：
-
-**第一，SEOFilter 不是零成本的本地 URL 过滤。** 对 frontier 中每个候选 URL 都可能产生额外网络 I/O。1000 个站点、百万级 URL 下，如果直接放在 Discovery 热路径，会造成额外连接、源站压力和抓取成本。
-
-**第二，SEO 好坏不等于知识库内容有效性。** 很多老技术博客、自建文档站、早期静态站 title/meta/schema 不规范，但正文非常重要。FULL_BACKFILL 不能因为 SEO score 低而丢弃页面。
-
-因此生产设计应把这种 head probe 变成显式 `METADATA_PROBE`，受预算、缓存、限流、快照复用和 Release 管理，而不是隐藏在通用 FilterChain 中。
-
-### 4.4 ContentTypeFilter 在这里主要是 URL 扩展名预过滤
-
-Crawl4AI 0.7.0 的 `ContentTypeFilter` 首先通过 URL 扩展名推断类型；没有扩展名时通常放行。因此它适合快速排除明显的图片、压缩包等 URL，但不能替代真实 HTTP `Content-Type` 校验。
-
-生产链路仍需在 fetch 结果上执行 MIME sniff、响应头校验与安全限制。
-
-## 5. Streaming 的价值与项目实现上的浪费
-
-项目设置了 `stream=True`，这是正确方向。Best-First 与 streaming 组合可以让高分页面先返回，适合交互式 UI。
-
-但项目随后又在 Flask 请求线程内：
-
-1. 把每个结果 append 到内存数组；
-2. 等深度抓取结束；
-3. 才把 Markdown 全部传给 Gemini；
-4. 最终一次性渲染 HTML。
-
-因此它并没有真正把 streaming 的收益传给用户，也没有降低最终内存峰值。
-
-大规模平台应改为：
-
-```text
-Crawler stream
- -> 每页结果写 Snapshot / Candidate / Task Outcome
- -> 发布 progress event
- -> Web 通过 SSE/WebSocket 查询进度
- -> Quality/Identity 异步执行
- -> 达到可用条件即可先展示前 N 个 Accepted Version
+```python
+KeywordRelevanceScorer(keywords=prompt.split(), weight=0.8)
 ```
 
-这样既保留“高价值结果先到”的交互优势，又不把状态绑定在单个 Web 请求生命周期中。
+v0.7.0 实现只检查关键词字符串是否出现在 URL 中。
 
-## 6. AI 汇总链路的关键问题
+因此：
 
-项目 `genai.py` 的逻辑是：
+```text
+Prompt: distributed systems
+URL: /posts/raft-consensus
+```
+
+正文即使完全相关，只要 slug 没有 `distributed`/`systems`，这个 scorer 仍可能给 0。
+
+所以其业务名称应是 `url_keyword_priority_score`，不能显示成“内容语义相关度”。正文相关度必须消费已抓取 Snapshot/Canonical IR，或走独立 Search/Reranker，而不能伪装成 URL scorer。
+
+### 4.4 `SEOFilter` 是联网 Filter，不是本地 Predicate
+
+v0.7.0 `SEOFilter.apply()` 会调用 `HeadPeekr.peek_html(url)`，读取候选页面 head，再对以下字段打分：
+
+- title 长度；
+- title 中关键词；
+- meta description；
+- canonical；
+- robots/noindex；
+- schema.org；
+- URL 结构。
+
+项目阈值是 0.3。
+
+所以把 SEOFilter 放在 Discovery FilterChain 内意味着：**每个候选 URL 在真正正文 fetch 前可能先发生一次额外网络请求。** 在百万级 URL 下，这会放大源站压力、连接数、超时和成本。
+
+生产系统应把这类行为显式物化成：
+
+```text
+METADATA_PROBE Task
+ -> URL Admission
+ -> rate limit / robots / policy
+ -> HEAD 或受限 GET/range
+ -> metadata_probe_snapshot
+ -> title/canonical/robots/schema/content-type
+ -> Priority Hint / Route Hint / Profile Draft
+```
+
+并记录请求字节、缓存命中、ETag/Last-Modified、deadline、QPS、总预算和 trace。
+
+### 4.5 SEO 分数不能决定历史文章是否存在
+
+老博客、早期静态站、自建工程博客常见：
+
+- 无 canonical；
+- 无 schema.org；
+- meta description 不规范；
+- title 长度不符合 SEO 模板；
+- URL 包含年份或 query。
+
+这些都不等于正文无价值。因此 SEO/head 信号只能用于 priority、route、onboarding diagnosis，不能从 `FULL_BACKFILL`/`RECONCILE` 的 Coverage Candidate 集合中删除 URL。
+
+### 4.6 ContentTypeFilter 主要是 URL 扩展名启发式
+
+v0.7.0 `ContentTypeFilter` 主要根据 URL 扩展名映射 MIME；没有扩展名时通常放行。它适合提前排除明显图片/压缩包 URL，但不能替代真实响应 `Content-Type` 与 MIME sniff。
+
+生产 Fetch 后仍必须执行：
+
+- response header 校验；
+- MIME sniff；
+- 最大响应字节；
+- 解压膨胀比；
+- PDF/HTML/JSON 等 Representation Route。
+
+## 5. `stream=True`：方向正确，但项目没有把收益传给用户
+
+项目 Deep Crawl 使用：
+
+```python
+stream=True
+```
+
+理论上可让抓完的页面逐个产出，适合：
+
+- 渐进显示结果；
+- 先处理高价值页面；
+- 边抓边写 Snapshot；
+- 边抓边做 Quality/Identity；
+- 及时取消。
+
+但项目 `deep_crawl()` 仍把所有成功结果 append 到 Python 列表；Flask 路由等抓取完成后才调用 Gemini，最后一次性 `render_template()`。
+
+因此当前实现：
+
+- 没有 SSE/WebSocket；
+- 用户看不到中间结果；
+- 内存仍随结果增长；
+- Web 请求仍承担整个长任务生命周期；
+- 浏览器/模型任一阶段超时都会拖住请求 worker。
+
+生产链路应改为：
+
+```text
+POST /runs
+ -> durable Run ID
+ -> worker stream page result
+ -> Snapshot/Candidate/Quality/Version
+ -> progress event
+ -> Web SSE/WebSocket/polling
+ -> 用户可查看/取消/重试
+```
+
+`stream=True` 是 Worker 内部的数据流能力，不应等同于“Web 已经流式”。
+
+## 6. AI 汇总实现的扩展性问题
+
+`genai.py` 直接执行：
 
 ```python
 context = "\n\n".join(markdowns)
 full_prompt = f"Context:\n{context}\n\nQuestion: {prompt}"
 ```
 
-然后整体发送给 `gemini-2.0-flash-lite`。
+然后调用 `gemini-2.0-flash-lite`。
 
-这在 15 页 Demo 中尚可，但不能扩展到大知识库，原因包括：
+这种“多篇 Markdown 拼一个大字符串”有以下问题：
 
-- 输入长度随抓取页数线性增长；
-- 没有 document/version 边界；
-- 没有 chunk lineage；
-- 没有 token 预算与截断证据；
-- 没有单篇摘要复用；
-- 任意一次重跑都可能重新消耗全部 token；
-- 无法回答最终结论来自哪篇文章的哪一块；
-- 如果某页重复或是模板页，会污染整次上下文。
+1. token 随页面数和正文长度线性增加；
+2. 没有 Document/Version 边界；
+3. 没有 chunk lineage；
+4. 没有 source block refs；
+5. 没有输入集合 hash；
+6. 没有可解释截断；
+7. 没有单篇摘要缓存/复用；
+8. 某个模板页、重复页、错误页会污染整体上下文；
+9. 模型重试可能重新支付全部输入成本；
+10. 无法稳定重放“当时到底汇总了哪几篇版本”。
 
-知识库方案中必须继续采用：
+生产方案应保持：
 
 ```text
-Accepted Version
- -> block-aware chunk
- -> per-document Summary Artifact
+Accepted Document Version
+ -> AI Input Projection
+ -> block-aware Chunk Plan
+ -> per-document Map Artifact
  -> Selection Manifest
  -> Reduce/Digest Artifact
 ```
 
-并保存 source block refs，而不是把多个 Markdown 简单拼接。
+并记录：
 
-## 7. Web 与运行时设计问题
+- ordered version ids；
+- input set hash；
+- recipe/model/runtime release；
+- token budget；
+- truncation evidence；
+- source block refs；
+- cost/latency/status。
 
-### 7.1 长任务同步运行在 Flask 请求中
+## 7. Web、运行时与可靠性问题
 
-`routes.py` 在 POST 请求里直接调用 `asyncio.run()` 完成 Browser/深度抓取/Gemini。它没有 durable job、queue、lease、heartbeat、cancel、retry、resume。
+### 7.1 长任务同步运行在 Flask 请求线程
 
-后果是：
+`routes.py` 在 POST 中直接：
 
-- Web worker timeout 会直接打断业务；
-- 浏览器卡死会占用请求 worker；
-- 用户刷新页面后无法恢复任务视图；
-- 无法跨节点执行；
-- 无法横向扩容独立 Browser Worker；
-- 无法形成可审计 task lineage。
+```text
+asyncio.run(crawl)
+ -> Browser/HTTP
+ -> collect markdown
+ -> Gemini
+ -> render HTML
+```
 
-因此生产 Web 只能创建 Run/Job，并异步查询状态。
+没有 durable queue、lease、heartbeat、retry、resume、dead-letter、cancel propagation。
 
-### 7.2 Browser 生命周期粒度过小
+生产系统不能把这种模式用于批量抓取。Web 只负责创建 Command/Run、查询状态、展示事件和发起显式控制动作。
 
-`deep_crawl()` 每次调用都 `async with AsyncWebCrawler()` 创建新的 crawler 生命周期。Demo 简单，但批量任务会重复付出 Browser 初始化成本。
+### 7.2 每次调用创建新的 `AsyncWebCrawler`
 
-生产环境需要 Browser Runtime Pool，并按：
+`deep_crawl()` 使用：
 
-- host/site 隔离；
-- 最大并发；
-- 最大 page/context 数；
-- idle timeout；
-- 最大寿命/内存；
+```python
+async with AsyncWebCrawler() as crawler:
+```
+
+作为 Demo 很方便，但 1000 站点长期运行时会重复承担 Browser/Context 初始化成本，并难以统一管理：
+
+- 最大总并发；
+- per-site 并发；
+- context/page 复用；
 - crash recycle；
+- idle timeout；
+- 最大寿命；
+- 内存阈值；
 - busy pin；
+- 浏览器版本 attestation。
 
-进行管理。
+生产应使用 Browser Runtime Pool，并让 Crawl4AI 只作为 Fetch Adapter/Runtime Adapter 之一。
 
-### 7.3 Secret 泄漏风险
+### 7.3 `result.success` 只是传输/工具成功，不是知识库内容成功
 
-`routes.py` 的 debug print 会把 `gemini_token` 打到标准输出，同时 token 被放进 Flask session。生产系统中这属于明确的安全反例。
+项目只在：
 
-正确做法是：
+```python
+if result.success:
+```
 
-- 只存 Secret Manager reference；
-- 日志和 trace 自动 redaction；
-- API 不回显；
-- 前端使用最小权限 credential binding；
-- Worker 运行时短期解引用；
-- Audit 只记 secret scope/id，不记明文。
+时收集 Markdown。
 
-### 7.4 测试覆盖不足
+但 HTTP/Browser 成功不等于正文有效，可能拿到：
 
-仓库只有 `tests/test_genai.py`，而且它依赖真实 `GEMINI_API_TOKEN` 调外部 API；没有 crawler、filter、route、timeout、failure、security、Web contract 的测试。
+- 登录页；
+- WAF challenge；
+- 空壳 SPA；
+- 404 soft page；
+- 分类列表；
+- cookie banner；
+- 导航模板；
+- 极短/异常正文。
 
-这说明项目更适合作为概念验证，不能直接作为生产基座。
+生产必须再经过 Extraction Candidate、Canonical IR 和 Quality Gate，区分 transport outcome 与 content outcome。
 
-## 8. 对博客知识库技术方案的可复用能力
+## 8. 安全问题
 
-本次调研最值得吸收的是“**Coverage Queue 与 Priority Queue 分离**”。
+### 8.1 Gemini Token 被日志打印
 
-### 8.1 两种语义必须分开
+`routes.py` 的调试输出包含：
+
+```python
+print(... gemini_token: {gemini_token})
+```
+
+这是明确的 Secret 泄漏风险。生产日志、trace、error report 必须默认 redaction。
+
+### 8.2 Token 被放入 Flask session
+
+代码：
+
+```python
+session['gemini_token'] = token_input
+```
+
+项目没有配置服务端 Session 扩展；Flask 默认是 `SecureCookieSessionInterface`，即 session 数据由签名 cookie 承载，重点是完整性保护而不是把 API Secret 当作服务器端机密存储。
+
+生产设计不能把模型/API Key 放入浏览器 cookie 或普通 session。应只保存 Secret Manager reference，Worker 在执行时用最小权限短期解引用。
+
+### 8.3 默认 Secret Key 与 Debug 模式不适合生产
+
+`app.py`：
+
+```python
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'supersecretkey')
+...
+app.run(debug=True)
+```
+
+默认固定 secret 与 debug server 都只适合本地开发。生产 Web 必须：
+
+- 强制外部 Secret；
+- 禁止默认密钥；
+- 禁止 debug；
+- 使用正式 ASGI/WSGI runtime；
+- 有 RBAC/CSRF/CSP/secure cookie 策略；
+- Secret 永不进入日志。
+
+### 8.4 任意 URL 输入需要统一 Admission
+
+表单只做 URL 格式校验，不等于 SSRF 防护。生产的 Web/Agent/Dify 任意 URL 抓取必须进入统一 Admission：
+
+- 只允许 http/https；
+- DNS/IP 校验；
+- 拒绝 localhost/私网/link-local/metadata/reserved；
+- redirect 每跳重新校验；
+- Browser Worker 网络层 deny 内网；
+- response bytes/deadline/content-type 限制。
+
+## 9. 测试覆盖与“版本语义契约”
+
+仓库只有 `tests/test_genai.py`，并且依赖真实 `GEMINI_API_TOKEN` 调外部 Gemini。没有覆盖：
+
+- Deep/Simple 控件映射；
+- crawler；
+- Best-First 顺序；
+- scorer/filter；
+- max_pages 边界；
+- timeout/cancel；
+- SSRF/redirect；
+- quality；
+- secret redaction；
+- Web contract。
+
+尤其本项目暴露出两个普通单元测试很容易漏掉的**语义契约问题**：
+
+### 9.1 Priority Direction Contract
+
+固定一组：
+
+```text
+high-score URL = 0.8
+low-score URL  = 0.0
+```
+
+断言高 `normalized_priority` 的 URL 在队列中先被执行。测试对象应是实际 pinned runtime，而不是 mock scorer。
+
+### 9.2 Candidate Admission Contract
+
+构造一个页面包含 100 个候选，最相关 URL 位于 DOM 最后，`fetch_budget=10`。
+
+断言：
+
+1. 100 个 observable link 都先进入 Candidate/Evidence；
+2. scorer 能看到全部候选；
+3. 预算只限制后续 fetch，不按 DOM 顺序预先裁掉未评分候选。
+
+### 9.3 Web Command Contract
+
+自动化点击/提交每个 UI 控件，断言：
+
+```text
+Deep Crawl -> FOCUSED_DISCOVERY/DEEP 预期 Run Type
+Simple     -> TARGETED_FETCH/SINGLE 预期 Run Type
+```
+
+并比较 requested config 与 effective config，防止隐藏字段、字符串 truthiness 或前端默认值悄悄改变模式。
+
+## 10. 对 1000 站点知识库的正确抽象
+
+### 10.1 Coverage Candidate 与 Priority Hint 必须分离
 
 ```text
 Coverage Candidate
-- 回答：这个 URL 是否属于应被枚举和审计的历史集合？
-- 依据：API/Sitemap/Feed/Archive/分页连续性/DOM evidence
-- FULL_BACKFILL 中不能因低相关度被丢弃
+- 回答：历史全集中应该审计哪些 URL？
+- 依据：API/Sitemap/Feed/Archive/分页/Docs Navigation/DOM Evidence
+- FULL_BACKFILL/RECONCILE 不因低相关度删除
 
 Priority Hint
-- 回答：在预算有限或交互式场景里先处理哪个 URL？
-- 依据：URL pattern、keyword、head metadata、link position、人工主题
-- 只改变队列优先级，不改变 Coverage
+- 回答：预算有限时先处理谁？
+- 依据：URL keyword/path/anchor/head metadata/人工主题/已有 IR 语义
+- 只改变调度顺序
 ```
 
-### 8.2 建议新增 `FOCUSED_DISCOVERY`
-
-作为辅助 Run Type：
+### 10.2 `FOCUSED_DISCOVERY` 的推荐链路
 
 ```text
-FOCUSED_DISCOVERY
-- 输入：source/site + query/prompt + budget
-- 输出：ranked URL Candidate + score evidence
-- 用途：站点接入探测、专题研究、人工排错、快速找到 Golden URL
-- 禁止：把 max_pages/max_depth/score threshold 当成 coverage complete
+root URL + optional topic + budget
+ -> durable FOCUSED_DISCOVERY Run
+ -> Provider/DOM Candidate enumeration
+ -> persist Candidate/Evidence
+ -> LOCAL_PREDICATE or METADATA_PROBE
+ -> raw score
+ -> priority adapter release
+ -> normalized priority
+ -> deterministic frontier
+ -> fetch
+ -> Snapshot
+ -> Extraction/Quality
+ -> Accepted Version
+ -> progressive Web events
 ```
 
-它可复用 Crawl4AI Best-First，但必须持久化 scorer/filter release 与 score evidence。
+### 10.3 预算不等于完整性
 
-### 8.3 Head Probe 独立成低成本 Metadata Plane
+`max_pages`、`max_depth`、`top_k`、score threshold、deadline 都只是执行预算/交互停止条件，不能生成 `coverage_complete`。
 
-SEOFilter 暴露了一个值得保留的思路：在完整 Browser fetch 前，只读取页面 `<head>` 就能得到 title、canonical、robots、description、schema 等信号。
+### 10.4 “已经观察到链接”与“决定抓链接”必须分开
 
-生产方案不应直接照搬 SEOFilter，而应抽象成：
+对已经成功获取的页面，其可观察内链应先形成 Evidence，再由策略决定是否在本次预算内抓正文。这样：
 
-```text
-METADATA_PROBE
- -> conditional/head-range fetch
- -> metadata snapshot
- -> title/canonical/robots/schema/link preview
- -> priority hints + route hints
-```
+- 可以后续重排，不必重抓父页面；
+- 不受第三方库 pre-score truncation 影响；
+- 能解释哪些 URL 因预算未抓；
+- 可为 FULL_BACKFILL/Reconcile 复用 link evidence；
+- Priority Policy 升级可离线重放。
 
-并要求：
+## 11. 对最终技术方案的增补
 
-- 与正文 Snapshot 分开标记 representation；
-- 可缓存并复用；
-- 每站点有 probe QPS/budget；
-- 结果只能做 priority/route hint；
-- noindex/robots 等合规信号进入独立 Gate；
-- 对 FULL_BACKFILL 不使用 SEO 分数做内容存在性过滤。
+在已有方案的 Coverage、Metadata Probe、Focused Discovery、Snapshot、AI Artifact 等设计基础上，本次进一步补强以下内容：
 
-### 8.4 Web 端增加渐进式探索视图
+1. **Priority Contract 标准化**：保存 `raw_score` 与 `normalized_priority`，统一“数值越大越先处理”的业务语义，由版本化 Adapter 映射第三方队列方向；
+2. **Candidate-before-budget**：页面已发现的链接先落 Candidate/Evidence，再评分和预算准入，禁止按 `remaining_capacity`/DOM 顺序在评分前裁掉；
+3. **第三方 Runtime 语义契约测试**：每个 pinned Crawl4AI/抓取策略版本必须验证高低分顺序、max_pages/max_depth 边界、stream/cancel、Filter 副作用；
+4. **Web Command 强类型化**：UI action 使用 enum/schema，持久化 requested/effective run type 与 config，禁止 hidden boolean/string truthiness 决定核心模式；
+5. **Web Control Contract Test**：前端按钮到持久 Run 的映射必须端到端测试；
+6. **Secret 传递边界明确化**：模型/API Token 不进入客户端 session/cookie、日志或 trace，只传 Secret reference。
 
-针对人工接入新站点，可提供：
+这些优化不改变已有主结论：完整历史仍由可枚举 Provider + Coverage Evidence 证明；相关性只决定“先抓谁”，不能决定“谁不存在”。
 
-```text
-输入 root URL + 可选主题
- -> 创建 FOCUSED_DISCOVERY Run
- -> 页面实时显示 discovered/filtered/scored/fetched/accepted
- -> 按 score、depth、provider、pattern 查看候选
- -> 一键将 URL pattern/Golden URL 提议写入 Site Profile Draft
- -> 管理员验证后发布 Profile Release
-```
+## 12. 不应照搬的设计
 
-这能把小项目里的“即时探索体验”保留下来，同时避免同步 Flask 长任务和不可审计状态。
+以下做法不进入生产主方案：
 
-## 9. 不应照搬的设计
-
-以下设计明确不进入生产主方案：
-
-1. 在 Web 请求中同步执行深度抓取和 LLM；
-2. 每个请求新建完整 Browser crawler；
-3. 用 `max_pages`/`max_depth` 证明抓取完整；
+1. 在 Web 请求内同步完成 Browser/深度抓取/LLM；
+2. 每次请求创建新的完整 Browser crawler；
+3. 用 `max_pages`、`max_depth` 或队列空了证明历史完整；
 4. 用 SEO/Prompt 相关度过滤 FULL_BACKFILL 的合法文章；
-5. 把多篇 Markdown 直接拼成单个 LLM Context；
-6. 把用户模型 token 放 session 并打印日志；
-7. 只把 `result.success` 当业务成功；
-8. 不保存 Snapshot、Version、Release、score evidence、task lineage；
+5. 把多篇 Markdown 直接拼成一个无结构 LLM Context；
+6. 把模型 Token 放普通 session/cookie 或打印到日志；
+7. 只以 `result.success` 判断知识库正文成功；
+8. 不保存 Snapshot、Version、Release、score evidence 和 task lineage；
 9. 把 `URLPatternFilter(["*", ...])` 当作有效文章路径过滤；
-10. 把 URL 关键词命中误称为正文语义相关性。
+10. 把 URL 关键词命中叫作正文语义相关性；
+11. 直接把第三方 `score` 当调度 priority，不验证方向和边界；
+12. 在评分前因为 `remaining_capacity` 按 DOM 顺序截断已观察到的候选；
+13. 用隐藏字符串布尔值决定 Deep/Simple 等核心运行模式。
 
-## 10. 对最终方案的修改结论
-
-现有博客知识库技术方案的主架构方向正确：Coverage 与 Capability 已分离、`max_pages/max_depth` 已明确不是完整性证明、Web 长任务已异步化、AI 已采用 Version/Artifact/Selection Manifest 模型。
-
-本项目仍带来四项可落地优化：
-
-1. **新增 Focused/Prioritized Discovery 辅助平面**，把 Best-First 明确定位为“调度优先级”，而不是 Coverage；
-2. **新增 metadata/head probe 的成本与缓存边界**，避免类似 SEOFilter 的隐式每 URL 网络请求放大 1000 站点成本；
-3. **Discovery Candidate 增加 score evidence 与 scorer/filter release lineage**，保证为什么某 URL 被提前抓取可以解释、重放和比较；
-4. **Web 增加流式探索/站点接入视图**，把 `stream=True` 的价值真正转化成渐进反馈，并可将候选 pattern/Golden URL 形成 Site Profile Draft。
-
-这些优化不改变核心事实层：**完整历史仍由可枚举 Provider + Coverage Evidence 证明；相关性只决定“先抓谁”，不能决定“谁不存在”。**
-
-## 11. 主要源码依据
+## 13. 主要源码依据
 
 - 项目仓库：https://github.com/cf2018/crawl4ai_news_summarizer
-- `app/crawler.py`：BestFirst + FilterChain + KeywordRelevanceScorer + streaming
-- `app/routes.py`：Flask 同步请求内执行 crawler 与 Gemini，且打印 token
-- `app/genai.py`：多 Markdown 直接拼接为单 Context
-- `tests/test_genai.py`：仅覆盖真实 Gemini API 调用
-- Crawl4AI 0.7.0 `filters.py`：FilterChain、URLPatternFilter、ContentTypeFilter、SEOFilter 实现
-- Crawl4AI 0.7.0 `scorers.py`：KeywordRelevanceScorer 只基于 URL 字符串关键词命中
-- Crawl4AI Deep Crawling 文档：https://docs.crawl4ai.com/core/deep-crawling/
-- Crawl4AI v0.7.0 release：https://docs.crawl4ai.com/blog/releases/0.7.0/
+- `requirements.txt`：固定 Crawl4AI 0.7.0、Playwright 1.53.0、Flask 3.1.1、google-genai 1.25.0
+- `app/crawler.py`：FilterChain、KeywordRelevanceScorer、BestFirst、stream=True
+- `app/routes.py`：Simple/Deep 分支、同步执行 crawler/Gemini、日志打印 token
+- `app/templates/index.html`：`action=deep/simple` 与隐藏 `simple=1` 控件绑定
+- `app/genai.py`：多 Markdown 直接拼接成 Context 后调用 Gemini
+- `app/app.py`：默认 `supersecretkey` 与 `debug=True`
+- `tests/test_genai.py`：仅真实 Gemini API 测试
+- Crawl4AI v0.7.0 `crawl4ai/deep_crawling/bff_strategy.py`：PriorityQueue、score 入队、remaining_capacity 截断
+- Crawl4AI v0.7.0 `crawl4ai/deep_crawling/scorers.py`：KeywordRelevanceScorer 为“命中越多分越高”
+- Crawl4AI v0.7.0 `crawl4ai/deep_crawling/filters.py`：FilterChain、URLPatternFilter、ContentTypeFilter、SEOFilter/HeadPeekr
+- Flask `SecureCookieSessionInterface`：默认 cookie session 机制
