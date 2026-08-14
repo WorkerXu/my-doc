@@ -1,176 +1,309 @@
 # Crawlboy：网站自动发现与抓取工具
 
-## 1. 调研对象
+## 1. 调研对象与结论
 
 - 项目：https://github.com/aksharahegde/crawlboy
-- 调研基线：`main`，tree SHA `dab1da6d157b507ac64e5b64d942b49ffed67bb6`
-- 核心文件：`crawlboy/crawler.py`、`crawlboy/meta_extract.py`、`docs/security/*`、`tests/security/test_security_controls.py`、`.github/workflows/security.yml`、`pyproject.toml`
-- 项目定位：从站点或 Sitemap 入口发现 URL，使用 Crawl4AI/Playwright 顺序抓取页面，将 Markdown、可选 HTML 和媒体写入本地目录。
+- 调研基线：`main`，commit `dab1da6d157b507ac64e5b64d942b49ffed67bb6`
+- 核心代码：`crawlboy/crawler.py`、`crawlboy/meta_extract.py`
+- 安全文档：`docs/security/threat-model.md`、`docs/security/controls.md`
+- 测试：`tests/security/test_security_controls.py`、`tests/test_meta_frontmatter.py`
+- 依赖：`pyproject.toml`
 
-Crawlboy 适合分析“单机、安全默认、Sitemap 驱动的 Markdown 导出器”如何实现；它不是面向 1000 站点长期运行的分布式知识库平台，因此本调研重点是提取可复用的安全、发现、路径、媒体和元数据机制，并分析其扩展到生产系统时的缺口。
+Crawlboy 是一个“以 Sitemap 为入口、用 Crawl4AI/Playwright 顺序抓取、把每页导出为 Markdown”的单机 CLI。它不适合作为 1000 个博客长期同步平台的主体，但它对 Sitemap 递归、安全边界、媒体落盘、路径生成、元数据 Front Matter 等实现非常有参考价值；同时源码也暴露出从单机导出器扩展到生产知识库时必须补齐的关键能力。
 
-## 2. 总体执行链路
+本次结论：现有博客知识库总体架构方向正确，不应直接采用 Crawlboy 作为核心调度器；应吸收其安全默认和输出机制，同时进一步强化 robots 执行语义、Sitemap 候选健康度、Browser 快照可重放性、HTML `<base href>` 处理和 AST/DOM 级媒体重写。
 
-核心链路位于 `crawlboy/crawler.py::run`：
+## 2. 实际执行链路
 
-1. 解析 `--site-url` 或 `--sitemap-url`。
-2. `--site-url` 模式先尝试 robots.txt 中的 `Sitemap:`，再按常见路径探测 Sitemap。
-3. 递归读取 Sitemap index，展开为页面 URL 列表。
-4. URL 去重，并在 site 模式下默认过滤到同 host。
-5. 启动一个 `AsyncWebCrawler`，对 URL 列表逐个 `crawler.arun()`。
-6. 从 Crawl4AI 结果取 Markdown、HTML、媒体信息。
-7. 可选下载图片并改写 Markdown/HTML 中的媒体地址。
-8. 可选从 HTML head 抽取 metadata，生成 YAML Front Matter。
-9. Markdown/HTML 写入本地目录，错误写入 `errors.jsonl`。
+`crawlboy/crawler.py::run()` 的主链路如下：
 
-其结构清晰，但整个 URL Frontier、碰撞映射、媒体 cache 和执行统计都保存在单进程内存中，页面抓取主循环也是顺序执行，因此不能直接承担多站点大规模调度、断点续跑和增量同步。
+1. 接收 `--site-url` 或 `--sitemap-url`。
+2. `--site-url` 模式先拉取 `robots.txt` 中的 `Sitemap:`，没有时探测常见路径。
+3. `collect_urls_from_sitemap()` 递归展开 sitemap index。
+4. URL 去重；site 模式默认只保留与站点 origin 同 host 的 URL。
+5. 创建一个 `AsyncWebCrawler`，对 URL 逐个执行 `await crawler.arun()`。
+6. 从 Crawl4AI 结果读取 Markdown、HTML、media。
+7. 可选下载图片，并重写 Markdown/HTML 图片地址。
+8. 可选从 HTML 中抽取 meta/canonical/title，生成 YAML Front Matter。
+9. Markdown/HTML 写本地目录，失败追加到 `errors.jsonl`。
 
-## 3. Sitemap 自动发现与递归展开
+虽然使用 async API，页面主循环本质仍是单 worker 顺序执行；URL frontier、路径冲突表、媒体缓存、统计全部位于进程内存，进程退出后没有可恢复状态。
+
+## 3. Sitemap 发现机制
 
 ### 3.1 入口发现
 
-`discover_sitemap_entry_urls()` 将站点 URL 规范为 origin，然后：
+`discover_sitemap_entry_urls()`：
 
-- 请求 `/robots.txt`，解析所有 `Sitemap:` 行；
-- 若 robots.txt 没给出 Sitemap，则按 `/sitemap.xml`、`/sitemap_index.xml`、`/sitemap-index.xml`、`/wp-sitemap.xml` 顺序探测；
-- `url_looks_like_sitemap()` 通过 XML 根节点是否为 `urlset` / `sitemapindex` 判断候选。
+- 先规范化站点 origin；
+- 请求 `/robots.txt`；
+- 提取全部 `Sitemap:` 行；
+- 若存在任何 robots Sitemap，则直接返回这些入口；
+- 如果完全没有发现，才依次尝试 `/sitemap.xml`、`/sitemap_index.xml`、`/sitemap-index.xml`、`/wp-sitemap.xml`；
+- 候选响应通过 XML 根节点 `urlset/sitemapindex` 判断是否像 Sitemap。
 
-这个实现说明生产系统应该把“入口发现”单独抽象为 Discovery Provider，而不是和页面抓取绑死。robots.txt 中可以同时声明多个 Sitemap，因此 Provider 需要支持一个站点多个 root sitemap，并为每个入口单独记录状态。
+这个实现简单有效，但存在一个生产级完整性问题：**robots 中只要出现一个 Sitemap，就不再探测其它常见入口**。若 robots 声明过时、部分损坏或只覆盖某一内容分区，可能漏掉仍有效的 Sitemap。
 
-### 3.2 递归 Sitemap
+生产系统应把 Sitemap 入口当“候选集合”而不是“命中即停止”：
 
-`collect_urls_from_sitemap()` 使用 `defusedxml.ElementTree`，根据根节点类型处理：
+- robots、常见路径、站点配置、历史成功入口都可以产生候选；
+- 每个候选独立保存 `source/evidence/etag/last_modified/last_success/status/error/coverage_hint`；
+- 周期性低成本验证候选健康度；
+- 多个有效 root sitemap 取并集并去重；
+- 某个入口失败不能导致其它入口停止工作。
 
-- `sitemapindex`：递归请求子 Sitemap，并把子结果 `extend` 到父列表；
-- `urlset`：提取每个 `<loc>`；
-- 达到最大深度或 URL 数时抛错。
+### 3.2 robots 的语义缺口
 
-优点是有显式深度、URL 数和 payload 体积上限，并使用 `urljoin()` 支持相对 Sitemap 地址。
+Crawlboy 使用 robots.txt 的目的主要是**发现 Sitemap**，并没有在页面抓取主循环里按目标 user-agent 执行 `Allow/Disallow` 规则。
 
-生产缺口：
+这点非常重要：
 
-1. 每个递归调用返回完整 `list[str]`，父节点再合并，深层或大站点会产生高峰内存。
-2. XML 通过 `ET.fromstring()` 一次性解析，无法做到真正流式。
-3. URL 上限在子树中分别检查，父层只有子树返回后才能发现全局超额，预算不能及时停止工作。
-4. 没有显式 visited-set / cycle detection，恶意 Sitemap index 可以形成循环，最终只依赖 max depth 终止。
-5. 没有子 Sitemap 级 checkpoint；进程中断后只能重新展开。
+> “从 robots.txt 找到 Sitemap”不等于“遵守 robots.txt 的抓取权限”。
 
-生产系统应采用：HTTP stream -> bounded gzip/deflate stream -> `iterparse/XMLPullParser` -> URL 小批量 UPSERT PostgreSQL。Sitemap root、child sitemap、游标、ETag/Last-Modified、last success、partial reason 都持久化，预算必须按 provider run 全局原子扣减而不是只靠递归函数局部计数。
+生产系统必须把两者拆开：
 
-## 4. 压缩与资源边界
+1. `RobotsDiscovery`：解析 Sitemap 声明；
+2. `RobotsPolicy`：在 Fetch/DeepCrawl 前按 user-agent、目标 path 和当前 robots 版本做准入判断。
 
-`_decode_sitemap_body()` 发现 `.gz` 或 gzip magic header 时直接 `gzip.decompress(content)`；之后 `fetch_sitemap_bytes()` 再检查解压后的长度。
+robots 规则需要 TTL + Validator 缓存，失败要区分 404、网络错误、解析错误，并明确 fail-open/fail-closed 策略；策略变化还要可审计。
 
-这里有一个重要的实现差异：代码虽然设置了“解码后最大字节数”，但 `httpx` 已经先把响应完整读入 `response.content`，`gzip.decompress()` 也会先在内存中完成解压，随后才检查长度。因此超大压缩体或压缩炸弹仍可能在检查前制造内存峰值。
+## 4. Sitemap 递归实现与内存模型
 
-生产方案必须同时限定：
+`collect_urls_from_sitemap()` 使用 `defusedxml.ElementTree.fromstring()`：
 
-- compressed bytes；
-- decoded bytes；
-- compression ratio；
-- XML element/URL 数；
-- 单 Sitemap、单 provider run、单 job、单站点/日多个层级的累计预算。
+- `sitemapindex`：逐个递归子 Sitemap，再 `out.extend()`；
+- `urlset`：提取 `<loc>` 到 Python list；
+- 有最大深度、URL 数、单 Sitemap 解码后字节数限制。
 
-响应体不能先无界进入 RAM。预算耗尽应是 `partial/budget_exhausted`，保留 checkpoint 后可继续，而不能只当作通用网络失败。
+优点：
 
-## 5. SSRF 与出站网络安全
+- 使用 `defusedxml`，避免常见 XML entity 攻击；
+- 显式限制递归深度、URL 数和 payload 大小；
+- 子 Sitemap 的 `<loc>` 使用 `urljoin()` 解析相对地址。
 
-### 5.1 Crawlboy 的做法
+缺点：
 
-`validate_network_target()`：
+1. HTTP body 先完整进入内存；
+2. gzip 使用 `gzip.decompress()` 一次性解压，再检查 decoded 大小；
+3. XML 使用 `fromstring()` 一次性建树；
+4. 每个子调用返回完整 list，父级不断 extend；
+5. 没有 visited-set/cycle detection，只靠 max depth 兜底；
+6. 没有 child sitemap checkpoint；
+7. `max_urls` 在递归函数局部检查，无法形成统一 provider-run 原子预算；
+8. 解析 `<url>` 时只使用 `<loc>`，没有利用 `<lastmod>`。
+
+因此大站或恶意压缩 Sitemap 仍可能在“检查之前”制造内存峰值。
+
+生产实现应采用：
+
+```text
+HTTP streaming
+ -> compressed-byte limiter
+ -> bounded streaming decompressor
+ -> decoded-byte + compression-ratio limiter
+ -> XMLPullParser/iterparse
+ -> 小批量 URL/lastmod UPSERT PostgreSQL
+ -> provider checkpoint
+```
+
+预算至少包含：compressed bytes、decoded bytes、压缩比、XML element 数、URL 数、child sitemap 数、请求次数、递归深度、wall time。预算耗尽应记录为 `partial/budget_exhausted`，而不是笼统失败。
+
+## 5. 网络安全与 SSRF
+
+`validate_network_target()` 默认：
 
 - 只允许 HTTP/HTTPS；
-- 要求 hostname；
-- 直接 IP 与 DNS 解析结果都检查 private、loopback、link-local、multicast、reserved、unspecified；
-- 默认拒绝，只有 `--allow-unsafe-network-targets` 才放开。
+- 必须有 hostname；
+- 检查直接 IP 和 DNS 解析结果；
+- 拒绝 private、loopback、link-local、multicast、reserved、unspecified；
+- 提供 `--allow-unsafe-network-targets` 显式覆盖。
 
-这套“默认拒绝 + 显式例外”适合 Web 管理型爬虫，因为站点配置、Sitemap 中的 URL、页面媒体 URL 都属于攻击者可控输入。
+这是值得继承的安全默认。
 
-### 5.2 关键缺口
+但源码仍有几个生产缺口。
 
-Sitemap 和媒体请求使用 `follow_redirects=True`。安全检查发生在初始 URL 请求前，并没有对每一个 redirect hop 重新做完整校验。因此公开 URL 可 30x 到内网地址。
+### 5.1 redirect hop 没有重新校验
 
-此外，应用先 `getaddrinfo()` 校验，然后 HTTP 客户端稍后自行解析和连接，存在 DNS rebinding / TOCTOU 窗口。即使应用层逻辑正确，也不应把它作为唯一防线。
+Sitemap 和图片下载均使用 `follow_redirects=True`。初始 URL 校验通过后，30x 可以指向另一个 host，甚至私网地址；代码没有在每个 redirect hop 上重新执行相同安全策略。
 
-Browser 路径风险更大：顶层 URL 在调用 Crawl4AI 前检查，但 Playwright 页面加载过程中产生的 redirect、iframe、XHR、fetch、图片等子请求不一定经过这个 Python 函数。
+生产系统必须禁用自动 redirect，逐 hop 执行：URL 解析、userinfo/port 检查、DNS、allowed-host、egress policy、redirect 次数预算。
 
-生产设计要求：
+### 5.2 DNS rebinding / TOCTOU
 
-1. HTTP 层禁用自动 redirect，逐 hop 校验 URL、host、DNS 和 allowed-host policy。
-2. DNS 解析与真实连接尽可能由统一 egress proxy 完成，或在网络命名空间/防火墙中硬阻断私网、metadata endpoint。
-3. Browser worker 强制 public-only egress，不能只依赖 page-level callback。
-4. Sitemap、Feed、archive、页面媒体、canonical 候选、浏览器子资源统一走同一 Egress Policy。
-5. 跨 host redirect 默认拒绝，确需放开时由站点规则显式声明并审计。
+代码先 `socket.getaddrinfo()`，随后 httpx/Browser 自己再次解析并连接。校验与连接之间存在时间窗口。
 
-## 6. 顺序执行、限速与请求预算
+因此应用层校验只能是第一道防线；生产部署还要用统一 egress proxy、网络命名空间或防火墙，让“实际连接”也不能访问私网和 metadata endpoint。
 
-Crawlboy 虽然使用异步库，但页面主循环是 `for ... await crawler.arun()`，因此是单实例顺序抓取。`--delay` 只在“成功抓取后”执行；失败、被拒绝或异常路径不会 sleep。
+### 5.3 Browser 子资源
 
-对生产系统的启示：politeness 不能实现为“成功后 sleep”。它必须是域级的请求准入：
+主页面 URL 在 `crawler.arun()` 前被校验，但 Playwright 加载页面后可能继续发起 iframe、XHR/fetch、图片、字体等请求。这些请求不一定经过 Python 的 `validate_network_target()`。
 
-- 每一次网络尝试，无论 2xx、4xx、5xx、timeout、redirect 都先消耗 token；
-- Redis/Lua 维护 domain concurrency lease + token bucket / next_allowed_at；
-- 遇到 429/503/Retry-After 动态退避；
-- HTTP、Browser、媒体、Sitemap 共享同域总预算，避免多个 worker 分别“都很克制”，合起来却把源站打爆。
+Browser worker 必须有 public-only 网络出口和 request budget，不能只依靠 page callback。
 
-同时需要 backpressure：PG/S3/Extract lag 高时降低 Fetch；Browser 内存高时降 slot；Redis backlog 高时 Scheduler 降速。
+### 5.4 URL userinfo
 
-## 7. URL 身份、去重与导出路径
+`normalize_site_url()` 会把 `https://user:pass@host/...` 的 userinfo 静默剥离用于站点 origin；但直接从 Sitemap 得到的页面 URL 并没有统一禁止 userinfo。
 
-### 7.1 Crawlboy 的路径算法
+生产系统不应“悄悄修正”此类输入，应在 URL intake/EgressPolicy 中显式拒绝 userinfo，避免凭据传播、语义混淆和日志泄露。
 
-`url_to_relative_md_path()` 把 URL path 拆段后做字符清洗，长度上限 120，根路径映射为 `index.md`。
+## 6. 顺序抓取、限速和公平性
 
-`relative_md_path_with_collision()` 使用一个进程内 `used` 字典检测冲突；冲突时给后来出现的 URL 追加 SHA-256 短 hash。
+主循环：
 
-`safe_out_path()` 对最终路径 `resolve()`，要求仍位于 `out_dir` 内，能阻挡明显路径穿越和已有 symlink 指向目录外的情况。
+```python
+for url in urls:
+    result = await crawler.arun(...)
+```
 
-### 7.2 生产问题
+所以单实例是串行抓取。`--delay` 只在**成功抓取之后**执行；被安全策略拒绝、异常、`result.success == False` 都直接进入下一 URL。
 
-碰撞分配依赖“本次 URL 出现顺序”：两个不同 URL 规范化到同一路径时，谁先出现谁获得短文件名。换一次 discovery 顺序，导出路径可能变化。这不适合长期知识库 identity。
+生产系统的 politeness 不能依赖“成功后 sleep”，而要在每次请求尝试之前取得 domain lease/token：
 
-生产系统应把身份拆成三层：
+- HTTP、Browser、Sitemap、Feed、媒体共享域总限流；
+- 失败、timeout、404、redirect 同样消耗请求次数；
+- 429/503/Retry-After 动态降速；
+- 每域 concurrency + token bucket；
+- 单个大站不能占满全部 worker；
+- PG/S3/Extract lag 增长时触发 backpressure。
 
-- `url_identity`：规范化后的抓取 URL；
-- `article_key`：`site_id + accepted canonical/identity rule` 的稳定 hash；
-- `version_id`：文章版本。
+## 7. HTTP 快路径与 Browser 成本
 
-S3 key 和本地导出路径必须是 article identity 的纯函数，发生冲突时双方都按稳定规则带 hash，而不是依赖 crawl 顺序。导出本地目录还需要防 Windows 保留名、超长路径、symlink race，并采用临时文件 + atomic rename；高保证环境可使用 `openat/O_NOFOLLOW`。
+Crawlboy 对页面统一使用 Crawl4AI/Browser，并显式 `CacheMode.BYPASS`。这适合简单 CLI 的“每次都抓最新页面”，但不适合 1000 站点长期运行：
 
-## 8. 媒体下载：字节预算之外还要限制请求数量
+- 每个页面启动/驱动浏览器网络栈成本高；
+- 没有 If-None-Match / If-Modified-Since 的页面级增量快路径；
+- 没有 304；
+- 同正文没变也会重新执行 Browser 和 Markdown 生成。
 
-### 8.1 现有实现
+生产系统应：
 
-Crawlboy 从 Crawl4AI `media.images` 和 HTML `<img>/<source>` 中收集 URL，逐个请求图片。它设置：
+1. HTTP 优先获取状态、validator、content-type 和 body；
+2. 304 直接结束；
+3. 200 且 body hash 未变不创建文章版本；
+4. 只有 CSR shell、JS 正文、质量失败时升级 Browser；
+5. Browser 也受请求数、字节、wall time、内存、子资源预算。
 
-- 单文件最大字节；
-- 本次运行媒体总字节；
-- 根据 URL hash 生成文件名；
-- 进程内 URL cache 避免同 URL 重复下载；
-- 下载成功后重写 Markdown/HTML 的 `src/srcset`。
+## 8. Browser 快照必须可重放
 
-README 称媒体“content-addressed, deduped”，但实现中最终文件名是规范化媒体 URL 的 SHA-256，而不是下载内容的 hash。同一图片经不同 CDN URL 暴露时仍会保存多份，因此严格来说是 URL-addressed cache，不是真正 content-addressed storage。
+Crawlboy 在 Browser 成功后直接使用 `result.html` 和 `result.markdown` 写文件，但对生产知识库而言，“raw snapshot”不能只抽象成一个模糊的 HTML 文件。
 
-### 8.2 一个额外的生产级风险
+对于 Browser 页面，至少应区分：
 
-当前上限主要按 bytes 计数，但攻击页面可以生成大量不存在、超时、返回 204 或极小 body 的媒体 URL。即使总字节很小，也可能制造大量 DNS/TCP/TLS/HTTP 请求。`ensure_image_downloaded()` 对失败请求返回 0 bytes，字节预算几乎不下降。
+- `raw_http_body`：服务端原始响应；
+- `rendered_dom`：等待条件完成后的 DOM snapshot；
+- `capture_profile`：等待 selector、滚动/点击脚本、viewport、locale、timezone、JS 开关等配置；
+- `browser_engine/browser_version/crawl4ai_version`；
+- `captured_at` 和 final URL。
 
-因此生产方案除 `max_asset_file_bytes` / `max_asset_bytes_per_job` 外，还必须增加：
+原因：JS 页面内容可能取决于运行时、时间、外部 API 和浏览器版本。若只保存服务端 HTML，后续离线 re-extract 无法重现当时正文；若只保存 Markdown，又无法升级抽取器。
+
+推荐数据模型增加：
+
+```text
+fetch_snapshots
+- object_key_http_raw
+- object_key_rendered_dom
+- capture_kind(http/browser/archive)
+- capture_profile_version
+- browser_engine_version
+- fetcher_version
+```
+
+Extract 读取“标准化 capture artifact”，而不是隐式读取某个 Browser 对象。
+
+## 9. URL 身份与本地路径
+
+Crawlboy 的 `url_to_relative_md_path()`：
+
+- 只根据 URL path 生成文件目录；
+- segment 只保留字母、数字、`_`、`-`；
+- 每段最大 120；
+- `/` 映射 `index.md`。
+
+`relative_md_path_with_collision()` 用进程内字典检测碰撞；后来者追加 URL SHA-256 的短 hash。
+
+问题是碰撞结果依赖 discovery 顺序：A、B 两个 URL 映射到同一路径，谁先出现谁获得短路径。下次顺序变化后导出路径可能互换。
+
+生产系统要把：
+
+- fetch URL identity；
+- accepted article identity；
+- export path
+
+完全分离。`article_key` 由 `site_id + stable identity` 计算，导出 path 必须是 article identity 的纯函数；碰撞双方都使用稳定 hash 后缀，不依赖本次抓取顺序。
+
+## 10. 媒体发现和存储
+
+Crawlboy 图片来源有两部分：
+
+1. Crawl4AI `result.media.images`；
+2. 对 HTML `<img>/<source>` 用正则再扫 `src/srcset`。
+
+下载时：
+
+- 有单文件最大字节；
+- 有本次运行总媒体字节；
+- 进程内 URL cache 去重；
+- 文件名使用规范化图片 URL 的 SHA-256 短 hash；
+- 根据 Content-Type 或 URL 后缀选择扩展名。
+
+README 称其为 content-addressed，但当前实现实际是 **URL-addressed**：相同二进制经两个不同 CDN URL 会落两份文件。
+
+生产系统应先流式下载并计算完整内容 hash，再按 `content_sha256` 存 blob；source URL 只作为缓存/来源记录。
+
+此外仅限制 bytes 不够：攻击页面可生成大量 404、timeout、204 或极小文件 URL，使请求数爆炸而字节预算几乎不变。必须增加：
 
 - `max_assets_per_article`；
 - `max_asset_requests_per_article`；
 - `max_asset_requests_per_job`；
-- 单资源 redirect 上限和 wall-time；
-- 每域媒体并发；
-- 失败请求同样扣“请求次数预算”。
+- redirect/request wall-time；
+- 每域 asset concurrency；
+- 失败请求也扣 request budget。
 
-最终存储采用两阶段：先按 URL + validator 做下载缓存，流式下载并算完整 `content_sha256`，然后用 hash 作为 `asset_blob` identity，`article_assets` 记录 source URL、hash、MIME、尺寸、关系，实现跨 URL、跨文章去重。
+MIME 不能只信 header/扩展名；应进行 magic sniff。SVG/HTML 等 active content 应 quarantine 或从隔离 origin 提供。
 
-还要做 MIME + magic sniff。SVG/HTML 等主动内容不能直接在管理 Web 同源预览，应 quarantine 或从独立无 Cookie origin 提供。
+## 11. `<base href>` 与相对资源解析
 
-## 9. HTML metadata 与 Front Matter
+Crawlboy 在资源重写时用 `base_for_assets = redirected_url/result.url/original_url`，再 `urljoin(base_for_assets, relative)`。
 
-`meta_extract.py` 使用标准库 `HTMLParser` 提取：
+但 HTML 规范允许 `<base href>` 改变相对 URL 的解析基准。当前额外的正则 HTML 扫描并没有显式解析 `<base href>`。在部分文档站、镜像站或反向代理环境中，这会导致图片和链接解析错误。
+
+生产抽取层应生成 `document_base_url`：
+
+1. 默认 final URL；
+2. 若存在 `<base href>`，先按 final URL resolve；
+3. 再通过 EgressPolicy/allowed-host 验证；
+4. 危险或异常 base 忽略并记录质量事件；
+5. 所有相对链接、图片、srcset、canonical 的 resolve 都复用同一版本化解析器。
+
+## 12. 不应使用正则直接重写 Markdown/HTML
+
+`rewrite_markdown_images()` 用正则匹配 `![alt](...)`；HTML 也用正则匹配 `<img>/<source>` 属性。
+
+这对常见简单页面可用，但不是完整语法解析器：
+
+- Markdown URL 可包含转义、括号、title；
+- reference-style image 不匹配；
+- 重建语法时可能丢失 image title；
+- HTML 属性和实体存在大量合法边界情况；
+- `srcset` 也有专门语法。
+
+生产系统应避免“先生成 Markdown，再用正则修链接”。更稳妥的链路是：
+
+```text
+HTML/rendered DOM
+ -> DOM/Article IR
+ -> 解析并标准化链接/媒体引用
+ -> Asset relation resolution
+ -> Markdown AST / serializer
+ -> 最终 Markdown
+```
+
+即媒体重写发生在 DOM/IR/AST 层，最终 Markdown 由版本化 serializer 一次生成。这样规则升级后可以离线重放，也能保证链接规范化和输出确定性。
+
+## 13. Metadata / Front Matter
+
+`meta_extract.py` 使用 `HTMLParser` 抽取：
 
 - `<title>`；
 - `<link rel=canonical>`；
@@ -178,88 +311,113 @@ README 称媒体“content-addressed, deduped”，但实现中最终文件名�
 - `meta[property]`；
 - `meta[http-equiv]`。
 
-它对单个字符串值设约 8 KiB 上限，对整个 YAML Front Matter 设约 64 KiB 上限；如果总量仍过大，会逐级缩短字符串，最终只保留 `source_url`。`yaml.safe_dump()` 也避免了危险对象序列化。
+单字符串值约 8 KiB，上层 YAML 约 64 KiB；过大时逐级截断，最终只保留 source_url；使用 `yaml.safe_dump()`。
 
-这说明 metadata 同样需要预算和确定性。但生产环境还要补三层：
+值得保留的是“metadata 也要有预算”和“确定性序列化”。但生产系统要进一步：
 
-1. **采集期预算**：限制 field count、key length、总 HTML head 扫描量，不能等构建 YAML 时才截断。
-2. **provenance**：同一字段可来自 JSON-LD、OpenGraph、meta、selector、heuristic，DB 中保存来源与规则版本。
-3. **canonical 不可信**：相对 canonical 需 resolve；跨域 canonical 需 allowed-host/alias policy；危险地址不能直接变成 article identity。
+- 限制 field count、key length、head 扫描量；
+- 标题/作者/日期/canonical 优先结构化入库；
+- 保存字段 provenance；
+- canonical 视为不可信输入并验证 allowed host；
+- JSON-LD/OpenGraph/meta/selector/heuristic 冲突时记录候选和选择依据；
+- Front Matter 只是导出视图，不是真相源。
 
-Front Matter 应是导出视图，不是业务真相源。标题、作者、日期、canonical 等先结构化入库，再由版本化 serializer 生成 Markdown Front Matter。
+## 14. 错误模型与日志
 
-## 10. 日志与异常泄露
+Crawlboy 将失败追加到 `errors.jsonl`。显式 URL 会通过 `redact_url_for_logs()` 去掉 userinfo、query、fragment，这是正确做法。
 
-`redact_url_for_logs()` 会去除 userinfo、query 和 fragment。显式记录 URL 时这种做法正确。
+但异常文本仍可能直接来自 `repr(exc)` 或第三方 `result.error_message`。第三方异常可能包含完整 URL、header 或 token，因此仅清洗 URL 字段不够。
 
-但 Crawlboy 在异常路径中仍会把 `repr(exc)` / `result.error_message` 作为 error string 写日志与 `errors.jsonl`。第三方库异常消息可能包含完整 URL、重定向地址、header 或 token，因此“显式 URL 字段脱敏”并不等于全链路不泄露。
+生产系统需要中央 `LogSanitizer`，覆盖：
 
-生产系统需要中央 `LogSanitizer`：日志字段、异常文本、stack trace、dead-letter、OpenTelemetry attributes、Web 错误页都在 sink 前统一清洗；Authorization/Cookie 等 header 采用 allowlist，原始 URL 只有受限权限才能查看。
+- structured log；
+- exception message/stack；
+- dead-letter；
+- OTel span attribute；
+- Web 错误页；
+- audit/security event。
 
-## 11. 安全控制矩阵与测试
+另外 append-only `errors.jsonl` 不区分“历史失败”和“当前仍失败”。生产系统应以 `job_item + attempt + error_event` 建模，Web 默认展示当前状态，同时允许追溯历史尝试。
 
-项目的 `docs/security/controls.md` 把网络目标、Sitemap 限额、媒体限额、URL 脱敏、输出路径、依赖审计、Bandit 等映射到测试和 CI gate，这是非常值得直接继承的工程习惯。
+## 15. 删除、缺失与增量同步
 
-`tests/security/test_security_controls.py` 还使用 Hypothesis 检查路径映射，说明安全边界应通过自动化性质测试验证，而不只靠文档。
+Crawlboy 每次都从 Sitemap 列表开始抓，没有长期状态，因此没有：
 
-不过当前测试仍有明显覆盖空白：
+- Feed cursor；
+- Sitemap Validator；
+- 页面 Validator；
+- disappearance reconciliation；
+- 删除确认；
+- 内容版本；
+- rule replay。
 
-- redirect 到 private IP；
-- IPv6 / IPv4-mapped IPv6；
-- DNS rebinding；
-- gzip bomb / 高压缩比；
-- Sitemap cycle；
-- Browser 子资源 SSRF；
-- 媒体请求数量放大；
-- 异常文本 token 泄露；
-- symlink race；
-- active content Web preview。
+生产系统应把“发现”本身做增量：
 
-生产系统应把这些全部列为必须通过的安全回归用例，并把每个安全 requirement ID 映射到测试、指标、告警和 runbook。
+- Feed：guid/url/pubdate cursor；
+- root/child Sitemap：ETag、Last-Modified、lastmod hint；
+- page：ETag/Last-Modified/body hash；
+- 周期 reconciliation 判断长期未见 URL；
+- 404/410 多次确认后才 source_deleted；
+- raw/rendered snapshot 保留后，抽取规则变化只 re-extract，不 refetch。
 
-## 12. 供应链与依赖升级
+## 16. 安全工程方法值得继承
 
-`pyproject.toml` 对 Crawl4AI/httpx 等使用下限约束；security workflow 会运行 `pip-audit` 和 Bandit，并为了已知漏洞在安装后强制升级 `lxml`、从 Git 安装新版 `nltk`。
+项目额外提供 threat model、security control 文档和安全测试。`tests/security/test_security_controls.py` 覆盖了：
 
-这体现了积极的漏洞响应，但“安装后覆盖传递依赖版本”也有兼容性风险：最终运行组合可能超出上游声明的测试矩阵。
+- URL 日志脱敏；
+- output path escape；
+- private IP；
+- DNS 解析到私网；
+- Sitemap URL/depth 限额；
+- 媒体文件大小；
+- Hypothesis 路径性质测试。
 
-生产方案应采用：
+这说明安全要求应落成自动化回归，而不是只写在架构文档里。
 
-- lockfile / digest 固定依赖；
+生产系统的 Control Matrix 应继续扩展：
+
+```text
+Requirement
+ -> automated test
+ -> runtime metric/alert
+ -> runbook/owner
+```
+
+还需覆盖：redirect SSRF、DNS rebinding、IPv4-mapped IPv6、Browser 子资源 SSRF、gzip bomb、Sitemap cycle、request amplification、symlink race、active content preview、异常文本 secret 泄露。
+
+## 17. 供应链
+
+`pyproject.toml` 采用 `crawl4ai>=0.8.6`、`httpx>=0.27.0` 等下限约束；dev 依赖包含 pip-audit、Bandit、Hypothesis 等。
+
+对生产平台而言仅使用下限约束会使环境随时间漂移，Browser/Chromium 与 Crawl4AI 的组合尤其需要可重复。
+
+建议：
+
+- lockfile + image digest；
 - SBOM；
 - OSV/pip-audit；
-- 漏洞例外单（owner、CVE、理由、到期时间）；
-- 兼容性回归、golden crawl、canary 后再升级 Browser/Crawl4AI；
-- 基础镜像与 Chromium 版本一起追踪，不仅扫描 Python 包。
+- Chromium/Playwright/Crawl4AI 版本一起追踪；
+- 漏洞 waiver 有 owner 和过期时间；
+- 升级先跑 golden crawl + canary。
 
-安全修复不能只通过“临时强制升级”完成后长期遗忘。
+## 18. 对最终技术方案的优化项
 
-## 13. Crawlboy 不具备而生产系统必须具备的能力
+基于源码复核，最终方案应明确包含以下点：
 
-1. **持久 Frontier**：Crawlboy URL 队列是内存 list；生产使用 PostgreSQL UPSERT + lease。
-2. **断点续跑**：子 Sitemap、Provider、article fetch 都要 checkpoint。
-3. **增量同步**：RSS cursor、Sitemap lastmod、ETag/Last-Modified、内容 hash、周期 reconciliation。
-4. **水平扩展**：Redis Streams Consumer Group + DB lease + idempotency，而不是单进程顺序循环。
-5. **HTTP 快路径**：普通博客页面优先 HTTP；Browser 仅在 CSR/交互依赖时升级。
-6. **多站点公平调度**：站点优先级、域级限速、配额、backpressure。
-7. **规则版本与回放**：保留 raw snapshot，抽取规则变化后离线 re-extract。
-8. **Web 管理**：站点接入、provider coverage、任务、错误、安全事件、预算、规则 diff、文章版本。
-9. **对象存储**：Markdown/raw/media 放 S3/MinIO；本地文件树只作为导出功能。
-10. **质量治理**：模板页、登录页、软 404、重复正文、日期异常、canonical 异常自动检测。
+1. Crawlboy 只能作为参考实现/诊断工具，不作为生产调度核心。
+2. robots 的“发现 Sitemap”和“抓取准入”必须分离，Fetch/DeepCrawl 真正执行 user-agent 规则。
+3. Sitemap 入口采用多来源候选并集和独立健康状态，不能“robots 有一个入口就停止其它发现”。
+4. Sitemap 端到端 streaming，加入 compressed/decoded/ratio/request/element 多维预算、cycle detection、child checkpoint。
+5. 所有请求逐 hop Egress 校验，并由网络层阻断私网；Browser 子资源同样受控。
+6. Domain limiter 对失败请求同样计费；预算同时按 bytes、request count、wall-time 控制。
+7. 页面增量 HTTP 优先，Browser 只作升级路径。
+8. Browser 抓取同时保存 raw HTTP 与 rendered DOM，并记录 capture profile/browser 版本，以支持可重放 re-extract。
+9. `<base href>` 作为不可信输入验证后生成统一 `document_base_url`。
+10. 媒体重写在 DOM/IR/Markdown AST 层完成，不使用正则作为生产级最终重写器。
+11. Asset 以真实 `content_sha256` 做 content-addressed blob，URL 仅作为 source/cache key。
+12. Markdown/export path 由稳定 article identity 决定，不受 crawl 顺序影响。
+13. Metadata 结构化保存 provenance；Front Matter 只是版本化导出视图。
+14. 错误采用 job item/attempt/event 状态模型，并通过中央 LogSanitizer 防泄露。
+15. 安全要求必须映射到 automated test、metric/alert 和 runbook。
 
-## 14. 对博客知识库技术方案的最终优化结论
-
-现有总体方向无需被 Crawlboy 替换。Crawlboy 的价值是验证若干“边界实现”并暴露单机方案在生产化后的缺口。本轮方案应明确加入或强化：
-
-1. Sitemap 端到端流式处理、cycle detection、子 Sitemap checkpoint、run 级全局预算。
-2. HTTP 手动 redirect 校验 + 网络层 public-only egress；Browser 子资源也必须被网络层约束。
-3. 资源预算不仅按 bytes，还必须按**请求次数**计数，尤其是媒体；失败/空响应同样扣预算。
-4. Domain limiter 对所有请求尝试生效，不能只在成功后 sleep。
-5. Asset 真正采用 `content_sha256` content-addressed blob；URL hash 只做下载缓存键。
-6. metadata 在采集阶段限制字段数/key/value/总量，并保留 provenance；canonical 作为不可信输入验证。
-7. 导出路径由 article identity 稳定计算，禁止 crawl 顺序影响文件名。
-8. 中央异常/日志 sanitizer，覆盖第三方异常、trace、dead-letter、Web 错误展示。
-9. Security Control Matrix 扩展为 requirement -> automated test -> metric/alert -> runbook；补 redirect、gzip bomb、DNS rebinding、Browser SSRF、request amplification 等回归。
-10. 依赖漏洞处理引入 lockfile、SBOM、waiver 到期和 canary，不依赖长期 ad-hoc 强制覆盖传递依赖。
-
-这些修改已经纳入《博客知识库技术方案.md》的最终方案。
+这些结论已用于完善《博客知识库技术方案.md》。
