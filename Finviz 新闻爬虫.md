@@ -3,326 +3,524 @@
 - 编号：52
 - 项目：finviz-crawler
 - 地址：https://github.com/Ezio0/finviz-crawler
-- 调研对象：main 分支 v3.5 代码
-- 状态：调研中
+- 调研分支：main
+- 调研版本：v3.5
+- 调研提交：`f34e1832c06c176c1c8398d3d2a1653a311fd308`
+- 主要代码：`scripts/finviz_crawler.py`、`scripts/finviz_query.py`、`scripts/topic_classifier.py`、`scripts/finviz_digest.py`
 
 ## 1. 项目定位
 
-`finviz-crawler` 是一个持续运行的金融新闻采集守护进程。它把 Finviz 新闻入口、多个 RSS 源、第三方文章正文抓取、SQLite 状态库、Markdown 文件落盘、主题分类、近似去重、全文检索、失败重试和 Browser 资源自愈组合在一个 Python 进程中。
+`finviz-crawler` 是一个单机、持续运行的金融新闻采集守护进程。它把 Finviz 新闻入口、多个 RSS 源、第三方文章正文抓取、SQLite 状态库、Markdown 文件落盘、主题分类、近似去重、全文检索、失败重试和 Chromium 资源自愈放在同一个 Python 应用中。
 
-它并不是可直接用于“1000 个技术博客全量历史归档”的通用框架，但非常适合作为运行时工程样本：它暴露了长期抓取系统中最容易被方案文档忽略的真实问题，包括轻量 HTTP 与 Browser 的成本差异、Browser 内存膨胀、不同来源的完整度差异、近似重复、失败重试、持续增量、全文索引和长期守护进程的自愈。
+它不是面向“1000 个技术博客全量历史归档”的通用框架，但很适合作为长期抓取系统的工程样本。代码把很多真实运行问题直接暴露出来：轻量 HTTP 与 Browser 的成本差异、同步 I/O 混入 asyncio、Browser 内存膨胀、Feed 摘要与全文的语义冲突、标题去重误判、重试调度失效、时间语义混用、索引重建成本、删除策略与知识库保留目标冲突、运行时 schema 演进以及单机 PID 锁在分布式环境中的对应问题。
 
-## 2. 实际数据流
+对博客知识库最有价值的不是复用该项目本身，而是把这些单机实现经验抽象成可横向扩展的控制面、状态机、Worker 和可观测模型。
 
-主流程可以抽象为：
+## 2. 实际架构与主数据流
 
-1. 周期抓取 Finviz 新闻页；
-2. 拉取 Bloomberg、CNBC、MarketWatch、Yahoo Finance、Investing、SeekingAlpha、TradingView 等 RSS；
-3. 新条目进入 SQLite `articles` 表；
-4. 等待正文的文章进入 `pending`；
-5. 通过 Crawl4AI/Playwright 抓第三方正文；
-6. 正文转 Markdown 并写本地文件；
-7. 更新 `done / pending / failed` 状态；
-8. 周期清理旧文章和失败项；
-9. 周期重建 FTS5；
-10. 监控 Chromium 子进程和 RSS 内存，并周期重建 Browser。
+README 和 `finviz_crawler.py` 的主循环可抽象为：
 
-v3.5 又增加 `curl_cffi` 作为轻量通道：对 Finviz 页面先走普通 HTTP/TLS 指纹模拟，失败再回退 Crawl4AI；第三方正文仍由 Crawl4AI 执行。
+```text
+Finviz 主新闻页 ------------------┐
+                                 ├-> headline discovery -> SQLite pending
+Finviz ticker 页（代码存在但禁用）-┘
+RSS feeds --------------------------> RSS summary -> Markdown + SQLite done
 
-从架构角度看，这是一个“Source Discovery -> Lightweight Fetch -> Heavy Browser Fetch -> Local State -> Markdown -> Search”的单机实现。
+SQLite pending
+  -> 按 domain 交错
+  -> Crawl4AI / Playwright 抓第三方正文
+  -> Markdown 文件
+  -> SQLite done / pending / failed
 
-## 3. 多抓取通道的技术原理
+周期任务：
+  -> 标题近似去重
+  -> FTS5 rebuild
+  -> 旧文章过期删除
+  -> failed 清理
+  -> Chromium watchdog / Browser 重启
+```
 
-### 3.1 HTTP 优先、Browser 按需升级
+v3.5 对 Finviz 主页面新增 `curl_cffi` 通道，并保留 Crawl4AI 作为 fallback；第三方正文仍由 Crawl4AI 执行。这个结构已经体现出一个非常重要的生产原则：**发现、轻量 Fetch、重型 Browser Fetch、状态、内容存储和索引是不同成本层级，不应由一个“万能爬虫调用”包办。**
 
-代码对 Finviz 主新闻页和 ticker 页面优先使用 `curl_cffi`，只有失败后才回退 Crawl4AI。第三方正文才默认走 Browser。
+## 3. 传输层：HTTP 优先、Browser 按需升级
 
-这一点对大型博客知识库非常重要：Browser 不应该是默认传输层。Browser 会引入 Chromium 进程、renderer、JS 执行、字体、图片、共享内存、文件描述符和更高的 CPU/RSS 成本。1000 个站点如果全部 Browser-first，会很快把吞吐量和稳定性拖垮。
+### 3.1 `curl_cffi` + Crawl4AI 双通道
 
-生产方案应该把抓取抽象成统一 Transport Strategy：
+`crawl_headlines()` 先通过 `run_in_executor()` 调用 `_fetch_finviz_headlines_sync()`，后者使用 `CurlSession(impersonate="chrome")` 请求 Finviz；没有拿到 headline 时再回退 Crawl4AI。Ticker 页面也实现了同样的双通道，只是主循环中因为 quote 页面仍遭遇 403 而被禁用。
 
-`Feed/Sitemap -> HTTP -> Browser -> Blocked/Manual`
+这一设计的正确抽象不是“模拟浏览器指纹”，而是：
 
-每次升级 Browser 都必须记录原因，例如：`js_required`、`empty_body`、`challenge_page`、`selector_miss`、`content_too_short`，以便后续优化站点 Profile。
+```text
+低成本 Transport -> 证据驱动升级 -> Browser -> blocked/manual
+```
 
-需要注意，项目使用 TLS 指纹模拟来尝试绕过 Cloudflare challenge。大型知识库系统不应把“绕过明确访问控制”设计成默认能力。正确的借鉴点是“多 transport adapter + fallback”，而不是反爬绕过本身。
+对于 1000 个技术博客，应默认 HTTP-first；只有 HTML 不完整、正文依赖 JS、平台 Profile 明确要求或者 selector 仅在 rendered DOM 命中时，才升级 Browser。
 
-### 3.2 RSS 是发现源，不等于完整正文
+生产系统还应记录升级原因，例如：
 
-项目把 RSS 当作低成本增量来源，这是正确方向。但 `insert_rss_article()` 会把 RSS summary 直接写成 Markdown，并标记为 `done`。
+- `js_required`
+- `empty_http_body`
+- `selector_miss_http`
+- `content_too_short`
+- `rendered_only_metadata`
 
-这里暴露出一个关键建模问题：流程状态不能代表内容完整度。`done` 只能说明“当前流程结束”，不能说明正文完整。
+这样可以统计某个平台的 Browser 升级率，并持续把可降级站点迁回轻量 Fetch。
 
-知识库应该显式保存：
+### 3.2 不应复制反爬绕过语义
 
-- `content_completeness = full | summary_only | metadata_only`
-- `discovered_via = feed | sitemap | archive | link | api`
-- `fetch_transport = http | browser | archive`
-- `quality_state = accepted | degraded | rejected`
+v3.5 的提交说明明确把 `curl_cffi` 用于 Cloudflare challenge 绕过。知识库方案不应把“绕过明确访问控制”设计为默认能力。可借鉴的是 Adapter/fallback 架构，而不是挑战绕过。
 
-否则 RSS 摘要会进入全文索引和 RAG，被误认为完整文章。
+所有 HTTP、Browser、Feed、Sitemap、Asset 请求都应统一经过 robots、访问政策、SSRF/Egress 校验和域级限流；出现验证码、登录、付费墙或明确拒绝时应进入 `blocked/manual_review`，而不是无限变换指纹。
 
-## 4. SQLite 状态库与其边界
+### 3.3 当前实现的连接池问题
 
-项目使用 SQLite WAL，并维护 `articles` 表。字段包含标题 hash、标题、URL、domain、source、发布时间、抓取时间、正文路径、状态、重试次数、ticker、topic、最后重试时间等。
+`_fetch_finviz_headlines_sync()` 和 `_fetch_ticker_headlines_sync()` 每次调用都会新建一个 `CurlSession`，没有形成长生命周期连接池。在单个站点、5 分钟周期下问题不大，但在 1000 站点场景会损失 keep-alive、TLS session reuse 和连接复用收益。
 
-WAL 对单机进程很合理：部署简单，读写并发比默认 journal 模式更好。但 1000 个站点、多 worker、数百万 URL 的 Durable Frontier 不适合继续使用单机 SQLite。
+生产 HTTP Worker 应维护受控的长生命周期 client pool，并配置：
 
-生产方案应改为：
+- per-host connection limit；
+- keep-alive；
+- DNS cache/TTL；
+- connect/read/write/total timeout；
+- response bytes 上限；
+- redirect 上限；
+- circuit breaker；
+- worker generation/recycle。
 
-- PostgreSQL：站点、URL frontier、任务、lease、版本、规则、文章身份、状态真相；
-- Redis Streams：短期任务分发和 backpressure，不做业务真相；
-- S3/MinIO：原始响应、rendered DOM、抽取结果、Markdown、附件；
-- SQLite：仅保留为本地调试、单站诊断或 CLI 缓存。
+Client 只能在 Worker 生命周期内复用，不能跨不可信租户共享 Cookie 或认证上下文。
 
-## 5. 去重实现与问题
+## 4. asyncio 主循环中的同步 I/O 问题
 
-项目有两层标题去重：
+项目主进程是 `asyncio` 驱动，但 `fetch_rss_articles()` 直接同步调用 `feedparser.parse(feed_url)`，并且所有 RSS feed 顺序执行。`feedparser.parse()` 对 URL 会执行网络 I/O，因此整个 event loop 可能被一个慢 RSS 源阻塞。
 
-1. 标题 lower-case 后计算 SHA-256 截断 hash；
-2. 对最近 48 小时标题做词集合 Jaccard，相似度 >= 0.75 判重复。
+这与 `curl_cffi` 调用被显式放入 `run_in_executor()` 形成鲜明对比。
 
-另有 `purge_duplicates()`，对最近 72 小时文章两两比较并删除后出现的重复项。
+对 1000 站点的生产方案，必须规定：
 
-它体现了正确的“两阶段去重”思路：先做廉价精确判断，再做近似判断。但实现不能直接扩展到博客知识库：
+1. 网络 I/O 只能通过 async HTTP client 或显式 thread adapter；
+2. CPU 较重的 DOM/正文抽取可以进入独立 Process Pool/Extract Worker；
+3. 任何第三方同步 SDK 都必须经过 `to_thread`/executor 或独立 Worker，不允许直接阻塞 event loop；
+4. 要监控 event-loop lag，并将其作为本地并发收缩信号。
 
-- 标题不是文章身份；
-- 同标题可能是不同文章；
-- 改标题不代表生成新文章；
-- 英文词集合对中文/日文效果差；
-- 两两比较是 O(n²)；
-- 直接删除重复行会损失 provenance。
+否则即使表面使用了 asyncio，系统仍会被少量同步调用退化为串行。
 
-知识库应该采用四层身份模型：
+## 5. SQLite 状态模型与可扩展边界
 
-1. URL 层：canonical URL、redirect、normalized URL；
-2. 内容层：正文规范化后的 `content_hash`；
-3. 近似层：SimHash/MinHash/LSH 建候选；
-4. 语义层：只做相似文章分组，不直接物理删除。
+### 5.1 当前 `articles` 表
 
-重复记录应该保存 `duplicate_group_id`、`duplicate_of`、来源 URL 和发现证据。
+主程序使用 SQLite WAL，`articles` 表包含：
 
-## 6. Browser 资源自愈
+- `title_hash`
+- `title`
+- `url`
+- `domain`
+- `source`
+- `publish_at`
+- `article_path`
+- `fetched_at`
+- `crawled_at`
+- `status`
+- `retry_count`
+- `ticker`
+- `topic`
+- `last_retry_at`
 
-项目会统计 Chromium 子进程数量和总 RSS，并周期性重建 Browser。README 说明 Browser 大约每 5 个采集周期重启，以缓解长期运行后的内存膨胀。
+WAL 对单机守护进程合理，部署成本低，也能支持查询工具并发读取。但它把 URL frontier、文章实体、抓取任务、抓取版本、索引状态和内容生命周期压进一张表，因此无法自然表达多 Worker lease、URL redirect/canonical、不可变 snapshot、多版本正文、抽取 replay 和分布式状态机。
 
-这个思路非常有价值：长生命周期 Browser 必须进行“代际回收”，不能假设对象关闭就一定释放所有 renderer、V8 heap、共享内存和子进程资源。
+博客知识库应拆分为：
 
-但当前实现仍然偏单机脚本：
+- PostgreSQL：业务状态真相源；
+- Redis Streams：短期任务分发；
+- S3/MinIO：不可变抓取对象；
+- 搜索/向量：可重建派生层。
 
-- `--single-process` 降低进程隔离；
-- `--no-sandbox` 不适合作为生产默认值；
-- 直接杀 Chromium 子进程可能影响在途任务；
-- 固定每 5 轮重启不如按资源压力决策；
-- 多 worker 时不能全局扫描并杀共享主机 Browser。
+### 5.2 运行时 ALTER TABLE 暴露 schema 管理问题
 
-生产方案应该给每个 Browser Worker 保存 generation 状态：
+`init_db()` 通过“先 SELECT 某列，失败再 ALTER TABLE”演进 schema。这在个人脚本中简单有效，但多副本部署会遇到：
 
-- `started_at`
-- `tasks_processed`
-- `active_pages`
-- `rss_bytes`
-- `failure_streak`
-- `generation_id`
+- 多实例并发迁移；
+- 半升级版本同时运行；
+- 迁移失败后状态不明确；
+- 无法审计 schema 版本；
+- 回滚困难。
 
-达到 `max_tasks / max_rss / max_uptime / max_pages` 任一阈值后进入 `draining`，停止接新任务，等待在途任务结束，再优雅重建 Browser。容器/cgroup 作为最后的硬资源边界。
+更明显的是 `finviz_query.py` 的 `get_conn()`：函数在第一次 `return conn` 后还有一段创建 `tickers` 表的代码，这段代码永远不可达。与此同时，`add_tickers()` 又直接假设 `tickers` 表存在。这意味着在某些新数据库上，Ticker 管理会直接报 `no such table: tickers`。
 
-## 7. 域级公平与限速
+这类问题说明生产系统必须使用显式数据库迁移工具，例如 Alembic，并且：
 
-项目把待抓文章按 domain 分组，再交错处理，并在每个页面后固定 sleep 3 秒。这体现了一个正确原则：跨域可以并行，域内应该克制。
+- 服务启动时只校验 schema version，不自行临时 ALTER；
+- migration 作为单独部署步骤执行；
+- migration 有唯一锁；
+- 应用声明可兼容的 schema 版本范围；
+- Web 管理端显示当前 schema/release 状态。
 
-但固定 sleep 不适合大规模系统。1000 个站点应升级为：
+## 6. RSS：发现成功不等于正文完整
 
-- 全局 worker 并发；
-- 每域 token bucket；
-- `max_concurrency`、`min_interval` 站点可配置；
-- 429/503/Retry-After 自动降速；
-- weighted fair scheduling；
-- HTTP 与 Browser 共享同一 domain quota。
+`insert_rss_article()` 把 RSS summary 写成 Markdown，然后直接把记录标记为 `done`。文件正文还主动写入：
 
-否则 HTTP Worker 与 Browser Worker 会分别限流，实际对源站造成双倍压力。
+`[RSS summary — full article behind paywall]`
 
-## 8. 重试状态机中的关键缺陷
+这是一个非常典型的状态建模陷阱：**流程状态和内容完整度被混为一谈。**
 
-项目定义：
+对知识库来说：
 
-`RETRY_INTERVALS = [0, 1h, 4h, 12h]`
+- `done` 只能表示某个阶段完成；
+- RSS summary 只能是 `summary_only`；
+- 全文成功才是 `full`；
+- 只有 metadata 时是 `metadata_only`。
 
-也保存了 `last_retry_at`。`mark_retry()` 会增加 `retry_count` 并记录最后失败时间。
+还必须保留：
 
-但是 `get_pending()` 中虽然计算了 retry delay，判断分支最后只是 `pass`，条目仍然被加入待执行列表。也就是说，代码层面的“指数退避”并没有真正阻止任务立即再次被取出。
+- `discovered_via=feed`
+- feed entry 原始 metadata；
+- summary 原文；
+- full-text fetch 是否执行；
+- quality state；
+- feed 发布时间候选及 provenance。
 
-这是对生产系统非常重要的警示：重试策略必须成为 durable scheduling condition，而不是日志层策略。
+搜索和 RAG 对 `summary_only` 应显式降权，而不是把它与完整正文等价。
 
-任务表应保存：
+## 7. 时间语义：`publish_at` 被观测时间污染
 
-- `attempt_count`
-- `last_error_class`
-- `last_attempt_at`
-- `next_attempt_at`
-- `lease_until`
+`insert_headline()` 和 `insert_rss_article()` 都使用 `now_seattle()` 写入 `publish_at`，即便 RSS entry 自身可能包含真实发布时间。Finviz headline 的页面时间字段也没有被解析成 canonical 发布时间。
 
-Scheduler 只领取 `next_attempt_at <= now()` 的任务。
-
-错误必须分类：
-
-- DNS/连接超时：指数退避；
-- 429：优先尊重 `Retry-After` 并降低域级速率；
-- 5xx：退避重试；
-- 404/410：进入删除确认/tombstone 流程；
-- robots deny：永久 blocked；
-- Browser crash：换 worker/generation；
-- extractor failure：优先 re-extract，不重新访问源站；
-- quality gate failure：进入规则诊断，不盲目重新抓取。
-
-## 9. 时间语义错误
-
-项目在插入 Finviz headline 和 RSS 时大量使用当前系统时间作为 `publish_at`。这会把“首次观察时间”混成“文章来源发布时间”。
-
-对博客知识库，这会直接破坏：
+这会破坏：
 
 - 历史排序；
-- 增量游标；
-- 文章更新检测；
+- 时间过滤；
+- 增量同步游标；
+- 文章更新时间判断；
 - 版本时间线；
-- 搜索时间过滤。
+- 过期策略。
 
-生产数据模型至少要分开：
+生产模型至少必须拆分：
 
 - `published_at`
 - `updated_at`
 - `first_seen_at`
 - `last_seen_at`
-- `fetched_at`
+- `requested_at`
+- `responded_at`
 - `captured_at`
 
-无法确认真实发布时间时应该为空，并保存时间候选及 provenance，而不是用抓取时间代替。
+若无法确认真实发布时间，`published_at` 应为空，并保留候选值及来源，而不是拿抓取时间替代。
 
-## 10. 标题规范化不能覆盖原文
+## 8. 标题规范化与文章身份
 
-项目插入时会把标题 lower-case 后存入主字段。这对匹配方便，但损失原始展示值。
+`insert_headline()` 和 `insert_rss_article()` 将标题 lower-case 后存入主 `title` 字段。这提高了匹配便利性，但丢失原始展示形式。
 
-正确设计应同时保存：
+生产系统应保存：
 
 - `title_raw`
 - `title_normalized`
 
-同理，作者、标签、时间、canonical URL 等字段都应该保留 raw candidate、normalized candidate 和最终 resolved 值。
+并把 normalization 当作版本化组件。作者、标签、canonical URL、发布时间等字段也应遵循 raw candidate -> normalized candidate -> resolved canonical 的三层模型。
 
-## 11. HTML 正则解析的脆弱性
+更重要的是，标题不能作为文章身份。项目对 title hash 做唯一约束，可能把不同 URL 上的同标题文章直接合并。
 
-Finviz headline 解析主要依赖正则匹配 HTML。对单一页面脚本可以快速工作，但模板稍微调整就可能全部失效。
+文章身份应由 URL/canonical、redirect、正文 hash、近似正文和人工关系共同判断。
 
-通用知识库应该优先：
+## 9. 去重：思路正确，但删除方式不可扩展
 
-1. JSON-LD / OpenGraph / meta；
+项目有两层标题去重：
+
+1. normalized title 的 SHA-256 截断 hash；
+2. 最近 48 小时标题词集合 Jaccard，相似度 >= 0.75 直接视为重复。
+
+另外 `purge_duplicates()` 对最近 72 小时文章做两两 Jaccard，复杂度 O(n²)，并直接删除后出现的记录。
+
+可借鉴的是“先廉价精确判断，再近似判断”的分层思路；不能继承的是：
+
+- 标题作为身份；
+- 英文 token 化用于多语言；
+- O(n²) 全比较；
+- 近似重复直接物理删除；
+- provenance 丢失。
+
+1000 站点应采用：
+
+1. URL/canonical/redirect identity；
+2. 正文规范化 `content_hash` 强重复；
+3. SimHash/MinHash + LSH 产生近似候选；
+4. 正文相似度确认 duplicate group；
+5. 语义向量只做“相似文章”分组，不自动删除。
+
+重复记录必须保留来源 URL 和 discovery evidence。
+
+## 10. 重试状态机存在实质性逻辑缺陷
+
+项目定义：
+
+```text
+RETRY_INTERVALS = [0, 1h, 4h, 12h]
+```
+
+`mark_retry()` 也会更新 `retry_count` 和 `last_retry_at`。
+
+但是 `get_pending()` 里虽然计算了 delay，判断“是否已经到达下次重试时间”的分支最终只有一个 `pass`，随后记录无条件加入 result。也就是说，代码注释写的是 exponential backoff，真实调度却仍可能在下一轮立即重试。
+
+这是非常重要的工程警示：**重试策略不能只是计算和日志，必须成为数据库可执行条件。**
+
+生产 `fetch_task` 至少需要：
+
+- `attempt_count`
+- `last_attempt_at`
+- `last_error_class`
+- `next_attempt_at`
+- `lease_owner`
+- `lease_until`
+- `cancel_requested_at`
+
+Scheduler 只能领取 `next_attempt_at <= now()` 的任务。
+
+同时应保存不可变 `fetch_attempt` 历史，每一次尝试记录 transport、worker、duration、status、error class、bytes、retry decision，避免只保留“最后一次失败”。
+
+## 11. Browser 资源自愈：项目中最有价值的运行经验之一
+
+项目专门监控 Playwright Chromium 子进程数量和 RSS，超过阈值时 terminate/kill，并且 Browser 每 5 个 cycle 强制重建。README 说明这是为了解决 Chromium 长期运行后的 renderer 泄漏和内存膨胀。
+
+这个经验非常值得保留：Browser 是有代际的重资源，而不是永久可复用的无状态 client。
+
+但当前实现的风险也很明显：
+
+- `--single-process` 降低了隔离能力；
+- `--no-sandbox` 不适合作为生产默认值；
+- watchdog 在 Browser session 内直接杀子进程，可能打断在途任务；
+- 固定 5 轮重启是经验阈值，不是资源自适应；
+- 多副本时按主机扫描/杀进程容易误伤其它 Worker。
+
+生产 Browser Worker 应维护 generation：
+
+- `generation_id`
+- `started_at`
+- `tasks_processed`
+- `pages_open`
+- `contexts_open`
+- `rss_bytes`
+- `failure_streak`
+
+达到 `max_tasks / max_rss / max_uptime / max_pages / crash_streak` 后进入 `draining`，停止接新任务，等待在途任务结束，再重建 Browser。容器/cgroup 是最后硬边界。
+
+## 12. 域级公平与限速
+
+`crawl_articles()` 先按 domain 分组，再 round-robin 交错，这个设计能避免同域任务连续占满批次。每个页面后又固定 sleep 3 秒。
+
+它体现了正确原则：跨域可以并行，域内要克制。但固定 sleep 不能扩展到 1000 站点，因为不同站点容量、响应时间、429 策略和 robots 要求不同。
+
+生产方案应采用：
+
+- 全局 worker 并发；
+- distributed token bucket；
+- per-domain `max_concurrency`；
+- `min_interval`；
+- 429/503/Retry-After 自适应降速；
+- weighted fair queue；
+- Full Backfill 低于日常增量的优先级；
+- HTTP、Browser、Feed、Sitemap、Asset 共享同一域预算。
+
+如果每类 Worker 各自限流，源站实际承受的请求量会被叠加。
+
+## 13. HTML 正则解析的维护风险
+
+Finviz 主新闻和 ticker 新闻主要使用正则匹配 HTML 结构。对单一页面和快速脚本，这种方式很快；但模板一旦增加 wrapper、调整 class、引入换行或改 DOM 层级，正则容易整体失效。
+
+通用知识库应优先：
+
+1. JSON-LD / OpenGraph / HTML meta；
 2. DOM selector；
-3. 平台 Profile；
-4. 通用正文抽取器；
-5. 文本正则只用于字段后处理。
+3. Platform Profile；
+4. 通用正文 extractor；
+5. 正则只做字段级后处理。
 
-所有 selector/contract 都必须版本化，并可在 Web 管理端查看命中率和模板漂移。
+还要对 selector hit rate、正文长度分布、metadata source 命中率做 drift detection，及时发现平台模板漂移。
 
-## 12. FTS5 与索引重建
+## 14. Markdown 文件模型与原子写入
 
-项目使用 SQLite FTS5，并周期执行 `rebuild`。对小型本地知识库方便，但数百万文章下频繁全量 rebuild 成本不可接受。
+`save_article()` 用标题生成文件名，按 ticker/market 分目录，并直接 `open(..., "w")` 覆盖写入。
 
-生产方案应把索引作为可重建派生层：
+它适合人工浏览，但存在三类问题：
 
-- 新 `article_version` 发布后发 Index Event；
-- Index Worker 对该版本 incremental upsert；
-- 需要重建时创建新 Search Generation；
-- 完成后原子切 alias；
-- 索引失败不能触发重新抓源站。
+1. 标题不是稳定 object identity；
+2. crash 时可能留下半写文件；
+3. 同标题/改标题会导致路径冲突或迁移。
 
-## 13. Markdown 文件模型
+生产对象 key 应使用稳定 ID，例如：
 
-项目按标题生成 Markdown 文件名，并按 ticker/market 分目录。这适合人工查看，但不适合作为 canonical object identity。
+```text
+articles/{site_id}/{article_id}/{version_id}/article.md
+```
 
-生产对象路径应绑定稳定 ID 和版本，例如：
+S3/MinIO 写入 immutable object；本地 Markdown Sink 如果需要文件系统导出，应采用：
 
-`articles/{site_id}/{article_id}/{version_id}/article.md`
+```text
+write temp -> fsync -> atomic rename
+```
 
-友好文件名只用于导出。Markdown Front Matter 是展示接口，不是数据库真相。
+并使用 manifest/desired-observed reconciliation 保证导出最终一致。
 
-## 14. 自动过期与知识库目标冲突
+## 15. 自动过期与知识库保留目标冲突
 
-Finviz 的默认场景是滚动金融新闻，所以会删除超过若干天的旧文章和失败记录。这对新闻窗口合理，但对“全量历史知识库”完全不适用。
+Finviz 是滚动新闻场景，因此 `expire_old_articles()` 会删除超过 N 天的数据库行和 Markdown 文件，`cleanup_failed_articles()` 也会删除旧失败记录。这对短窗口新闻应用合理，但对“全量历史知识库”完全不适用。
 
-博客知识库应：
+知识库应该：
 
 - 404/410：保留 tombstone 和最后成功版本；
+- 失败任务：保留 attempt/error 证据；
+- 原始抓取：可以迁冷存储，不删除 canonical lineage；
 - 用户删除：软删除 + 审计；
-- 原始大对象：生命周期转冷存储，而不是删除 canonical 版本；
-- 失败记录：可归档日志，但不能抹掉失败证据。
+- 站点禁用：停止后续同步，不自动删除历史文章。
 
-## 15. PID Lock 与优雅退出
+`finviz_query.py` 的 `remove_tickers()` 更进一步：删除 ticker 配置时，会同时删除该 ticker 的文章文件和数据库行。这个耦合对知识库尤其危险。**配置生命周期、订阅生命周期和内容生命周期必须分离。** 删除一个 Site/Tag/Profile/Subscription 的跟踪关系，不应隐式删除已经归档的 canonical 内容。
 
-项目使用 PID file 防止重复启动，并通过 SIGINT/SIGTERM 设置 `shutdown_event`，让循环可中断退出。
+## 16. FTS5：本地体验好，但全量 rebuild 不适合大规模
 
-生产多节点环境不能使用 PID file 作为分布式互斥，应使用数据库 lease/compare-and-set。取消操作也必须持久化，例如 `cancel_requested_at`，Worker 在阶段边界检查并 drain，而不是只依赖进程内 Event。
+项目创建 SQLite FTS5 virtual table，并周期执行：
 
-## 16. Topic Classification 的可复用原则
+```sql
+INSERT INTO articles_fts(articles_fts) VALUES('rebuild')
+```
 
-项目先用标题/摘要分类，抓到正文后再用正文重新分类。这体现“先廉价、后精化”的 enrichment 模式。
+对小型个人库简单可靠，但数百万文章下频繁全量 rebuild 代价高，也会产生可见的索引延迟。
 
-博客知识库应把分类、摘要、实体、embedding、代码摘要统一放入异步 Enrichment Plane。它们只消费已发布的 canonical `article_version`；失败不能阻塞正文发布，也不能覆盖 canonical 内容。
+生产索引应当是事件驱动派生层：
 
-## 17. 对最终方案应吸收的能力
+- 新 `article_version` 发布 -> Index Event；
+- Index Worker incremental upsert；
+- 索引失败只重试 index；
+- 全量重建创建新 Search Generation；
+- 校验完成后 alias 原子切换；
+- 旧 generation 延迟回收。
 
-1. Transport Strategy Chain：Feed/HTTP/Browser 分层。
-2. Browser Generation Recycling：按资源压力和任务数代际回收。
-3. Worker Resource Guard：RSS、page 数、event-loop lag、自适应降并发。
-4. Content Completeness：`full / summary_only / metadata_only`。
-5. URL/content/near-duplicate 多层去重，不以标题直接删除。
-6. Durable Retry：`next_attempt_at` 真正进入调度条件。
-7. Search Generation：索引 incremental upsert + generation rebuild。
-8. Graceful Drain：cancel、lease、任务重领。
-9. Site/Profile Policy：paywall、JS-heavy、feed、限速、Browser requirement 配置化。
-10. 时间语义拆分：发布时间与首次观察时间严格分离。
-11. 原始字段与规范化字段分离。
-12. RSS/Feed 只作为发现或降级内容来源，不冒充完整正文。
+搜索故障绝不能触发重新抓源站。
 
-## 18. 不应直接复用的设计
+## 17. 主题分类与派生知识
 
-1. 单进程 SQLite 作为全局任务中心；
-2. 固定周期轮询所有来源；
-3. 标题 hash 作为文章唯一身份；
-4. 标题 Jaccard 达阈值即自动删除；
-5. 高频 FTS 全量 rebuild；
-6. 7 天 TTL 删除 canonical 历史内容；
-7. `--single-process`、`--no-sandbox` 作为生产 Browser 默认；
-8. PID file 作为分布式锁；
-9. TLS 指纹模拟作为访问控制绕过方案；
-10. RSS summary 与完整正文共用 `done` 语义；
-11. 当前时间代替真实发布时间；
-12. 正则作为长期页面结构解析主方案。
+`topic_classifier.py` 采用预编译正则关键词规则，对标题和正文前 500 字符做多标签分类；正文抓到后又会再次分类。这是一个成本低、可解释、无需 LLM 的 enrichment 示例。
 
-## 19. 对博客知识库最终方案的具体优化结论
+但当前规则直接硬编码在 Python 文件中，缺少：
 
-最终方案应正式加入以下约束：
+- rule version；
+- confidence；
+- explain/matched evidence；
+- replay；
+- canary；
+- 多语言 tokenizer；
+- canonical/derived 边界。
 
-- Fetch Task 必须记录 transport、升级原因、domain quota；
-- Browser Worker 必须有 generation/draining 模型；
-- `article_version` 必须有 `content_completeness` 与 `quality_state`；
-- Task 必须有 `next_attempt_at`，Scheduler 不得忽略退避；
-- `published_at` 与 `first_seen_at` 必须分离；
-- duplicate 只创建关系和组，不默认物理删除；
-- Search/Vector/外部知识库都是可重建派生层；
-- RSS summary 只作为降级版本，不能覆盖完整正文；
-- 站点策略全部进入版本化 Profile，不硬编码到抓取器；
-- Browser/HTTP/Feed 必须统一经过 robots、Egress Policy 和域级限流。
+博客知识库可以借鉴“确定性规则先于 LLM”的原则，但 enrichment 必须是可重建派生层：
 
-## 20. 结论
+- `enrichment_release_id`
+- `model/rule version`
+- `input_projection_version`
+- `result + confidence + evidence`
 
-`finviz-crawler` 的价值不是其金融新闻逻辑，而是它非常集中地展示了持续抓取系统的运行时现实：轻重抓取通道、Browser 泄漏、自愈、近似重复、重试、索引、优雅退出、内容完整度和时间语义。
+主题分类失败不能阻塞 canonical Markdown 发布，也不能无痕修改原始正文。
 
-对于 1000 个技术博客，应吸收这些工程思想，但把它们从单机脚本升级为可配置、可版本化、可观测、可横向扩展的控制面和 Worker 平面，并让 PostgreSQL + S3/MinIO 中的 canonical 状态始终独立于具体抓取工具、Browser、搜索后端和外部知识库。
+## 18. 查询工具暴露的数据一致性问题
 
-## 21. 参考源码
+`finviz_query.py` 从 SQLite 读 metadata，再按 `article_path` 去文件系统取正文。这种“双真相源”在单机上勉强可控，但代码已经需要额外检查“DB 有记录但文件是否存在”。
 
-- 项目主页：https://github.com/Ezio0/finviz-crawler
-- README：https://github.com/Ezio0/finviz-crawler/blob/main/README.md
-- 主采集脚本：https://github.com/Ezio0/finviz-crawler/blob/main/scripts/finviz_crawler.py
-- 查询工具：https://github.com/Ezio0/finviz-crawler/blob/main/scripts/finviz_query.py
-- 主题分类器：https://github.com/Ezio0/finviz-crawler/blob/main/scripts/topic_classifier.py
+大规模系统中：
+
+- PG 保存 object key 和状态；
+- S3/MinIO 是大对象真相源；
+- `article_version` 只有在对象持久化成功后才能发布；
+- 对象与状态跨系统写入通过 staged write + outbox/reconciliation 保证最终一致；
+- Web 预览通过 version/object key 获取，不通过标题路径猜文件。
+
+## 19. 指标语义：尝试、接受、插入不能混为一个数字
+
+主循环中对 Finviz headline 的统计逻辑是：只要 `title_exists()` 为 false，就调用 `insert_headline()` 并立即 `new_count += 1`。但 `insert_headline()` 内部还可能因为 Jaccard 近似重复而直接 return，实际上没有插入数据库。
+
+因此日志里的 `new_count` 可能高于真实新增数。
+
+这个细节对生产系统非常重要：指标必须基于权威状态变化，而不是“调用了某函数”。应明确区分：
+
+- discovered
+- admitted
+- duplicate_rejected
+- inserted
+- fetch_succeeded
+- extraction_passed
+- version_published
+- indexed
+
+数据库写操作应返回明确 outcome，业务指标由 outcome 或事件流产生，避免尝试数被误认为成功数。
+
+## 20. PID Lock、优雅退出与分布式对应关系
+
+项目用 PID file 防止重复启动，并通过 SIGINT/SIGTERM 设置 `shutdown_event`。对单机守护进程，这是必要保护。
+
+扩展到 Kubernetes 后，PID file 不再能解决“多个 Scheduler/全局周期任务重复执行”的问题。对应方案应是：
+
+- PostgreSQL advisory lock / leader lease；
+- 或所有周期任务都转成数据库可竞争领取的 durable job；
+- `SELECT ... FOR UPDATE SKIP LOCKED` / task lease 防重复领取；
+- leader 只负责产生任务，不直接持有任务业务状态；
+- leader 崩溃后 lease 到期自动接管。
+
+这样多个副本可以 HA，而不是依赖单副本部署。
+
+## 21. 当前项目暴露出的关键代码级缺陷
+
+### 21.1 Retry backoff 未真正生效
+
+`get_pending()` 计算 delay 后只有 `pass`，没有过滤未到期任务。
+
+### 21.2 `finviz_query.get_conn()` 有不可达 schema 初始化代码
+
+第一次 `return conn` 之后的 `CREATE TABLE tickers` 永远不会执行，Ticker 管理依赖隐式旧 schema。
+
+### 21.3 同步 RSS 网络调用阻塞 asyncio
+
+`feedparser.parse(URL)` 在 async 主循环中顺序执行，容易阻塞所有其它协程。
+
+### 21.4 新增统计可能虚高
+
+调用者在 `insert_headline()` 因近似重复跳过后仍可能把 `new_count` 加一。
+
+### 21.5 删除配置会联动删除内容
+
+`remove_tickers()` 删除 ticker 的同时清理文章和文件，内容生命周期与配置生命周期耦合。
+
+### 21.6 `CurlSession` 每请求新建
+
+缺少稳定连接池和连接生命周期管理。
+
+### 21.7 近似去重直接物理删除
+
+`purge_duplicates()` 删除后出现的记录，无法保留 provenance。
+
+这些问题不是在否定该项目；恰恰说明它作为“运行中真实脚本”比理想化 demo 更有调研价值。
+
+## 22. 对博客知识库技术方案的直接优化结论
+
+基于本项目，现有博客知识库方案应明确补充以下能力：
+
+1. **持久化 `fetch_attempt` 历史**，把 retry decision、transport、duration、error class、bytes、worker generation 全部记录下来。
+2. **阻塞 I/O 隔离规范**：所有网络 I/O async 化；同步 SDK 只能通过 thread adapter；CPU 重抽取进入独立 Worker。
+3. **长生命周期 HTTP client pool**：keep-alive、per-host pool、timeout、bytes budget、circuit breaker。
+4. **Scheduler HA/Leader Lease**：用 PG advisory lock/lease 替代单机 PID lock语义。
+5. **显式 schema migration**：Alembic + schema version + migration lock，禁止业务代码临时 ALTER。
+6. **配置生命周期与内容生命周期分离**：禁用站点/删除订阅/删除标签不隐式删除历史文章。
+7. **原子文件/对象发布**：本地 Sink 使用 temp+fsync+rename，对象存储使用 immutable key + manifest reconciliation。
+8. **可信指标语义**：数据库 outcome 驱动 discovered/admitted/inserted/published 等指标，不能用调用次数代替成功状态。
+9. **Enrichment 独立版本化**：关键词规则、Embedding、LLM 分类都属于可重建派生层，失败不阻塞 canonical Markdown。
+10. **请求 provenance 完整化**：snapshot 保存 fetcher/request profile release、实际 request headers hash、redirect chain、transport escalation reason。
+
+## 23. 总结
+
+`finviz-crawler` 的价值主要在运行时工程经验，而不是通用爬虫能力。它证明了几个对 1000 站点知识库非常关键的事实：
+
+- HTTP 与 Browser 必须分层；
+- Browser 必须代际回收；
+- Feed 是发现和摘要来源，不代表全文；
+- retry 必须由 durable `next_attempt_at` 驱动；
+- 标题不能作为文章身份；
+- 近似重复不能直接物理删除；
+- `published_at` 不能用观测时间代替；
+- 索引和 enrichment 应是可重建派生层；
+- 同步 I/O 会让 asyncio 名存实亡；
+- schema、指标、配置删除和文件写入这些“非爬虫核心”问题，最终往往决定长期系统是否可靠。
+
+因此，对博客知识库方案最合理的吸收方式，是保留其“分层 Fetch、资源自愈、域公平、低成本规则分类”的工程思想，同时用 PostgreSQL durable state、不可变对象存储、版本化规则、显式迁移、HA 调度和严格生命周期模型替换单机脚本式实现。
