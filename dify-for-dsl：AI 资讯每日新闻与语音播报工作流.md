@@ -3,58 +3,59 @@
 - 项目地址：https://github.com/wwwzhouhui/dify-for-dsl
 - 重点文件：`dsl/crawl4ai/aibase_craw4fastapi.py`
 - 工作流：`dsl/AI资讯每日新闻+语音播报工作流.yml`
-- Crawl4AI 依赖：`crawl4ai==0.4.247`
-- 调研目标：分析其“列表发现 → Crawl4AI 结构化抽取 → FastAPI 暴露 → Dify 编排 → LLM 摘要 → TTS 交付”链路，并提炼适用于 1000 个技术博客长期同步平台的设计原则。
+- 依赖文件：`dsl/crawl4ai/requirements.txt`
+- 调研目标：分析“列表发现 → Crawl4AI 抽取 → FastAPI → Dify → LLM → TTS → 音频交付”的实现细节、边界与生产化问题，并提炼适用于 1000 个技术博客长期知识库的方案优化。
 
-## 1. 项目实现链路
+## 1. 项目整体链路
 
-该项目把采集能力拆成一个很小的 FastAPI 服务，再由 Dify 工作流编排 AI 与语音能力，主要链路如下：
+项目把“网页采集”做成一个小型 FastAPI 服务，再让 Dify 负责摘要、文本拼装、TTS 和最终回复：
 
 ```text
 用户选择新闻数量
   -> Dify Code 节点请求 http://127.0.0.1:8086/news/?limit=N
-  -> FastAPI get_news()
+  -> FastAPI /news/
   -> requests.get("https://www.aibase.com/zh/news")
-  -> BeautifulSoup 扫描 a[href]
+  -> BeautifulSoup 遍历 a[href]
   -> 过滤 /zh/news/ 详情链接
-  -> 逐 URL 创建 AsyncWebCrawler
-  -> JsonCssExtractionStrategy 按 CSS Schema 抽 title/date/content
-  -> 拼成 news[] + newsdetail
-  -> Dify LLM 对 news[] 总结
-  -> Template 合并“摘要 + 详细正文”
+  -> 对每个 URL 创建 AsyncWebCrawler
+  -> JsonCssExtractionStrategy 提取 title/publication_date/content
+  -> 返回 news[] + newsdetail
+  -> Dify LLM 汇总 news[]
+  -> Template 拼接“LLM 摘要 + newsdetail 全文”
   -> TTS 工具生成音频
-  -> Code 节点把音频地址包装成 HTML <audio>
-  -> Dify 直接回复文本和音频
+  -> Code 节点拼接 <audio> HTML
+  -> Answer 返回文本和音频
 ```
 
-这个设计很适合演示“爬虫服务作为 AI 工作流工具”，因为职责边界直观：采集端只负责取内容，Dify 负责摘要和交付。但其实现规模是单站点、少量新闻、即时调用，不能直接扩展为 1000 站点历史知识库。
+它非常适合证明“爬虫服务可以作为 AI 工作流的一个能力节点”，但其运行模型是单站点、少量最新内容、一次请求内同步完成，不适合作为 1000 站点历史知识库的核心架构。
 
-## 2. 列表发现实现与原理
+## 2. Discovery：当前页 DOM 链接扫描
 
-`get_news_urls()` 使用同步 `requests.get()` 拉取 `https://www.aibase.com/zh/news`，随后用 BeautifulSoup 遍历所有 `<a href>`，通过路径包含 `/zh/news/` 判断详情页。
+`get_news_urls()` 直接请求 AIbase 新闻列表页，用 BeautifulSoup 遍历所有 `<a href>`，通过路径中是否包含 `/zh/news/` 判断详情链接。
 
-### 2.1 优点
+### 可借鉴点
 
-- 逻辑简单，目标站点结构固定时成本很低。
-- Discovery 与 Article Extraction 是两个阶段，至少没有直接把列表页文本当成文章正文。
-- 基于 DOM 链接发现，比“先转 Markdown 再用正则找 URL”更可靠。
+- Discovery 和正文 Extraction 已经有基本分层。
+- URL 是从 DOM 链接产生，而不是先转 Markdown 再正则找链接。
+- 对结构稳定、规模很小的单站点，规则简单且成本低。
 
-### 2.2 不足
+### 生产问题
 
-1. **没有 URL 去重。**同一链接可能因导航、推荐区等重复出现。
-2. **没有 URL normalize/canonical。**tracking 参数、相对路径、尾斜线、canonical 迁移都没有处理。
-3. **只扫描当前列表页。**没有 Sitemap、RSS、分页、Archive、Category、API 等历史枚举能力，因此无法证明全量历史完整性。
-4. **没有 Evidence。**无法回答某 URL 来自哪个 Provider、哪个列表页、何时发现、历史枚举是否结束。
-5. **没有增量 checkpoint。**每次调用都会重新扫列表页面。
-6. **同步 `requests` 没有显式 timeout。**在 FastAPI 请求链路中遇到慢站点会放大请求占用。
+1. 没有 URL 去重，同一链接在推荐区、导航区出现多次时可能重复抓取。
+2. 没有 normalize/canonical，无法处理 tracking 参数、尾斜线、协议和 canonical 迁移。
+3. 只扫当前列表页，没有 Sitemap、Feed、API、Archive、分页、Category/Tag/Author 等历史枚举能力。
+4. 没有 Discovery Evidence，无法回答 URL 来自哪个 Provider、哪个 referrer、何时发现。
+5. 没有 Provider checkpoint 或 reconcile，每次调用都从当前页重新开始。
+6. 没有“每日新增”业务水位，连续运行可能反复取到同样的前 N 条新闻。
+7. 列表请求没有显式 timeout、retry、backoff、响应大小限制。
 
-### 2.3 对知识库方案的启示
+### 对知识库的结论
 
-列表发现必须抽象为版本化 Discovery Provider，而不是写死在一个函数里。每个 Provider 输出 URL Candidate + Evidence；Sitemap、Feed、API、Archive、DOM Link 都是不同 Provider。历史完整性使用 Coverage Evidence 表示，不能用“列表扫完”“当前页没有新链接”作为完成证明。
+Discovery 必须抽象为版本化 Provider。Provider 只产出 URL Candidate + Evidence；完整性由 Coverage Evidence 证明，不能用“列表当前页扫完”或“前 N 条已经拿到”代替历史完整性。
 
-## 3. CSS 结构化抽取实现与原理
+## 3. CSS 结构化抽取与 Selector Drift
 
-项目使用 `JsonCssExtractionStrategy`，Schema 大致为：
+项目的 `JsonCssExtractionStrategy` Schema 核心类似：
 
 ```text
 baseSelector: div.pb-32
@@ -64,225 +65,75 @@ fields:
   content -> div.post-content
 ```
 
-Crawl4AI 负责浏览/获取页面，然后按 CSS Schema 输出结构化 JSON。
+这种方式对已知站点很有价值：便宜、快、确定性强，比每页用 LLM 做结构化抽取更适合作为主路径。
 
-### 3.1 价值
+但 `span:nth-child(6)` 和样式类 `pb-32` 都高度依赖当前 DOM，站点稍微改版就可能错位。现有代码只检查 `result.success`，随后直接取 `extracted_data[0]['title']`，没有区分：
 
-- 对已知站点，CSS/XPath 结构化抽取通常比 LLM 抽取便宜、快、确定性高。
-- `title / publication_date / content` 显式分字段，优于只生成一个模糊的 `content` 字符串。
-- Schema 可以自然演进为站点配置。
+- 网络/浏览器成功；
+- Schema 是否匹配；
+- title/date/content 是否完整；
+- 正文是否是挑战页、导航、空内容；
+- 日期是否抽到了错误字段。
 
-### 3.2 主要风险
+因此生产系统必须把 Transport Outcome、Extraction Outcome、Quality Outcome 分离。CSS/XPath Schema 应属于 `site_profile_release/extractor_release`，并由 Golden URL、selector miss 指标、Snapshot Replay、shadow test、Drift 检测和回滚保护。
 
-`span:nth-child(6)` 这类位置选择器非常脆弱；只要站点增加一个标签、作者项或 UI 元素，发布日期就会错位。`div.pb-32` 这类样式类名也可能随着前端重构变化。
+## 4. Crawl4AI 生命周期与吞吐
 
-项目当前只检查 `result.success`，随后直接访问 `extracted_data[0]['title']`。因此存在以下情况：
-
-- HTTP/Browser 成功，但抽取为空；
-- title 存在，content 是导航或模板；
-- publication_date 抽错但整体仍被视为成功；
-- selector miss 导致数组为空并抛异常；
-- 页面返回挑战页/登录页但 crawler transport 成功。
-
-### 3.3 对知识库方案的启示
-
-需要把“网络成功”“抽取成功”“内容通过质量门禁”分成不同 Outcome。CSS Schema 应进入 `site_profile_release / extractor_release`，并配套：
-
-- Golden URL；
-- selector miss 指标；
-- metadata provenance；
-- JSON-LD/OpenGraph/Readability/Trafilatura fallback；
-- Snapshot replay；
-- 新规则 shadow 对比；
-- Drift 检测与回滚。
-
-这样站点改版时只发布新的配置/Extractor Release，不改核心爬虫代码，也不必重新联网回抓全部历史页面。
-
-## 4. Crawl4AI 生命周期与并发问题
-
-项目在 `extract_ai_news_article(url)` 内部使用：
+`extract_ai_news_article()` 每处理一篇文章都会：
 
 ```text
 async with AsyncWebCrawler(...) as crawler:
     await crawler.arun(...)
 ```
 
-而 `fetch_news()` 对 URL 使用普通 `for` 循环逐个 `await`。
+`fetch_news()` 又使用普通 `for` 循环逐篇 `await`。因此当前实现同时存在：
 
-这意味着每篇文章都创建/销毁一次 crawler 生命周期，并且文章之间串行处理。对于只取 2~5 条新闻尚可，但扩展到大量文章会出现：
+- 每篇重新创建/销毁 crawler 生命周期；
+- 浏览器/连接池不能充分复用；
+- N 篇文章串行执行；
+- 某一篇慢请求拖住整批；
+- 单次 HTTP 请求耗时近似随 N 线性增长；
+- 无 durable task、lease、heartbeat、断点续跑。
 
-- 浏览器/会话初始化开销被重复支付；
-- 连接池无法充分复用；
-- 单次请求耗时与文章数近似线性增长；
-- Dify 上游 HTTP 请求长时间占用；
-- 某一篇卡死会拖住整个调用；
-- 无 durable task，进程重启后无法从中断位置恢复。
+生产系统应改成长期 Browser/HTTP Runtime Pool + 持久 Task。Worker 内可以有界并发，但进程内 semaphore 只能做本机资源保护，不能替代任务持久化与全局调度。
 
-### 4.1 正确的规模化方式
+Browser Context、HTTP Session、Model Runtime 等长生命周期资源必须有 hard cap、idle eviction、in-flight protection、最大寿命/页面数和最终释放机制。
 
-生产系统应该维护长生命周期 Browser/HTTP Runtime Pool，并把抓取工作物化为持久 Task：
+## 5. Async FastAPI 中使用阻塞 I/O
 
-```text
-Run
-  -> URL Task 1 -> lease -> Worker
-  -> URL Task 2 -> lease -> Worker
-  -> ...
-```
+FastAPI 路由是 `async def`，但列表页调用使用同步 `requests.get()`。这会直接阻塞 Event Loop。Dify Code 节点内部同样使用阻塞 `requests.get()`。
 
-Worker 内部再使用有界 semaphore 控制本机并发。进程内并发只是资源保护，不能取代持久调度。
+即使把这些调用替换为 `httpx.AsyncClient`，一次 Web 请求中同步等待“列表抓取 → N 篇 Browser → LLM → TTS”仍然不适合作为生产接口，因为它把最慢、最不稳定的外部依赖全部串在用户请求生命周期里。
 
-Browser Context/HTTP Session 必须有：
-
-- 全局和 per-site hard cap；
-- idle eviction；
-- in-flight protection；
-- 最大寿命/页面数；
-- finally 回收；
-- pool utilization/eviction/leak 指标。
-
-## 5. `bypass_cache=True` 的语义问题
-
-示例明确设置 `bypass_cache=True`，意图是“确保新闻是最新的”。对于实时 Demo 合理，但长期知识库不能把“绕过缓存”当 freshness 策略。
-
-真正的增量同步应该先判断变化信号：
+生产接口应采用 Job 语义：
 
 ```text
-Feed/Sitemap/API updated
-  -> ETag / Last-Modified
-  -> body hash
-  -> Canonical IR hash
+POST /v1/runs                -> 202 + run_id
+POST /v1/derived-jobs        -> 202 + job_id
+GET  /v1/jobs/{id}           -> 状态/进度/result_ref
+GET  /v1/artifacts/{id}      -> Artifact 元数据与访问引用
 ```
 
-只有变化或未知时才抓正文。即使网络表示发生变化，只要 Canonical IR hash 不变，也不应创建新 Document Version，更不应重复 Embedding、摘要或 TTS。
+Dify、n8n、Agent 和 Web 都只创建任务、查结果或订阅 webhook，不直接占用请求线程等待 Browser/LLM/TTS 完成。
 
-因此 freshness 与 cache 是两个概念：缓存只是性能优化；Freshness Observation 是业务事实。
+## 6. `bypass_cache=True` 不等于增量同步
 
-## 6. FastAPI 边界存在的典型问题
+示例用 `bypass_cache=True` 表达“确保最新”。这只控制 Crawl4AI 自身缓存行为，并不能回答业务层的 freshness。
 
-项目的 `/news/` 是同步语义接口：请求进入后，服务立即完成列表抓取、N 篇文章抓取和结构化抽取，再返回结果。
-
-同时列表页使用同步 `requests.get()`，处在 async FastAPI 调用链中。这会带来 Event Loop 阻塞风险。更重要的是，无论底层改成异步 HTTP 还是 Browser，这类长 I/O 都不适合由 Web 请求线程直接等待。
-
-### 6.1 生产接口应改为 Job 语义
-
-推荐：
+长期同步应先使用低成本变化信号：
 
 ```text
-POST /runs or /derived-jobs
-  -> 202 Accepted + job_id
-
-GET /jobs/{job_id}
-  -> status/progress/result_ref
-
-GET /artifacts/{artifact_id}
-  -> 已完成的 Markdown/摘要/Digest/TTS 等结果
+Feed GUID/updated
+Sitemap lastmod
+API cursor
+ETag / Last-Modified
+body hash
+Canonical IR hash
 ```
 
-Dify、n8n、Agent、Web 管理端都应该调用控制面创建任务，随后轮询状态、订阅 webhook，或查询已完成的 Projection，而不是让它们直接驱动 crawler 在一次 HTTP 请求中抓站点。
+变化或未知才抓正文。网络表示变化但 Canonical IR hash 不变时，只写 Freshness Observation，不创建新 Document Version，也不重新 Embedding、摘要或 TTS。
 
-这也是把“知识库同步平台”和“AI 消费工作流”解耦的关键。
-
-## 7. Dify 工作流编排的实现细节
-
-工作流包含几个关键节点：
-
-1. Start：用户选择新闻数量。
-2. Code：使用 `requests.get('http://127.0.0.1:8086/news/')` 调采集服务。
-3. LLM：将 `news` 列表整体交给模型总结。
-4. Template：把 LLM 摘要与 `newsdetail` 全文重新拼接。
-5. TTS Tool：把拼接文本交给语音模型。
-6. Code：解析 TTS 返回 JSON，拼出 `<audio>` HTML。
-7. Answer：同时返回文字和音频。
-
-这个工作流体现了一个值得保留的思想：**采集、AI 变换、交付是三个层次，AI/语音可以在工作流层组合，而不是塞进爬虫核心。**
-
-但实现中也暴露出生产化问题。
-
-## 8. LLM 输入与 Digest 生成问题
-
-当前 Dify 节点把 `news[]` 直接送给一个 LLM。当文章数量和长度增加时，会出现：
-
-- 超过上下文窗口；
-- 发生不可见截断；
-- 输入成本随原文总长度增长；
-- 某篇超长文章挤占其他文章；
-- 无法复用单篇摘要；
-- 失败后只能整批重跑；
-- 无法追溯摘要的某一部分来自哪个 Document Version。
-
-### 8.1 适用于知识库的 Map/Reduce
-
-应该改成：
-
-```text
-Accepted Document Version x N
-  -> 每篇建立 AI Input Projection
-  -> block-aware chunk
-  -> 单篇 Map Summary
-  -> 单篇 Reduce Summary
-  -> Digest Selector/Ranker
-  -> 多篇 Digest Reduce
-  -> Final Digest Artifact
-```
-
-每个中间 Artifact 保存：
-
-- 输入 document_version_id；
-- block range；
-- recipe release；
-- model release；
-- runtime attestation；
-- input/output hash；
-- token、截断、延迟、成本。
-
-这样新增一篇文章只计算新增部分，历史单篇摘要可以复用。
-
-## 9. TTS 设计问题
-
-示例把“LLM 摘要 + 新闻详细正文”整体送 TTS，并在注释中指出 2 条新闻生成语音大约需要 5 分钟。这说明 TTS 已经是明显的高成本、长耗时派生任务。
-
-对知识库平台，TTS 应作为 `Derived Artifact / Delivery`，不能属于 Source Sync 成功条件。
-
-推荐：
-
-```text
-Digest Artifact
-  -> TTS Recipe
-  -> Audio Artifact
-  -> Object Storage
-  -> Delivery Projection
-```
-
-默认只对摘要/Digest 做 TTS，而不是把所有原文全文转语音。配置必须显式限制：
-
-- 最大输入字符/token；
-- 最大目标音频时长；
-- 单任务 deadline；
-- 模型/音色 release；
-- 并发/GPU 配额；
-- 失败重试；
-- 成本预算。
-
-TTS 失败只标记派生任务失败，不影响 Markdown、搜索索引或原文版本。
-
-## 10. 工作流中的服务发现与安全问题
-
-Dify Code 节点写死 `http://127.0.0.1:8086/news/`，这是单机部署假设。容器化后，`127.0.0.1` 指向 Dify 自己的容器而不一定是 crawler 服务。
-
-生产系统应使用：
-
-- 服务发现或配置化 Endpoint；
-- mTLS/API Token；
-- Secret Manager；
-- connect/read/total timeout；
-- response byte limit；
-- retry budget；
-- circuit breaker；
-- request id / trace id。
-
-此外，不能让 Dify 工作流把任意 URL 直接传给内部 crawler 绕过 SSRF Admission。所有 Targeted Fetch 必须进入标准 URL Admission、安全 DNS/egress、robots/compliance、Snapshot、Quality 和 Audit 主链路。
-
-## 11. 返回 Contract 的问题
+## 7. Dify 工作流的输入 Contract 漂移
 
 FastAPI 返回：
 
@@ -293,9 +144,9 @@ FastAPI 返回：
 }
 ```
 
-其中 `newsdetail` 是把多个原文拼成一个无结构字符串。随后 Dify 又需要对可能是 dict/string 的 `news` 做兼容解析，说明 Contract 边界已经开始漂移。
+Dify Code 节点又兼容 `news` 元素可能是 dict，也可能是 JSON 字符串。这说明跨服务 Contract 并不稳定。`newsdetail` 进一步把多篇文章全文拼成一个无结构大字符串。
 
-长期系统不能在不同 Stage 反复使用模糊 `content/newsdetail/text` 字段。推荐固定 representation：
+长期系统不应该让 `content/newsdetail/text` 在多个阶段复用不同含义。建议固定表示：
 
 ```text
 DOCUMENT_VERSION_REF
@@ -306,137 +157,176 @@ AUDIO_ARTIFACT_REF
 DELIVERY_PAYLOAD_REF
 ```
 
-大型正文不要在服务之间反复复制 JSON；传 object key/artifact id，由下游按权限读取。
+大型正文跨服务传 Artifact ID/Object Key，而不是反复复制整块 JSON。
 
-## 12. 由该项目提炼出的架构优化
+## 8. LLM 摘要：整批全文输入的问题
 
-### 12.1 增加 Workflow / Delivery Integration Plane
+工作流直接把 `news[]` 整体交给一个 LLM，模型与参数写在 DSL 中，摘要 temperature 为 0.7。小规模演示可以工作，但扩大后会遇到：
 
-现有知识库系统除了 Source Sync、Search、AI 外，还需要一个明确的消费集成层，面向 Dify、n8n、Agent、Webhook、Newsletter、TTS 等外部工作流。
+- 多篇全文总 token 超限；
+- 不可见截断；
+- 超长单篇挤掉其他文章；
+- 摘要波动较大，难以做稳定 diff/cache；
+- 失败只能整批重跑；
+- 单篇摘要无法复用；
+- 输出没有稳定的 `document_version_id` 和 block citation；
+- Prompt、模型、温度和输出 Schema 没有作为不可变 Recipe 单独治理。
 
-其职责：
-
-- 创建 Derived Job；
-- 按时间/source/tag/query 选择 Accepted Version；
-- 调用版本化 AI/TTS Recipe；
-- 生成 Derived Artifact；
-- 通过 webhook/API/feed/object link 交付；
-- 维护重试、幂等、状态与审计。
-
-外部工作流不拥有抓取真相，也不直接修改 Canonical Document。
-
-### 12.2 增加 Delivery Job 数据模型
-
-建议：
+生产方案应采用单篇 Map/Reduce + 多篇 Digest Reduce：
 
 ```text
-delivery_job
-- id
-- trigger_type
-- scope_json
-- input_version_set_hash
-- recipe_release_id
-- destination_adapter_release_id
-- idempotency_key
-- status
-- attempt
-- next_retry_at
-- output_artifact_id
-- error_class
-- created_at/finished_at
+Document Version x N
+  -> AI Input Projection
+  -> block-aware Chunk Plan
+  -> 单篇 Map Summary
+  -> 单篇 Reduce Summary
+  -> Selection/Ranking
+  -> Digest Reduce
+  -> Digest Artifact
 ```
 
-### 12.3 增加 Derived Artifact 的可复用性
+摘要类 Recipe 应保存 prompt、temperature、输出 JSON Schema、语言、模型 Release、token budget、截断策略。面向知识库的摘要建议使用稳定、低随机度配置，并让每个 Digest Item 带 `document_version_id`、title、canonical、published_at 和可追溯 block refs。
+
+## 9. “每日新闻”需要 Selection Manifest，而不是 `limit=N`
+
+该 DSL 实际由用户手动选择新闻数量，默认选项只有 `2`。这并不构成可重放的“每日”语义：今天什么时候执行、覆盖哪个时区、跨午夜怎么办、失败重跑是否会多选或少选，都没有定义。
+
+长期系统应增加不可变 Selection Manifest/Digest Batch：
 
 ```text
-derived_artifact
+selection_manifest
 - id
-- type                    # SUMMARY/DIGEST/FAQ/TTS/NEWSLETTER/REPORT
-- input_version_ids
-- input_projection_hash
-- parent_artifact_ids
-- recipe_release_id
-- model_release_id
-- runtime_attestation_id
-- object_key
-- content_hash
-- status
-- token/cost/latency
+- trigger_type              # SCHEDULED/EVENT/MANUAL/WEBHOOK
+- timezone
+- window_start/window_end
+- as_of
+- selection_policy_release_id
+- query/filter/scope
+- ordered_document_version_ids
+- ranking/dedup_evidence
+- manifest_hash
 - created_at
 ```
 
-相同 `input version set + recipe + model/runtime` 可直接复用结果，避免 Dify 每次请求都重做摘要和语音。
+先冻结“这次 Digest 到底选了哪些 Accepted Version”，再运行 LLM/TTS。失败重试始终复用同一 manifest，避免查询结果随时间变化导致同一个“日报”内容漂移。
 
-### 12.4 增加 Recipe Studio / Delivery 页面
+## 10. TTS：不应把“摘要 + 多篇全文”整体转语音
 
-Web 管理端应允许：
+DSL 先把 LLM 摘要和 `newsdetail` 全文重新拼接，再送给 TTS；工作流注释还指出两条新闻语音生成大约需要 5 分钟。这直接说明 TTS 已经是高成本、长耗时任务。
 
-- 配置 Digest 选文规则；
-- 配置摘要/合并/TTS Recipe；
-- 预览本次将使用哪些 Document Version；
-- 查看 token、截断、成本与预计音频长度；
-- 测试 webhook；
-- 查看 Delivery Job 重试；
-- 对比 Recipe Release；
-- 手工触发，但仍只创建持久 Job。
-
-## 13. 与 1000 技术博客场景的对应关系
-
-这个项目最大的价值不是其单站点爬取代码本身，而是证明了一个重要产品形态：**抓取后的内容会被工作流、LLM、TTS、Agent 等二次消费。**
-
-因此知识库架构不能只做到“抓下来并保存 Markdown”，还需要把稳定的 Document Version 作为可编排数据产品输出。但为了保持可扩展性，必须反转 Demo 的调用关系：
-
-### Demo 方式
+生产形态应是：
 
 ```text
-Dify 请求
- -> 临时抓网页
- -> 临时抽取
- -> 临时总结
- -> 临时 TTS
- -> 返回
+Digest Artifact
+  -> TTS Recipe
+  -> TTS Worker
+  -> Audio Object
+  -> Audio Artifact
+  -> Delivery
 ```
 
-### 生产知识库方式
+默认只对摘要/Digest 做 TTS，并显式限制最大字符/token、目标音频时长、模型/音色 Release、deadline、并发/GPU、成本和重试。TTS 失败不能反向影响 Source Sync、Document Version、Markdown、Search 或 Embedding。
+
+## 11. Audio 输出 Contract 与渲染安全
+
+DSL 的音频处理 Code 节点存在两个值得生产方案吸收的问题：
+
+1. 代码调用 `json.loads(arg1)`，但节点代码本身没有 `import json`。Python 不会自动提供 `json` 名称，因此这属于明显的运行时依赖/代码完整性风险。
+2. 代码把 TTS 返回的 `etag` 当作 URL，再直接拼成 `<audio><source src='...'>` HTML。这样既耦合了供应商返回字段，又把渲染逻辑和 Artifact Contract 混在一起。
+
+生产系统应由 TTS Adapter 把供应商返回统一规范化为：
+
+```text
+audio_artifact
+- id
+- source_derived_artifact_id
+- tts_model_release_id
+- voice_release_id
+- mime_type
+- duration_ms
+- bytes
+- object_key
+- content_hash
+- created_at
+```
+
+访问 URL按需生成短期 signed URL。Web/Dify 客户端根据 typed metadata 渲染播放器，不从供应商字段直接拼原始 HTML。
+
+## 12. 服务发现、认证和网络边界
+
+Dify Code 节点写死 `http://127.0.0.1:8086/news/`。在容器/Kubernetes 中，`127.0.0.1` 指向当前容器/Pod，不代表 crawler 服务。
+
+生产系统应使用 Integration Gateway/Service Discovery，配置 Endpoint、认证、Secret、connect/read/total timeout、response byte limit、retry budget、circuit breaker、trace id。
+
+如果外部工作流允许传 URL，则必须走标准 `TARGETED_FETCH` Admission：scheme/host、DNS/egress、SSRF、robots、policy、响应大小、Snapshot、Quality、Identity、Audit 一个都不能绕过。
+
+## 13. 依赖与可重复运行问题
+
+`requirements.txt` 固定了 `uvicorn`、`fastapi`、`cos-python-sdk-v5` 和 `crawl4ai==0.4.247`，但源码直接 import 的 `requests`、`bs4` 并未作为直接依赖显式列出。项目还要求单独执行 Playwright Chromium 安装。
+
+这类 Demo 常依赖“某个上游包恰好带来了 requests/bs4”或运行环境已有浏览器，生产环境不可接受。需要：
+
+- 所有直接 import 都声明为直接依赖；
+- 使用 lockfile；
+- Browser/Playwright revision 固化在镜像；
+- image digest + SBOM；
+- Crawl4AI/Playwright/Browser/Parser 版本写入 Runtime Release；
+- CI 做 import/contract/startup test，避免依赖传递关系变化后突然启动失败。
+
+## 14. Dify DSL 本身也需要版本化
+
+当前方案容易只版本化模型或 Adapter，却忽略“Dify DSL 图本身”也是行为定义。节点顺序、变量映射、Prompt、Plugin、TTS 节点、代码节点任何改动都会改变结果。
+
+因此建议增加 `workflow_recipe_release`：
+
+```text
+workflow_recipe_release
+- id/version
+- engine_type              # DIFY/N8N/INTERNAL
+- dsl_object_key
+- dsl_hash
+- graph_hash
+- compatible_engine_version
+- input_schema/output_schema
+- referenced_recipe_release_ids
+- plugin/tool_release_refs
+- source_commit
+- test_result_refs
+- created_at
+```
+
+Delivery/Derived Job 必须记录实际使用的 Workflow Recipe Release，这样才能重放“当时为什么生成了这个 Digest/TTS”。
+
+## 15. 由该项目对博客知识库方案产生的最终优化
+
+该项目最值得保留的不是“抓 AIbase 的代码”，而是它揭示了知识库后续一定会被工作流、LLM、TTS 等消费。因此生产方案应明确增加并强化以下能力：
+
+1. **Workflow / Derived Artifact / Delivery Plane**：外部工作流是消费者，不是抓取真相源。
+2. **异步 Job API**：Dify/n8n/Web 只创建 Run/Derived Job，不同步执行长链路。
+3. **Selection Manifest**：日报/Newsletter 在生成前冻结版本集合、时间窗和排序依据，可重跑、可审计。
+4. **Workflow Recipe Release**：Dify/n8n DSL/Graph 本身进入不可变 Release Registry。
+5. **Structured Digest Item**：摘要逐条绑定 Document Version 和来源，不用无结构大字符串。
+6. **Typed Audio Artifact**：TTS 供应商字段不直接泄漏到 UI，音频用对象存储与标准 metadata 管理。
+7. **依赖显式化与 Runtime Attestation**：直接依赖、Browser revision、模型/Plugin/DSL 都可重复。
+8. **Scheduler 拥有“每日”语义**：时区、cutoff、window、补跑由平台控制，不靠用户手动 `limit=N`。
+9. **TTS 默认消费 Digest**：不把摘要和多篇全文再次拼接后无界转语音。
+10. **外部工作流不得绕过主链路**：Targeted URL 仍需 Admission、Snapshot、Quality、Identity 和 Audit。
+
+## 16. 最终结论
+
+`dify-for-dsl` 是一个清晰的最小工作流样例：Crawl4AI 做站点专用结构化抓取，FastAPI 暴露能力，Dify 编排 LLM 与 TTS。它适合教学和少量即时内容消费，但不具备历史枚举、增量状态、持久调度、质量门禁、版本真相和规模化容错。
+
+对 1000 技术博客知识库，正确的调用关系必须反转：
 
 ```text
 长期 Source Sync
- -> Accepted Version
- -> 可重建 Markdown/Search/Embedding
- -> 可缓存 AI Summary/Digest/TTS Artifact
- -> Dify/n8n/Agent 只消费稳定 Artifact 或提交异步 Derived Job
+  -> Accepted Document Version
+  -> Markdown/Search/Embedding
+  -> Selection Manifest
+  -> Summary/Digest Derived Artifact
+  -> TTS Audio Artifact
+  -> Delivery Job
+  -> Dify / n8n / Agent / Newsletter / Webhook
 ```
 
-这样才能同时满足：
-
-- 1000 站点独立同步；
-- 全量历史完整性；
-- 增量变化检测；
-- 不重复抓站；
-- 不重复做昂贵 AI；
-- 外部工作流失败不污染原始知识库；
-- Web 管理可追踪；
-- 后续新增 Dify/n8n/Newsletter/TTS 等消费者时无需改变抓取核心。
-
-## 14. 最终结论
-
-`dify-for-dsl` 的 Crawl4AI 示例非常适合作为“站点专用 Extractor + AI 工作流消费”的最小实现参考。可直接借鉴的是：
-
-- CSS Schema 做确定性结构化抽取；
-- Crawl4AI 与业务工作流解耦；
-- LLM/TTS 作为内容的下游派生能力；
-- FastAPI 作为能力边界。
-
-不能照搬到生产规模的部分包括：
-
-- 单列表页发现；
-- 同步请求链路即时抓站；
-- FastAPI async 路径内使用阻塞 `requests`；
-- 每篇文章新建 crawler；
-- 串行逐篇抓取；
-- `bypass_cache=True` 代替增量策略；
-- 写死 CSS/localhost/模型调用；
-- 把整批全文直接塞给 LLM/TTS；
-- 缺少 durable task、Snapshot、Version、Quality、Coverage、Audit 与幂等。
-
-对博客知识库方案的实质优化，是新增一个正式的 **Workflow / Derived Artifact / Delivery Plane**：爬虫负责长期同步真相，AI 工作流负责基于 Accepted Version 生成可重建派生结果，Dify/n8n/TTS 等成为消费者与编排器，而不是临时触发爬站的控制中心。
+Dify/n8n 负责消费和编排；Source Sync 负责真实、完整、增量、可追溯的数据。只有把这两层解耦，并把 Selection、Workflow DSL、AI/TTS 输出都版本化，才能让后续新增站点、增加消费者、切换模型或重放历史结果时仍保持可解释和可扩展。
