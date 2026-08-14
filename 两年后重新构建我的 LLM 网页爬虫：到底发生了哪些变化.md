@@ -1,124 +1,202 @@
 # 两年后重新构建我的 LLM 网页爬虫：到底发生了哪些变化
 
-## 1. 调研对象
+## 1. 调研对象与结论
 
 - 文章：Rebuilding My LLM Web Scraper Two Years Later: What Actually Changed
 - 作者：Nacho Corcuera Platas
-- 发布时间：2026-04-06
 - 文章地址：https://medium.com/@ignacio.cplatas/rebuilding-my-llm-web-scraper-two-years-later-what-actually-changed-8dd2f6d0645d
 - 对应项目：https://github.com/NachoCP/AIScraping
-- 本次查看时间：2026-08-14
+- 调研时间：2026-08-14
 
-这篇文章的价值不在于给出一个可直接用于“1000 个博客、全量历史、长期增量”的现成系统，而在于非常清晰地展示了 2024 到 2026 年 LLM 网页抽取基础设施发生的变化：网页抓取层可以被 Crawl4AI 这类工具高度封装，结构化输出可以由模型原生 JSON Schema 约束替代提示词解析器，多模型接入可以通过统一 Provider Adapter 降低耦合，开发者因此能把更多精力投入重试、错误处理、UI 和产品能力。
+文章和仓库展示了一个很有代表性的 2024 → 2026 演进：网页获取从 `requests + BeautifulSoup + 手工清洗 + 额外浏览器` 收敛到 Crawl4AI，结构化抽取从 `Prompt + PydanticOutputParser` 收敛到模型原生 Structured Output/JSON Schema，多模型通过 LiteLLM/Provider Adapter 统一。
 
-但项目作者也明确承认它更接近单用户工具而不是高并发服务。对于本知识库平台，最有价值的是“采用哪些原则”，以及“哪些单机实现不能原样搬到生产架构”。
+这些变化非常适合吸收到“1000 个技术博客、全量历史、长期增量”的知识库平台，但只能吸收**工具层和契约层思想**，不能照搬项目的单请求运行模型。当前仓库本质仍是轻量单用户工具，存在每请求 Browser 生命周期、同步 FastAPI 调用链、嵌套线程桥、无 durable queue/checkpoint、无跨站公平调度、LLM 每页调用、缓存语义隐式、依赖/文档/容器配置漂移等问题。
 
-## 2. 2024 版与 2026 版的核心变化
+对知识库方案最值得新增或强化的能力有六项：
 
-文章中的旧版流程大致为：
+1. Crawl4AI 作为可替换 Adapter，而不是平台状态真相源；
+2. Browser/LLM Worker 改为 async-native 长生命周期资源池；
+3. 原生 Structured Output + Provider Schema Compiler + Schema Release；
+4. 显式缺失值语义，禁止用 `0/false/""` 冒充真实观测值；
+5. 显式 Cache Policy 与 Runtime Bundle Release，避免第三方隐藏缓存和依赖漂移破坏可重复性；
+6. Schema Compiler 必须具备 `$ref` 循环检测、展开预算和 Provider 能力验证，不能简单递归内联。
+
+## 2. 文章中的 2024 与 2026 架构变化
+
+### 2.1 2024 版
+
+文章描述的旧版路径为：
 
 ```text
-requests
- -> BeautifulSoup 清洗
+URL
+ -> requests
+ -> BeautifulSoup 清理 nav/footer/script
  -> PromptTemplate
  -> ChatOpenAI
  -> PydanticOutputParser
- -> Pydantic 对象
+ -> Pydantic object
 ```
 
-主要问题是：
+主要故障面：
 
-1. 抓取与 HTML 清洗代码由业务自行维护；
-2. JavaScript 页面需要另外叠加 Selenium/Playwright；
-3. JSON 格式主要靠提示词约束；
-4. LLM 返回 Markdown 代码围栏、字段改名、格式漂移时，解析器直接失败；
-5. 没有完整重试、错误分类和 Provider 抽象；
-6. 超上下文窗口时直接失败。
+- 页面抓取和正文清洗由业务代码自己维护；
+- JavaScript 页面需额外叠 Selenium/Playwright；
+- JSON 格式靠 Prompt 约束；
+- Markdown 代码围栏、字段名漂移、额外文字都会导致解析失败；
+- 缺少系统化重试和 Provider 抽象；
+- 页面超过模型上下文窗口时直接失败。
 
-2026 版被压缩为：
+### 2.2 2026 版
+
+新路径被压缩为：
 
 ```text
 URL
  -> Crawl4AI
- -> clean Markdown
- -> LiteLLM / 原生 Structured Output
- -> JSON Schema
+ -> Markdown
+ -> LiteLLM / native structured output
+ -> JSON Schema constrained output
  -> Pydantic validate
  -> typed result
 ```
 
-核心变化是两个：
+核心变化不是“LLM 更聪明”这么简单，而是**两个易碎接口被协议化**：
 
-- 网页到可供 LLM 消费的 Markdown，由 Crawl4AI 封装抓取、浏览器渲染和基础清洗；
-- LLM 到业务对象，由原生 Structured Output/JSON Schema 约束替代“请严格返回 JSON”的提示词约定。
+1. 网页 → 可消费文本，由 Crawl4AI 封装抓取、浏览器渲染和 Markdown 生成；
+2. LLM → 业务对象，由 JSON Schema/Structured Output 将输出形状从概率性 Prompt 约定提升为模型/API 协议约束。
 
-这两个变化都适合吸收到本知识库方案，但应该放在 Adapter 和升级路径中，而不是让 Crawl4AI 或 LLM 直接成为业务状态真相源。
+对大规模知识库而言，这会显著降低集成代码，但不会自动解决持久化、全量覆盖、队列、幂等、成本、质量和长期运维问题。
 
-## 3. 项目实现细节
+## 3. 仓库实际实现
 
-### 3.1 Crawl4AI 包装层
+## 3.1 `src/crawler.py`：Crawl4AI 的同步桥
 
-项目的 `src/crawler.py` 把 Crawl4AI 封装为同步函数 `crawl(url)`。核心实现逻辑是：
+核心逻辑：
 
 ```text
 crawl(url)
  -> _run_async(_crawl_async(url))
  -> ThreadPoolExecutor(1)
- -> 新线程中 asyncio.run(coro)
+ -> 子线程 asyncio.run(coro)
  -> AsyncWebCrawler.arun(...)
  -> result.markdown.raw_markdown
 ```
 
-`_crawl_async` 每次请求都会创建：
-
-- `BrowserConfig(headless=True)`；
-- `CrawlerRunConfig(cache_mode=CacheMode.BYPASS, page_timeout=30000)`；
-- `AsyncWebCrawler(config=browser_config, thread_safe=True)`。
-
-抓取完成后，如果 `result.success == false`，返回错误；成功时只把 `result.markdown.raw_markdown` 暴露给后续 LLM。
-
-这个实现对单用户 UI 很直接，但对于 1000 站点平台存在明显问题：
-
-1. 每个同步调用都创建线程池；
-2. 每次在线程中创建和销毁新的 asyncio event loop；
-3. 每次 crawl 都重新进入 `AsyncWebCrawler` 生命周期；
-4. Browser 成为默认入口，而不是 HTTP-first 的升级路径；
-5. `CacheMode.BYPASS` 使 Crawl4AI 内置缓存每次都绕过；
-6. 没有 durable task、lease、checkpoint、按域限流和跨请求资源池。
-
-`thread_safe=True` 解决的是特定调用环境中的安全性问题，不应被理解为平台级并发调度方案。
-
-### 3.2 为什么 ThreadPoolExecutor + asyncio.run 能工作
-
-问题根源是同步 Web/UI 调用链与 Crawl4AI 的异步 Playwright 运行时不一致。`asyncio.run()` 不能安全地嵌套到一个已经运行的 event loop 中，因此项目把 coroutine 丢到一个独立线程，在该线程里创建一个新的 loop。
-
-其本质是：
+每次 `_crawl_async()` 都创建：
 
 ```text
-同步调用线程
- -> 创建工作线程
- -> 工作线程创建独立 event loop
- -> event loop 驱动 Crawl4AI / Playwright
- -> 阻塞等待结果
+BrowserConfig(headless=True)
+CrawlerRunConfig(
+  cache_mode=CacheMode.BYPASS,
+  page_timeout=30000
+)
+AsyncWebCrawler(..., thread_safe=True)
 ```
 
-这是一种兼容桥，而不是并发架构。流量上升后会出现：
+成功后只向后续抽取暴露 `raw_markdown`。
 
-- 线程创建/销毁成本；
-- event loop 创建/销毁成本；
-- Browser 生命周期频繁抖动；
-- 同步请求线程长期阻塞；
-- 对 Browser 内存峰值缺乏统一控制；
-- 难以做 backpressure；
-- 请求断开后，底层 crawl 的取消与回收不容易统一。
+### 技术原理
 
-因此本知识库平台应反过来设计：Browser/Crawl4AI Worker 自身就是 async-native 服务，每个进程长期维护一个 event loop，并在受控并发额度内复用浏览器/上下文；FastAPI 控制面只入队，不直接执行重型抓取。
+`AsyncWebCrawler` 基于异步运行时和 Playwright。同步调用方不能随意在已有事件循环里再执行 `asyncio.run()`，因此项目把 coroutine 发送到一个新线程，并在新线程创建独立 event loop。
 
-### 3.3 动态 Pydantic Schema
+```text
+调用线程
+ -> 创建工作线程
+ -> 工作线程创建 event loop
+ -> event loop 驱动 Crawl4AI/Playwright
+ -> 阻塞等待
+```
 
-项目 `src/schema_builder.py` 使用 Pydantic v2 的 `create_model()` 根据用户在 UI 中定义的字段动态创建模型。
+这是**兼容桥**，不是生产并发架构。
 
-支持类型：
+### 平台级问题
+
+- 每次调用创建/销毁 ThreadPoolExecutor；
+- 每次调用创建/销毁 event loop；
+- 每次调用重新进入 Browser/Crawl4AI 生命周期；
+- Browser 成为默认抓取路径；
+- 无统一 Browser 并发/内存预算；
+- 无站点级 token bucket；
+- 无 durable lease/checkpoint；
+- 请求取消和底层 Browser 取消关系不清晰。
+
+`thread_safe=True` 解决的是对象在特定线程环境中的调用安全，不等价于跨站点公平调度、资源池、背压或任务持久化。
+
+## 3.2 FastAPI 同步路由带来的“嵌套阻塞”
+
+`api/main.py` 的 `/api/scrape` 使用同步 `def` 路由，并同步执行：
+
+```text
+crawl(url)
+ -> build schema
+ -> extract(...)
+ -> return
+```
+
+FastAPI/Starlette 对同步路由通常会使用线程池执行；而 `crawl()` 内部又创建一个单独线程池并等待子线程中的 `asyncio.run()`。
+
+因此在并发场景中实际可能形成：
+
+```text
+HTTP request
+ -> FastAPI/AnyIO worker thread
+ -> crawl()
+ -> child ThreadPoolExecutor thread
+ -> new asyncio loop
+ -> Playwright/Crawl4AI
+```
+
+随后同一个请求还会同步等待 LLM 调用。
+
+这会导致：
+
+- 每个请求长期占用 API 执行资源；
+- 路由线程阻塞等待子线程；
+- Browser 和 LLM 延迟直接放大 API tail latency；
+- 并发上限受线程池和 Browser 内存共同约束，却没有统一 admission；
+- 客户端断开不等于任务可恢复；
+- 无 durable progress。
+
+生产平台应改成：
+
+```text
+POST /jobs
+ -> PostgreSQL transaction
+ -> outbox
+ -> queue
+ -> async-native Worker
+ -> Web 查询 job/status 或 SSE/WebSocket
+```
+
+控制面不直接承担重型 Browser/LLM 生命周期。
+
+## 3.3 `CacheMode.BYPASS`：第三方缓存不能成为业务缓存语义
+
+项目每次 Crawl4AI 调用都使用：
+
+```text
+CacheMode.BYPASS
+```
+
+对单用户工具很简单，但知识库平台需要明确区分三层缓存：
+
+1. HTTP 条件请求缓存语义：ETag/Last-Modified/304；
+2. 平台不可变 Snapshot：raw bytes、headers、DOM、Markdown；
+3. 第三方引擎内部缓存：Crawl4AI/Browser 的执行优化。
+
+第三方缓存不应偷偷决定“是否重新访问”“返回哪个版本内容”。生产方案需要 `cache_policy_release`，并规定：
+
+- freshness 由平台 Scheduler/Provider checkpoint 决定；
+- 业务可回放依据平台 snapshot；
+- 第三方引擎缓存若启用，只作为透明执行优化；
+- 每个 attempt 记录 cache hit/miss/source/version；
+- 不允许无法审计的隐藏缓存覆盖条件请求和版本判断。
+
+## 3.4 `src/schema_builder.py`：动态 Pydantic Schema
+
+项目使用 Pydantic v2 `create_model()`，把用户定义字段动态编译成模型。
+
+支持：
 
 ```text
 string
@@ -128,16 +206,17 @@ boolean
 list[string]
 ```
 
-字段定义形如：
+并创建顶层 envelope：
 
 ```text
-field_name -> {
-  type,
-  description
-}
+ResultModel(items=list[ItemModel])
 ```
 
-每个字段被转换为对应 Python 类型，并附带默认值：
+这是值得借鉴的设计：管理端可把字段定义编译成不可变 Schema Release，再供抽取任务引用。
+
+### 默认值问题
+
+项目默认值为：
 
 ```text
 string       -> ""
@@ -147,49 +226,30 @@ boolean      -> false
 list[string] -> []
 ```
 
-随后再创建：
+这会把“缺失”与“真实值”混在一起。例如 `views = 0` 无法判断究竟是页面明确写 0，还是模型没找到数据。
+
+更关键的是，字段 Python 类型本身并不是 `Optional`，随后 Strict Schema Compiler 又会把所有 object properties 放进 `required`。因此源码注释中的“Optional-style defaults”并不能真正表达可缺失语义。
+
+知识库平台应显式存：
 
 ```text
-ResultModel(items=list[ItemModel])
+value
+presence = OBSERVED | INFERRED | MISSING
+confidence
+provenance
 ```
 
-原因是多数 Structured Output API 更适合以 object 作为顶层 JSON Schema，而不是裸 `list[Model]`。
+Schema 中使用 nullable/optional 或领域专门的 evidence 结构，而不是把默认值伪装成事实。
 
-这个模式非常适合知识库平台的“Schema Release”设计：Web 管理端可以定义需要的语义字段，后台编译为 Pydantic/JSON Schema，再以不可变 release 发布。
+## 3.5 `src/extractor.py`：原生 Structured Output
 
-但默认值设计不适合知识库最终数据语义。例如：
-
-```text
-浏览量 = 0
-```
-
-到底表示“页面明确写了 0”，还是“没抽到所以填了 0”，二者不可区分。生产设计应优先使用：
-
-```text
-value = null
-presence = MISSING | OBSERVED | INFERRED
-provenance = ...
-```
-
-必要时再在下游展示层映射默认值。
-
-### 3.4 Structured Output 的 Schema 编译
-
-项目 `src/extractor.py` 先执行：
+项目先：
 
 ```python
 schema = result_model.model_json_schema()
 ```
 
-然后通过 `_make_strict_schema()` 对 Pydantic JSON Schema 做兼容处理，主要包括：
-
-1. 抽出 `$defs`；
-2. 递归解析 `$ref`，把引用内联；
-3. 对所有 object 增加 `additionalProperties: false`；
-4. 把 object 的全部 properties 加入 `required`；
-5. 递归处理 array、anyOf、oneOf、allOf。
-
-之后把 schema 传给 LiteLLM：
+再生成：
 
 ```text
 response_format = {
@@ -197,44 +257,98 @@ response_format = {
   json_schema: {
     name: extraction_result,
     strict: true,
-    schema: strict_schema
+    schema: ...
   }
 }
 ```
 
-这比“在 Prompt 中写格式说明 + 后处理 JSON”稳定得多。其技术原理是：支持原生 Structured Output 的模型会在解码阶段约束可生成 token，使输出落在 Schema 允许的结构空间中。因此“JSON 语法是否合法、字段名是否错拼”从概率性提示词问题变成协议约束问题。
-
-需要注意：Structured Output 只约束结构，不保证字段事实正确。模型仍可能：
-
-- 把发布时间理解成更新时间；
-- 从导航文本中取错标题；
-- 对模糊字段给出错误类型语义；
-- 在正文证据不足时猜值。
-
-因此最终数据仍需要 provenance、确定性候选交叉验证和 Quality Gate。
-
-### 3.5 LiteLLM Provider 抽象
-
-项目使用 `litellm.completion()`，调用方传：
+最后：
 
 ```text
-provider/model
+json.loads(response.choices[0].message.content)
+ -> result_model.model_validate(...)
 ```
 
-例如：
+### 技术原理
+
+支持 Structured Output 的模型/API 会在生成阶段约束输出，使 token 序列满足给定 Schema 的结构空间。这消除了大量传统问题：
+
+- JSON 语法错误；
+- 字段名随机变化；
+- Markdown code fence；
+- 多余解释文本；
+- 顶层结构漂移。
+
+但它只保证**结构契约**，不保证**事实正确性**。模型仍可能：
+
+- 将更新时间当成发布时间；
+- 从导航区域抽错标题；
+- 在证据不足时猜值；
+- 对语义模糊字段选错值。
+
+所以 Structured Output 后仍必须做 provenance、字段证据、确定性候选交叉验证和 Quality Gate。
+
+## 3.6 `_make_strict_schema()` 的实现风险
+
+项目为了兼容严格 Schema 做了：
+
+1. 提取 `$defs`；
+2. 递归解析 `$ref`；
+3. 给 object 加 `additionalProperties: false`；
+4. 将所有 properties 加入 `required`；
+5. 递归处理 array/anyOf/oneOf/allOf。
+
+这是一个很好的原型，但不能直接成为生产级 Schema Compiler。
+
+### 风险 1：递归 `$ref`
+
+`_resolve_refs()` 没有 visited set/cycle detection。若将来 Schema 支持递归模型，自引用或互相引用可能导致无限递归。
+
+### 风险 2：Schema 膨胀
+
+同一 `$defs` 被多处引用时直接内联会复制整棵子树。复杂 Schema 可能产生指数式体积膨胀，最终超过 Provider Schema 大小限制。
+
+### 风险 3：Provider 能力不同
+
+不同 Provider 对 `$ref`、union、nullable、enum、数字约束、数组和顶层 schema 的支持子集并不完全一致，不能用一个“统一内联算法”假设所有模型等价。
+
+### 生产方案
+
+Provider Schema Compiler 至少要有：
+
+```text
+canonical schema
+ -> normalize
+ -> reference graph
+ -> cycle detection
+ -> provider capability validation
+ -> preserve ref / bounded inline
+ -> max depth
+ -> max expanded nodes/bytes
+ -> required/nullable transform
+ -> additionalProperties policy
+ -> provider-specific fixture test
+ -> effective_provider_schema_hash
+```
+
+如果超出能力，必须在发布期失败或显式降级，而不是在百万级运行时逐页试错。
+
+## 3.7 Provider Adapter：统一 API 不等于统一能力
+
+项目用 LiteLLM 的 `provider/model` 字符串统一模型，例如：
 
 ```text
 openai/gpt-4.1-mini
 anthropic/claude-sonnet-4-20250514
 ```
 
-Provider 与展示模型名由 `src/config.py` 维护，API 端通过 `_resolve_litellm_model()` 转换。
+方向是正确的：业务代码不应散落厂商 SDK。
 
-它体现了一个重要原则：业务逻辑不应该把 OpenAI/Anthropic 的 SDK 细节散落在抽取代码中。
-
-但生产平台还需要在统一 Adapter 之上增加 Capability Manifest，而不能只做字符串映射。至少要记录：
+但知识库平台不能只保存“字符串模型名”，还需要 Model Capability Manifest：
 
 ```text
+provider
+model_id
 supports_strict_json_schema
 supports_tool_calling
 supports_streaming
@@ -245,280 +359,234 @@ rate_limit_class
 retry_policy
 price_input
 price_output
-provider_region
+region
 ```
 
-原因是“统一 API”不等于“所有模型能力完全一致”。相同 JSON Schema 在不同 Provider 上可能需要不同转换或降级策略。
+并且 Adapter 输出必须归一化，不能让业务层依赖某个 SDK 固定的：
 
-### 3.6 重试实现
+```text
+response.choices[0].message.content
+```
 
-`extract()` 使用 Tenacity：
+平台应统一成：
+
+```text
+StructuredExtractResult
+- parsed
+- raw_payload_ref
+- provider_request_id
+- finish_reason
+- token_usage
+- latency
+- cost
+- error_class
+```
+
+这样更换 LiteLLM、厂商 SDK 或 tool calling 路径时不会污染业务层。
+
+## 3.8 重试：指数退避正确，但异常分类过粗
+
+项目用 Tenacity：
 
 ```text
 wait_random_exponential(min=1, max=30)
-stop_after_attempt(MAX_RETRIES)
+stop_after_attempt(3)
 retry_if_exception_type(Exception)
 ```
 
-最大尝试次数为 3。
+指数退避和 jitter 是正确方向，但所有 `Exception` 都重试会重复消耗 token 和延迟。
 
-优点：
-
-- 有随机指数退避；
-- 避免瞬时错误立即放大；
-- 调用代码保持简洁。
-
-问题是它对所有 `Exception` 都重试。生产中必须把错误分为：
+可重试：
 
 ```text
-可重试：
-- connect/read timeout
-- 408
-- 429
-- provider 5xx
-- transient gateway error
+connect/read timeout
+408
+429
+provider 5xx
+transient gateway error
+```
 
 通常不可原样重试：
-- schema compile error
-- unsupported schema keyword
-- invalid API key
-- context permanently too large
-- deterministic validation failure
-- budget exceeded
-```
-
-否则固定错误会重复烧 token 和延迟。
-
-### 3.7 FastAPI 调用链
-
-`api/main.py` 提供同步的：
 
 ```text
-POST /api/scrape
+schema compile error
+unsupported schema keyword
+invalid credential
+permanent context overflow
+budget exceeded
+deterministic validation/config error
 ```
 
-调用顺序为：
+平台需要统一 error taxonomy、Retry-After、最大尝试次数、circuit breaker 和 dead-letter/review。
+
+## 3.9 依赖、README、Dockerfile 漂移：一个很现实的生产风险
+
+当前仓库不同文件之间存在明显不一致：
+
+- `src/extractor.py` 实际 import `litellm`，但根 `pyproject.toml` 的 dependencies 没有声明 `litellm`；
+- README 仍描述 `openai.parse()/anthropic.parse()`、Streamlit UI；
+- 当前源码已有 `api/` 和 `frontend/`；
+- Dockerfile 仍执行 `streamlit run app.py`、暴露 8501；
+- 根目录当前并没有与该 Docker 命令相匹配的 `app.py`，且 pyproject 也未声明 streamlit。
+
+这说明“代码看起来能运行”与“某个 commit 可重复构建部署”是两回事。
+
+对知识库平台的直接启示：配置 release 还不够，还需要 **Runtime Bundle Release**：
 
 ```text
-校验 fields/url
- -> resolve provider/model
- -> crawl(url)
- -> 动态 build Pydantic model
- -> extract(markdown)
- -> 返回 items
+runtime_bundle_release_id
+container_image_digest
+source_commit_sha
+python_lock_hash
+crawler_engine_version
+playwright_version
+browser_revision
+adapter_version
+schema_compiler_version
+build_sbom_ref
+created_at
 ```
 
-整个抓取和 LLM 抽取在一个 HTTP 请求生命周期中串行完成。
-
-这适合交互式 demo，但不适合长任务平台。对本系统应改为：
+并在发布前执行：
 
 ```text
-POST /jobs
- -> 持久化任务
- -> outbox
- -> worker async 执行
- -> Web 通过 job/status/stream 查询进度
+clean build
+ -> dependency resolve
+ -> unit tests
+ -> golden fixture extraction
+ -> browser smoke test
+ -> structured output canary
+ -> image digest pin
 ```
 
-用户关闭浏览器不应导致任务生命周期丢失。
+这样才能真正回放“当时那个抓取器/模型适配器”的行为。
 
-### 3.8 安全边界
+## 3.10 安全边界
 
-项目 API 请求体直接接收 `api_key`，CORS 使用 `allow_origins=["*"]`，更偏 demo 产品。
+项目请求体直接接收 `api_key`，CORS 为 `*`，适合 demo，不适合长期平台。
 
-知识库平台不能照搬。需要：
+生产平台必须：
 
-- Provider Key 存 Vault/KMS/Secret Manager；
-- Web 请求只引用 credential_id；
-- 日志与 trace 对 secret 做 redaction；
-- CORS 使用明确 origin；
-- API 做身份认证、RBAC 和审计；
-- 抓取 URL 必须经过 SSRF/Egress Gate。
+- API Key 存 Vault/KMS/Secret Manager；
+- Web 只提交 `credential_id`；
+- 日志/trace/异常统一 redaction；
+- CORS 明确 origin；
+- API 做认证、RBAC、审计；
+- 所有抓取 URL 经过 SSRF/Egress Gate；
+- redirect 每跳重新校验；
+- Browser 也必须受同一网络出口策略约束。
 
-## 4. 与文章描述存在的仓库状态差异
+## 4. 哪些设计可以直接吸收
 
-文章写的是 React frontend + FastAPI backend；当前仓库确实存在 `api/` 和 `frontend/` 目录，但根 README 的 Quick Start 和 Architecture 仍主要描述 Streamlit，并写有：
+### 4.1 Crawl4AI Adapter
+
+吸收：JS 渲染、Markdown、动态页面能力、deep crawl、CSS/XPath/Regex 等执行能力。
+
+不吸收：任务状态、全量完成判定、全局 frontier、跨站公平调度、文章版本真相。
+
+### 4.2 Dynamic Schema → Schema Release
+
+管理端定义字段后，编译成 canonical JSON Schema/Pydantic，并发布为不可变 release。
+
+### 4.3 Native Structured Output
+
+对确需 LLM 的语义抽取，优先：
 
 ```text
-Streamlit UI -> Crawl4AI -> LLM SDK -> JSON
-```
-
-同时 README 对 Structured Output 的说明也与当前 `src/extractor.py` 的 LiteLLM 实现存在一定演进差异。
-
-这说明项目处于快速迭代状态，文档与实际代码可能不同步。对知识库平台的启示是：任何 Adapter、Schema、Prompt、Model、Crawler 配置都必须绑定 release/version/hash；不能只靠“当前 README 如何描述”重现历史结果。
-
-## 5. 对 1000 博客知识库最值得吸收的原则
-
-### 5.1 使用原生 Structured Output，而不是 Prompt Parser
-
-对于必须由 LLM 完成的语义字段抽取：
-
-```text
-Pydantic Model
- -> JSON Schema
- -> Provider Schema Compiler
+canonical schema
+ -> provider schema compiler
  -> native Structured Output
- -> Pydantic validate
+ -> platform-normalized result
+ -> Pydantic/domain validate
  -> Quality Gate
 ```
 
-不再把“请仅返回合法 JSON”作为核心可靠性机制。
+### 4.4 Provider Adapter
 
-### 5.2 LLM Provider 统一抽象，但能力必须显式化
+可用 LiteLLM，也可用厂商 SDK，但平台只依赖统一请求/结果契约和 Capability Manifest。
 
-可以使用 LiteLLM，也可以自建 Provider Adapter；无论实现方式如何，业务侧都只依赖统一接口：
+### 4.5 Exponential Backoff
 
-```text
-StructuredExtractRequest
-StructuredExtractResult
-```
+保留指数退避 + jitter，但放入统一错误分类、预算和熔断框架。
 
-同时保存真实 provider/model/schema/prompt/token/cost/latency。
-
-### 5.3 动态 Schema 应变成版本化 Schema Release
-
-Web 管理端可以让管理员定义：
-
-```text
-field name
-type
-description
-required/nullable
-identity key
-validation rule
-```
-
-发布后生成不可变 `schema_release`，后续任务固定引用 release id，禁止线上静默修改。
-
-### 5.4 Browser Worker 必须 async-native
-
-禁止在平台级主路径采用：
+## 5. 哪些设计不能照搬
 
 ```text
 每请求 ThreadPoolExecutor
- + 每请求 asyncio.run
- + 每请求新 Browser 生命周期
+每请求 asyncio.run
+每请求 Browser 生命周期
+Browser 默认抓所有 URL
+CacheMode.BYPASS 作为唯一缓存策略
+同步 API 请求串行完成抓取 + LLM
+每页都调用 LLM
+所有 Exception 都重试
+缺失值用 0/false/"" 代替
+运行时临时修改 Schema 且不版本化
+业务层依赖 SDK 原始 response 结构
+README/Docker/依赖声明未通过一致性 CI
 ```
 
-正确方式：
+## 6. 对博客知识库技术方案的具体优化
+
+### 6.1 async-native Worker
 
 ```text
-队列
- -> Browser Worker Process
- -> 一个长期 event loop
- -> bounded concurrency semaphore
- -> Browser/Context pool
- -> Crawl4AI Adapter
+FastAPI Control Plane
+ -> durable job
+ -> outbox
+ -> queue
+ -> Browser/HTTP/LLM Worker
 ```
 
-Browser Worker 的资源并发由内存和 CPU 限额决定，不由 API 请求数决定。
+Browser Worker 长期维护 event loop、Browser/Context/Page pool、semaphore、TTL 和 cleanup。
 
-### 5.5 LLM 不能成为默认正文抽取器
+### 6.2 显式 Cache Policy
 
-文章项目的目标是“任意网页 + 用户自定义 schema -> JSON”，因此每个页面经过 LLM 是合理产品选择；本项目目标是数百万文章长期知识库，成本模型不同。
+新增 `cache_policy_release`，区分 freshness、条件请求、snapshot replay、第三方 engine cache，并记录 cache provenance。
 
-正文默认路径应继续是：
+### 6.3 Runtime Bundle Release
 
-```text
-JSON-LD/meta/CSS/XPath
- -> Trafilatura/Readability/Crawl4AI Markdown candidates
- -> Quality Gate
-```
+新增 `runtime_bundle_release`，绑定 source commit、image digest、dependency lock、Playwright/browser revision、Crawl4AI/Adapter/Schema Compiler 版本。
 
-只有确定性结果低质量或确实需要语义字段时才进入 LLM。
-
-### 5.6 重试必须按错误分类
-
-指数退避是正确方向，但必须：
-
-```text
-error taxonomy
- -> retryable?
- -> provider retry-after
- -> jittered exponential backoff
- -> max attempts
- -> circuit breaker
- -> dead letter/review
-```
-
-禁止对所有异常无差别调用模型三次。
-
-## 6. 本项目应新增或强化的设计
-
-### 6.1 Async Runtime Topology
-
-增加明确的运行时边界：
-
-- FastAPI 只做控制面和轻量查询；
-- HTTP Worker 使用长期 asyncio loop + connection pool；
-- Browser/Crawl4AI Worker 使用长期 asyncio loop + Browser pool；
-- CPU-heavy normalization 放独立进程池；
-- LLM Worker 独立异步客户端和 provider concurrency limiter；
-- 禁止在请求处理中创建新的 event loop 作为常规生产路径。
-
-### 6.2 LLM Provider Adapter 与 Capability Manifest
+### 6.4 Provider Schema Compiler 强化
 
 新增：
 
-```text
-llm_provider_release
-model_release
-schema_release
-structured_output_adapter_release
-```
+- `$ref` graph；
+- cycle detection；
+- bounded expansion；
+- max depth/bytes；
+- Provider schema subset validation；
+- fixture/canary；
+- effective schema hash。
 
-每个 model release 记录支持能力和限制，Provider Adapter 负责把平台 JSON Schema 编译到具体厂商支持的 schema 子集。
+### 6.5 Missing Value Semantics
 
-### 6.3 Strict Schema Compiler
+结构化字段不使用类型默认值伪装缺失；Article IR 统一保存 `presence/confidence/provenance`。
 
-Schema Compiler 做：
+### 6.6 Provider Result Normalization
 
-1. Pydantic/平台 Schema -> canonical JSON Schema；
-2. 展开或保留 refs；
-3. 根据 Provider 规则处理 `additionalProperties`、required、nullable、enum、union；
-4. capability validation；
-5. 计算 `canonical_schema_hash` 与 `effective_provider_schema_hash`；
-6. 发布前跑 fixture/canary。
+业务层不直接读取 `choices[0].message.content`，由 Adapter 统一生成 `StructuredExtractResult`。
 
-不能在每页请求时临时修改 Schema 而不保存版本。
+### 6.7 构建与发布门禁
 
-### 6.4 Missing Value Semantics
+所有 crawler/adapter/runtime release 在投入生产前必须执行 clean image build、依赖完整性检查、golden snapshot replay、Browser smoke、Provider Structured Output canary。
 
-避免用 `0/false/""` 掩盖缺失：
+## 7. 最终判断
 
-```text
-value
-presence
-confidence
-provenance
-```
+文章的核心判断是成立的：到 2026 年，抓取和结构化输出的“基础管线”已经明显商品化，开发者不必再把大量时间花在 HTML 清洗和 Prompt JSON parser 上。
 
-对于 Structured Output，可以让字段 nullable，或增加字段级 evidence/presence 信息；最终 Article IR 再按领域规则落值。
+但从单用户工具升级到 1000+ 技术博客的长期知识库时，真正困难的部分已经上移到：
 
-### 6.5 LLM Retry Policy
+- 历史 URL 覆盖证明；
+- durable frontier；
+- 增量连续性；
+- 幂等和版本；
+- 资源公平调度；
+- Browser/LLM 成本；
+- Schema/Provider 差异；
+- 质量和 provenance；
+- runtime 可重复构建；
+- Web 运维和安全。
 
-每次调用记录：
-
-```text
-attempt_id
-provider_request_id
-error_class
-retry_after
-input_tokens
-output_tokens
-estimated_cost
-latency
-```
-
-只对瞬时错误重试；Schema 不兼容先走 Provider Schema Compiler 降级或人工修复，不能盲目重试。
-
-## 7. 结论
-
-这篇文章和项目证明了两个成熟方向：
-
-1. Crawl4AI 可以显著降低“把网页变成干净 Markdown”的工程成本；
-2. 原生 Structured Output 已经足以替代传统 LLM JSON Prompt Parser，Pydantic/JSON Schema 可以成为稳定的类型契约。
-
-但项目中的 `ThreadPoolExecutor + asyncio.run`、每请求 Browser 生命周期、每页 LLM、同步 HTTP 请求串行执行、全异常重试和宽松 secret/CORS 设计，都只适用于轻量单用户工具，不能直接用于 1000 站点生产平台。
-
-因此知识库方案应吸收其“抓取引擎封装、原生 Structured Output、动态 Schema、多 Provider、指数退避”思想，同时坚持平台自身的 durable frontier、HTTP-first、异步 Worker、不可变 snapshot、版本化 Schema/Model/Adapter、Quality Gate、成本治理和统一安全出口。这样既获得 2026 工具链带来的开发效率，又不会把 demo 级运行模型带入大规模长期任务系统。
+因此最终方案应继续坚持“平台状态与第三方执行引擎解耦”，同时吸收 Crawl4AI、Structured Output、动态 Schema 和多 Provider 的开发效率。新增显式 Cache Policy、Runtime Bundle Release、健壮的 Provider Schema Compiler 和 Provider Result Normalization 后，方案的可回放性、可扩展性和长期运维能力会更完整。
