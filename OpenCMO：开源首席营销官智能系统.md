@@ -653,6 +653,70 @@ OpenCMO 只围绕项目 URL 扫描，没有持久化 Sitemap 树、Archive 遍�
 
 应替换为 Secret Reference。
 
+### 16.8 状态变更与事件追加不是一个原子事务
+
+OpenCMO 的后台任务服务通常先调用 `insert_task/mark_task_running/complete_task/fail_task/requeue_task` 修改 `background_tasks` 并提交，再单独调用 `append_task_event()` 写 `background_task_events` 并再次提交。这个实现对单机产品足够直观，但存在明确的崩溃窗口：
+
+```text
+事务 A：任务状态 running -> completed，COMMIT
+进程崩溃
+事务 B：追加 completed event 尚未执行
+```
+
+最终会出现“当前状态已经完成，但审计时间线缺少完成事件”。反方向如果未来改为先写事件再改状态，则可能出现“事件说已完成、状态仍在 running”。对于需要 Web 审计、恢复和外部消息派发的长期抓取系统，这种不一致会让事件流无法作为可靠事实来源。
+
+博客知识库应把决定性状态迁移封装为单个 PostgreSQL 事务：
+
+```text
+BEGIN
+  UPDATE background_task / crawl_run ... WHERE lease_version = ?
+  INSERT task_event / run_event ...
+  INSERT outbox_event ...
+COMMIT
+```
+
+只有事务提交后，SSE、Redis Streams 或其他消费者才能看到并传播该状态。纯采样型 progress event 可以独立写入，但任何改变任务/run 业务状态的 event 必须与状态行以及需要派发的 outbox 同事务提交。
+
+### 16.9 周期计划缺少明确的 Misfire、Catch-up 与 DST 语义
+
+OpenCMO 把 `cron_expr` 保存到数据库，再用 `CronTrigger.from_crontab()` 创建 APScheduler runtime job；当前存储层暴露 `last_run_at/next_run_at`，但实际触发时间主要由内存 Scheduler 决定，业务模型没有显式定义：
+
+- Scheduler 停机两小时后错过多次 cron，到底跳过、补一次，还是逐次补跑；
+- 补跑多少次后应合并，避免恢复瞬间形成任务风暴；
+- 修改 cron 后，旧 run 应对应哪个 schedule 版本；
+- DST 春季缺失时间和秋季重复时间如何处理；
+- “计划应在什么时候触发”与“实际上什么时候创建 run”如何区分。
+
+1000 站增量同步不能把这些语义交给 APScheduler 默认配置。建议 `sync_schedule` 持久化：
+
+```text
+schedule_revision
+timezone                  # IANA timezone
+dst_policy
+misfire_policy            # SKIP | FIRE_ONCE | CATCH_UP
+max_catch_up_runs
+next_due_at
+last_expected_fire_at
+```
+
+每个 `crawl_run` 记录 `schedule_revision + expected_fire_at + actual_triggered_at`。`expected_fire_at` 是逻辑触发时间，也是幂等窗口的一部分；`actual_triggered_at` 反映延迟。恢复时根据持久化 misfire policy 决定：跳过、合并为一次带重叠窗口的增量同步、或有限补跑；超过上限的历史窗口应合并为一次 RECONCILE，而不是无限补任务。DST 的歧义/缺失时间也必须有确定规则并可在 Web 查看。
+
+### 16.10 URL 格式校验不是 Egress 安全边界
+
+OpenCMO 的 monitor URL 入口会校验 scheme、hostname、port 和基本 DNS label，同时允许 `localhost` 和直接 IP。这对本地产品开发合理，但它只能说明“URL 语法可接受”，不能证明目标网络地址允许访问。
+
+生产博客知识库必须把两层职责分开：
+
+```text
+Web/API URL Validation
+  只负责格式、规范化和用户反馈
+
+Egress Gateway
+  在每次真实连接前解析 DNS、检查全部 A/AAAA、端口、私网/loopback/link-local/metadata、redirect 每一跳和 DNS rebinding
+```
+
+因此即使一个 URL 在 Web 表单中通过，也仍可能在执行阶段被 Egress fail-closed 拒绝；不能把入口 parser 当成 SSRF 防线。
+
 ## 17. 对博客知识库技术方案的优化结论
 
 本次 OpenCMO 调研最终应吸收以下工程能力：
@@ -674,5 +738,8 @@ OpenCMO 只围绕项目 URL 扫描，没有持久化 Sitemap 树、Archive 遍�
 15. **取消是协作式安全终止**：Worker、Browser、Artifact Commit 都需要 cancel safe point。
 16. **任务 payload 禁止持久化 secrets**：只保存 Secret Reference，由 Worker 运行时解析。
 17. **Web onboarding 串起 Probe、FULL_BACKFILL、INCREMENTAL schedule**，形成完整产品工作流。
+18. **状态 + 事件 + Outbox 同事务提交**：决定性状态迁移不可采用“先改状态、后补事件”的两次提交。
+19. **计划触发语义业务化**：持久化 schedule revision、expected fire time、misfire/catch-up、timezone/DST 规则，不依赖内存 Scheduler 默认行为。
+20. **URL Validation 与 Egress 分层**：入口格式校验只负责 UX，真实连接前的 SSRF/网络边界必须由统一 Egress Gateway 强制执行。
 
 这些优化不会改变博客知识库既有“PostgreSQL + Transactional Outbox + Redis Streams + Durable Frontier + HTTP-first + Browser 按证据升级 + 不可变 Snapshot + Article IR + append-only article_version”的主架构，而是把长期调度、任务恢复、实时管理、安全边界和多 Worker 扩展能力补成生产级实现。
