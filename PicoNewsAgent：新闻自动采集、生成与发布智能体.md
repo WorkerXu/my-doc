@@ -2,327 +2,831 @@
 
 - 调研编号：53
 - 项目地址：https://github.com/HosLak/PicoNewsAgent
-- 调研目标：分析其 RSS 聚合、并发抓取、Crawl4AI 深抓、去重、媒体提取、AI 处理与发布流水线的实现细节，并判断哪些设计适合吸收到“1000 个技术博客全量历史 + 增量同步 + Markdown 知识库 + Web 管理”方案中。
+- 项目定位：RSS/Atom 聚合 + 轻量预处理 + LLM 选稿 + Crawl4AI 深抓 + LLM 改写 + Telegram 发布
+- 调研目标：深入分析其 Source 管理、Feed 轮询、并发模型、去重、Crawl4AI 深抓、媒体提取、LLM 输出契约、发布降级与状态语义，并判断哪些能力适合吸收到“约 1000 个技术博客全量历史 + 增量同步 + Markdown 知识库 + Web 管理”方案中。
 
-## 1. 项目定位与总体结构
+## 1. 总体结论
 
-PicoNewsAgent 是一个面向 AI 新闻的自动化流水线。入口 `main.py` 顺序执行 5 个阶段：
+PicoNewsAgent 不是历史知识库爬虫，而是一个典型的实时内容运营流水线：
 
-1. `core/fetcher.py`：从 `Sources.md` 中发现 RSS/Atom Feed，抓取条目元数据。
-2. `core/processor.py`：按时间窗口过滤，并做 URL 与标题近似去重。
-3. `core/agents.py::select_news()`：调用 LLM 对候选新闻做价值筛选。
-4. `core/agents.py::generate_posts()`：对筛选后的文章使用 Crawl4AI 深抓正文和图片，再调用 LLM 生成 Telegram 内容。
-5. `core/publisher.py`：发布到 Telegram，并针对消息过长、HTML 解析失败、媒体失败做降级。
+```text
+Sources.md
+ -> Feed 并发抓取
+ -> 最近时间窗过滤 + 运行内去重
+ -> LLM 选出高价值条目
+ -> 只对入选条目用 Crawl4AI 深抓全文/图片
+ -> LLM 生成 Telegram 内容
+ -> Telegram Delivery + 失败降级
+```
 
-这个项目本质上不是“历史知识库爬虫”，而是“Feed 信号发现 -> 少量正文深抓 -> AI 派生内容 -> Delivery”的实时内容流水线。它最值得借鉴的不是直接复制代码，而是其“便宜的元数据发现层”和“昂贵的正文抓取层”分离思想；同时，它的持久化、身份、增量语义和成功判定都不足以直接支撑 1000 站长期知识库。
+它最值得借鉴的不是具体代码，而是四个架构信号：
 
-## 2. Source 与 Feed 发现实现
+1. **便宜的元数据发现和昂贵的正文抓取分层。** Feed 用普通 HTTP 并发抓，正文 Browser 深抓只处理少量候选。
+2. **媒体候选来自多个入口。** Feed media、页面 OpenGraph、Crawl4AI media 可以共同形成图片候选。
+3. **AI 生成与 Delivery 是正文抓取之后的派生链。** 即使最终业务是发布，也可以和源数据采集解耦。
+4. **来源维护体验非常低摩擦。** 直接往 `Sources.md` 加 Feed URL 就能扩展来源。生产知识库不能把 Markdown 文件当真相源，但应该保留这种“批量粘贴/导入即可接入”的运营体验。
 
-### 2.1 来源配置
+现有博客知识库方案已经覆盖 Feed Change-Signal Plane、两级队列、长期 Browser Pool、相似度证据、Asset provenance、人工审核状态机、AI/Delivery 独立失败等主要启发。本次进一步识别出的可落地新增点是：**增加 Source Intake / Bulk Import 层，让未来持续新增网站时可以从 URL、Feed、OPML、Markdown、CSV/JSON 批量导入，经规范化、去重、站点归属解析、Probe、预览和审核后再进入正式 Source Registry。**
 
-`Sources.md` 直接保存 Feed URL，例如 OpenAI、Google、Hugging Face、AWS、Substack 等 Feed。`fetcher.extract_rss_links()` 读取整个 Markdown 文本，同时用两类正则提取 Markdown 链接和裸 URL，再根据 URL 是否包含 `.xml`、`/rss`、`/feed`、`/atom`、`feed=` 判断其是否像 Feed。
+## 2. 代码结构与实际执行语义
 
-优点：
+入口 `main.py` 顺序执行五个阶段：
 
-- 增加来源成本低，改一个文本文件即可；
-- 不需要为每个来源写专门代码；
-- 适合小规模运营工具快速维护。
+```python
+fetcher.run()
+processor.run()
+agents.select_news()
+await agents.generate_posts()
+publisher.run()
+```
 
-局限：
+对应：
 
-- Source 只是字符串，没有 `site_id/provider_id`、启停状态、调度周期、抓取策略、认证、robots、健康状态、最后成功时间等结构化业务信息；
-- 仅凭 URL 关键字识别 Feed，会漏掉没有典型路径的 Feed，也可能误判；
-- 无 Provider checkpoint，无法表达“这个 Feed 上次同步到哪个 GUID/updated”；
-- 文本文件不能安全承担多用户 Web 管理和并发变更。
+- `core/fetcher.py`：读取 Source、HTTP 拉 Feed、解析条目和首图；
+- `core/processor.py`：日期过滤、URL 去重、标题模糊去重；
+- `core/agents.py`：Choicer、Crawl4AI 深抓、Writer、Shortener；
+- `core/publisher.py`：Telegram 发布和 fallback；
+- `config.py`：模型、并发、超时、时间窗、文件路径等全局配置；
+- `prompts/*.md`：把选稿、写作、缩短逻辑从 Python 代码中分离。
 
-因此生产方案应保留“Feed 是通用 Provider”的思路，但把来源从 Markdown 文本升级为数据库中的版本化 Source/Provider Registry。
+这种结构清楚但属于单进程批处理编排。任一阶段大量依赖 `data/*.json` 文件作为阶段间状态，缺少数据库事务、任务 lease、跨进程幂等、run manifest 和精确 stage outcome。因此“小规模每天跑一次”可用，但不能直接扩展到百万文档、多实例长期运行。
 
-### 2.2 Feed 网络抓取
+## 3. Source 管理：低摩擦体验值得保留，文本文件真相源不适合生产
 
-`fetch_with_retries()` 使用 `requests.get()`，配置浏览器风格 User-Agent 和 RSS/XML Accept，超时由 `REQUEST_TIMEOUT` 控制。失败重试 `MAX_RETRIES` 次，退避时间为 `2 ** attempt` 秒。
+### 3.1 项目实现
 
-`run()` 使用 `ThreadPoolExecutor(max_workers=MAX_WORKERS)` 并发抓取多个 Feed；默认 `MAX_WORKERS=12`。这说明 Feed 轮询属于轻量 I/O 任务，适合高并发，与 Browser 深抓应使用不同资源池。
+`Sources.md` 本质是一个 Feed URL 列表。当前仓库中包含 OpenAI、Google AI、Hugging Face、AWS、DeepMind、Substack、TechCrunch、arXiv 等 Feed。
 
-对知识库方案的启发：
+`extract_rss_links()` 同时用两类正则寻找 Markdown 链接和裸 URL：
 
-- Feed/Sitemap/API/普通 HTTP 元数据探测与 Browser Worker 分池；
-- Provider 并发之外还需要 host/domain 级限流，避免 1000 站中某个域名占满全局 worker；
-- 指数退避应增加 jitter，并结合 `Retry-After`、HTTP 状态码、站点级熔断和失败预算；
-- Feed 请求应使用 ETag/If-None-Match、Last-Modified/If-Modified-Since，304 时不重新解析正文候选。
+```python
+md_links = re.findall(r'\]\((https?://[^\s)]+)\)', content)
+bare_links = re.findall(r'(https?://[^\s\)]+)', content)
+```
 
-## 3. Feed 条目解析与元数据
+随后通过 URL 中是否包含 `.xml`、`/rss`、`/feed`、`/atom`、`feed=` 粗略判断是否为 Feed。
 
-`parse_feed()` 使用 `feedparser` 解析 XML，最多读取 `MAX_ITEMS_PER_FEED` 条，默认 50。每个条目输出：
+### 3.2 优点
 
-- `source_url`
-- `title`
-- `link`
-- `lead_image`
-- `summary`
-- `published_date`
-- `fetched_at`
+- 增加新来源几乎没有学习成本；
+- Source 配置和程序代码分离；
+- 同一 Fetcher 可以处理大量异构来源；
+- 很适合个人工具或小团队快速运营。
 
-### 3.1 图片候选提取
+### 3.3 局限
+
+1. 文本 URL 没有稳定 `site_id/provider_id`；
+2. 无启停状态、负责人、调度、优先级、robots、速率限制、凭据绑定；
+3. 无版本和审计，Web 多人编辑时无法保证并发一致性；
+4. 仅按 URL 关键字识别 Feed，既可能漏识别，也可能误识别；
+5. 一个 Feed URL 和它所属的站点实体没有显式关系；
+6. 不能表达“同一站点有 Sitemap + Feed + Archive + API 多个 Provider”。
+
+### 3.4 对 1000 站知识库的新增启发：Source Intake
+
+生产方案不应该回退到 `Sources.md` 做真相源，但应该提供等价甚至更低摩擦的接入入口：
+
+```text
+粘贴 URL / Feed URL
+上传 OPML
+上传 Markdown / TXT / CSV / JSON
+Web 批量录入
+       |
+       v
+Source Intake Batch
+ -> parse
+ -> normalize
+ -> classify root/feed/provider
+ -> duplicate detection
+ -> canonical site association
+ -> lightweight probe
+ -> dry-run preview
+ -> operator approve
+ -> Site / Provider / Profile Release
+```
+
+关键原则：**导入文件只是输入证据，不是 Source Registry。** 原始导入内容和行号需要保存 provenance，正式站点配置仍由 PostgreSQL 的版本化实体承担。
+
+## 4. Feed 网络层：轻量高并发与 Browser 资源池分离
+
+### 4.1 HTTP 重试
+
+`fetch_with_retries()` 使用 `requests.get()`，设置浏览器风格 User-Agent、RSS/XML Accept、请求超时，并对异常做指数退避：
+
+```python
+wait_time = 2 ** attempt
+```
+
+默认配置：
+
+```text
+MAX_WORKERS = 12
+MAX_RETRIES = 3
+REQUEST_TIMEOUT = 10
+MAX_ITEMS_PER_FEED = 50
+```
+
+### 4.2 并发模型
+
+`run()` 用 `ThreadPoolExecutor` 并行获取 Feed：
+
+```python
+with ThreadPoolExecutor(max_workers=config.MAX_WORKERS) as executor:
+    future_to_url = {
+        executor.submit(fetch_and_process, url): url
+        for url in rss_links
+    }
+```
+
+这与 Browser 深抓的 `MAX_CONCURRENT_CRAWLS = 3` 形成明显资源分层：Feed 属于轻 I/O，Browser 属于高内存/高 CPU/高延迟任务。
+
+### 4.3 生产化需要补齐
+
+对于 1000 站不能只设置一个全局 worker 数，至少需要：
+
+```text
+global concurrency
+ -> worker-pool quota
+ -> host/domain quota
+ -> site quota
+ -> task priority
+```
+
+另外重试需加入：
+
+- jitter；
+- `Retry-After`；
+- 按 HTTP 状态分类可重试/永久失败；
+- host 熔断；
+- 动态降并发；
+- ETag / Last-Modified 条件请求。
+
+PicoNewsAgent 每轮直接 GET Feed，没有持久的 ETag / Last-Modified，因此即使 Feed 没变化也会重新下载、解析。对 1000 站长期增量而言，应把条件请求放进独立 Change-Signal Plane，304 时只记录 observation。
+
+## 5. Feed 条目解析、时间和媒体候选
+
+### 5.1 条目字段
+
+`parse_feed()` 通过 `feedparser` 解析条目，并输出：
+
+```text
+source_url
+标题 title
+文章 link
+lead_image
+summary
+published_date
+fetched_at
+```
+
+相对链接用 `urljoin(base_url, link)` 归一化。summary 从 `summary` / `description` / `content[0]` 中取值，再用正则去 HTML 标签并截到 500 字符。
+
+### 5.2 `MAX_ITEMS_PER_FEED` 的语义
+
+项目只处理每个 Feed 前 `MAX_ITEMS_PER_FEED` 条，默认 50。这适合“最近一天新闻”，但不能用于历史完整性。
+
+对知识库：
+
+- `INCREMENTAL` 可以只看有限最新窗口，并且建议有 overlap；
+- `FULL_BACKFILL` 绝不能把 Feed 的有限窗口当历史边界；
+- Sitemap、API cursor、Archive/year-month 分页等才是历史覆盖的核心 Provider；
+- Feed 只是一种变化信号和补充发现证据。
+
+### 5.3 时间语义是一个典型反例
+
+`normalize_date()` 优先 `published_parsed`，其次 `updated_parsed`，都没有时返回当前时间。
+
+这对实时展示可以勉强工作，但对知识库会产生严重数据污染：**抓取时间不等于发布时间。**
+
+生产字段必须拆开：
+
+```text
+source_published_at
+source_updated_at
+discovered_at
+observed_at
+fetched_at
+```
+
+源站发布时间未知就保存 NULL。每个时间字段还应保存 provenance，例如来自 Feed、JSON-LD、meta、API 或人工 Override。
+
+### 5.4 图片候选的多通道思想
 
 `extract_thumbnail()` 依次尝试：
 
-1. `media_content`
-2. `media_thumbnail`
-3. entry 的 image 类型 links
-4. `image/thumb/thumbnail/wp_post_thumbnail`
-5. summary/description/content 中 `<img src>`
+1. `media_content`；
+2. `media_thumbnail`；
+3. entry links 的 image 类型；
+4. `image/thumb/thumbnail/wp_post_thumbnail`；
+5. summary/description/content 中的 `<img src>`。
 
-并过滤 pixel、analytics、icon、logo、avatar 等明显非正文图。
+并过滤 `pixel/analytics/icon/logo/avatar` 等明显非正文图片。
 
-这是一个很实用的“多来源媒体候选”模式。知识库方案不应只在正文 HTML 中找图片，而应把 Feed enclosure/media、OpenGraph、Twitter Card、JSON-LD、正文 `<img>` 都记录成 `asset_candidate`，并保存 provenance，之后由 Asset Pipeline 下载、去重、校验、排序。
-
-### 3.2 时间语义的关键问题
-
-`normalize_date()` 优先 `published_parsed`，其次 `updated_parsed`；如果都没有，则直接用 `datetime.now()`。
-
-这对新闻展示尚可容忍，但对长期知识库不可接受：抓取时间不能伪装成源站发布时间。正确方案必须将：
-
-- `source_published_at`
-- `source_updated_at`
-- `discovered_at`
-- `fetched_at`
-- `observed_at`
-
-严格拆开。源站发布时间未知就保存 NULL，并记录时间字段来自 Feed、JSON-LD、页面 meta、正文推断还是人工 Override。
-
-## 4. 清洗与去重实现
-
-`processor.py` 有两个核心步骤。
-
-### 4.1 时间窗口过滤
-
-默认 `DAYS_BACK=1`，只保留最近一天条目。这个策略非常适合日报，却与“全量历史回灌”目标相反。
-
-知识库方案中时间窗口只能用于 `INCREMENTAL` 的优先级或扫描范围，不能成为 `FULL_BACKFILL` 的历史截断条件。首次回灌必须通过 Sitemap、Archive、API cursor、分页导航等持续枚举，并用 Coverage Ledger 解释终止原因。
-
-### 4.2 运行内去重
-
-项目使用：
-
-- `seen_urls` 做精确 URL 去重；
-- 清洗标题后用 `difflib.SequenceMatcher`，阈值默认 0.85，做模糊标题去重。
-
-README 也明确指出当前去重只有单次运行内记忆，没有跨运行持久状态。
-
-生产知识库必须改成持久化、多层 Evidence：
-
-1. normalized URL exact match；
-2. redirect/canonical 证据；
-3. Feed GUID / API source key；
-4. Canonical IR hash 完全内容一致；
-5. 标题/正文 SimHash、MinHash/LSH 或其他近似相似度作为“可能重复”证据。
-
-尤其不能直接把“标题像”当成删除依据。技术博客里“Release 1.2”“Release 1.3”、系列文章、翻译/镜像都可能高度相似。近似重复应生成 `similarity_evidence` / `duplicate_cluster`，用于搜索去重、运营提示和镜像识别，但保留每个来源文档及其历史版本。
-
-## 5. AI 筛选阶段的适用边界
-
-`select_news()` 会把条目的标题、摘要、链接、发布时间、图片简化后批量交给 Gemini，并要求返回 JSON 形式的精选结果。
-
-这个步骤对“编辑精选”合理，但绝不能放在知识库主同步链路的 Admission 之前：
-
-- LLM 评分不稳定；
-- 模型不可用会阻断内容；
-- 相关性不是历史完整性的证明；
-- 低价值文章今天可能无价值，未来知识检索可能正需要它。
-
-因此正确关系应是：
+这说明“文章主图/正文图”应是候选集合，而不是单一 CSS selector。知识库 Asset Pipeline 应统一接收：
 
 ```text
-源站同步 -> Accepted Document Version -> Search/Markdown Ready
-                                  -> 异步 AI Summary/Tag/Cluster/Digest
+Feed enclosure/media
+OpenGraph
+Twitter Card
+JSON-LD
+正文 img/source/picture
+Crawl4AI result.media
+站点专用 extractor
 ```
 
-AI 只能影响下游派生内容、优先级和人工工作队列，不能静默裁掉 FULL_BACKFILL 的合法文章。
+每个 `asset_candidate` 保存来源、source path、confidence、原 URL、发现页面和时间，再由 Asset Pipeline 下载验证、hash 去重和排序。
 
-## 6. Crawl4AI 深抓实现
+## 6. Processor：运行内去重适合日报，不适合文档身份
 
-`crawl_single()` 创建 `BrowserConfig(headless=True)` 和 `CrawlerRunConfig`，关键配置包括：
+### 6.1 时间窗口
 
-- `wait_for="body"`
-- `wait_until="networkidle"`
-- `wait_for_images=True`
-- `remove_overlay_elements=True`
-- `delay_before_return_html=2.0`
+`processor.run()` 计算：
 
-失败按 `CRAWL_RETRIES` 重试，默认 3 次、间隔 4 秒。
+```python
+cutoff_date = datetime.now() - timedelta(days=config.DAYS_BACK)
+```
 
-### 6.1 并发控制
+默认 `DAYS_BACK = 1`，旧条目直接过滤。这是编辑运营策略，不是采集完整性策略。
 
-`crawl_all_parallel()` 使用 `asyncio.Semaphore(MAX_CONCURRENT_CRAWLS)`，默认同时最多 3 个深抓任务。这种“轻量 Feed 高并发 + Browser 低并发”的资源分层是正确方向。
+知识库的正确边界是：
 
-但 `crawl_single()` 每个 URL 都执行一次：
+- FULL_BACKFILL 不允许使用 DAYS_BACK 截断合法历史；
+- INCREMENTAL 可以把时间窗作为扫描优化，但必须结合 Provider checkpoint/overlap/Reconcile；
+- AI 或用户兴趣只能影响优先级和下游选稿，不能改变历史真相。
+
+### 6.2 URL 和模糊标题去重
+
+项目先用 `seen_urls` 精确去 URL，再用 `difflib.SequenceMatcher` 比较清洗后的标题，默认阈值 0.85。
+
+这只能作为运行内降噪。它不适合作为生产 Document Identity，因为：
+
+- 同一文章可能有 canonical、AMP、redirect、slug rename；
+- 不同版本文章标题可能高度相似；
+- 系列文章、翻译、转载、镜像不应被静默删除；
+- 跨运行没有持久记忆。
+
+生产模型应拆成：
+
+```text
+URL Identity
+Document Identity
+Document Version
+Similarity Evidence / Cluster
+```
+
+精确 Canonical IR hash 可以判断“内容完全相同”；标题相似、SimHash、MinHash/LSH 只形成非破坏性相似证据，用于搜索降拥挤和人工审核。
+
+## 7. LLM Choicer：可以做派生选稿，不能做知识库 Admission
+
+### 7.1 实现
+
+`select_news()` 把每个条目简化为：
+
+```json
+{
+  "title": "...",
+  "summary": "...",
+  "link": "...",
+  "published_date": "...",
+  "lead_image": "..."
+}
+```
+
+再把整个 JSON 交给 Gemini。`choicer_agent.md` 要求模型按频道主题和自定义条件筛选高影响新闻、去语义重复，并输出纯 JSON 数组。
+
+模型调用设置 `temperature=0.2` 和 `response_mime_type="application/json"`，随后仍通过 `json.loads()` 解析。
+
+### 7.2 值得借鉴的点
+
+- Prompt 与代码分离；
+- 明确输出结构；
+- 低温度降低格式漂移；
+- AI 处理建立在已抓到的元数据之上；
+- 可以把人工运营标准编码为版本化 Prompt。
+
+### 7.3 生产化要点
+
+现有知识库方案中的 AI Stage 应继续要求：
+
+```text
+prompt_release
+model_release
+input_version_ids
+output_schema
+cost_budget
+```
+
+还应执行结构化验证：
+
+```text
+LLM response
+ -> parse
+ -> schema validate
+ -> semantic validate
+ -> persist AI artifact
+ -> downstream action
+```
+
+解析失败必须是显式 Stage Outcome，不能只打印异常后继续假装流水线完成。
+
+### 7.4 不能前置到主知识同步
+
+Choicer 的“只选高价值内容”非常适合 Telegram，但如果照搬到知识库，会导致不可恢复的历史缺失。
+
+正确关系：
+
+```text
+Source Sync
+ -> Accepted Canonical Document Version
+ -> Markdown/Search Ready
+ -> AI Summary / Tag / Cluster / Digest / Editorial Selection
+```
+
+AI 只决定“怎么用”和“是否发布”，不能决定合法历史文章是否存在于知识库。
+
+## 8. Crawl4AI 深抓：资源模型和数据保真是最重要的两个问题
+
+### 8.1 Browser 配置
+
+`crawl_single()` 使用：
+
+```python
+BrowserConfig(headless=True, verbose=False, text_mode=False)
+```
+
+以及：
+
+```python
+CrawlerRunConfig(
+    wait_for="body",
+    wait_until="networkidle",
+    wait_for_images=True,
+    remove_overlay_elements=True,
+    delay_before_return_html=2.0
+)
+```
+
+这说明项目优先保证 JS 页面和懒加载图片完成后再读内容。
+
+### 8.2 并发限制
+
+`crawl_all_parallel()` 用 `asyncio.Semaphore(MAX_CONCURRENT_CRAWLS)` 限制深抓并发，默认 3：
+
+```python
+semaphore = asyncio.Semaphore(config.MAX_CONCURRENT_CRAWLS)
+```
+
+这种“轻 Feed 高并发、Browser 低并发”应保留。
+
+### 8.3 关键性能问题：每 URL 创建 crawler 生命周期
+
+`crawl_single()` 内部每篇文章执行：
 
 ```python
 async with AsyncWebCrawler(config=browser_cfg) as crawler:
 ```
 
-也就是抓一篇文章就创建/销毁一个 crawler 生命周期。小批量新闻可以工作，但数十万/百万文章会产生明显 Browser 初始化开销。
+因此 URL 级任务承担 Browser/Crawler 初始化和销毁成本。几十篇新闻问题不大，但百万级历史回灌会非常浪费。
 
-生产方案应使用长期 Browser Runtime/Context Pool：
-
-- Worker 进程长期持有浏览器；
-- 每站或每安全域使用隔离 Context；
-- Page 生命周期短，Browser 生命周期长；
-- 设置 Browser pool 总内存/CPU 上限；
-- 使用 host 级 semaphore；
-- Browser 只作为 HTTP 抓取与抽取质量失败后的升级路径，而不是默认路径。
-
-### 6.2 正文处理问题
-
-抓取成功后优先取 `result.markdown`，否则取 `result.html`；随后 `clean_content()` 用正则删 script/style/nav/footer/header、去标签、压空白，最后硬截断到 2500 字符。
-
-这适合给 LLM 写短帖，却完全不适合知识库：
-
-- 代码块、表格、标题层级和链接结构被抹掉；
-- 长技术文章被硬截断；
-- Markdown 经过“HTML 正则清洗”会损失语义；
-- 无法稳定重放、diff 或重新切块。
-
-生产方案必须保存不可变 Snapshot，并建立：
+生产形态应是：
 
 ```text
-Snapshot
+Browser Worker Process
+ -> long-lived Browser Runtime
+ -> Context Pool
+ -> short-lived Page / crawl task
+```
+
+Browser 生命周期长，Page 生命周期短；Context 按站点/安全边界隔离；设置进程最大页面数、内存、CPU、任务数和定期 recycle。
+
+### 8.4 HTTP-first 仍是更优默认
+
+PicoNewsAgent 所有被选文章都走 Crawl4AI Browser，原因是候选量已经很小。对于 1000 站全量知识库，不能这样做。
+
+应先普通 HTTP：
+
+```text
+HTTP Snapshot
+ -> extractor quality pass? -> accept candidate
+ -> app shell / empty / dynamic evidence? -> Browser fallback
+```
+
+Browser 是证据驱动的升级路径，不是默认抓取引擎。
+
+### 8.5 正文保真问题
+
+成功后代码优先取 `result.markdown`，否则 `result.html`，然后 `clean_content()`：
+
+- 正则删除 script/style/nav/footer/header；
+- 删除所有 HTML 标签；
+- 压缩空白；
+- **硬截断到 2500 字符。**
+
+这非常适合 LLM 写 150~300 字新闻帖，却不适合知识库：
+
+- 代码块丢失；
+- 表格丢失；
+- 标题层级丢失；
+- 超长技术文档被截断；
+- 图片与正文块的相对位置丢失；
+- 无法稳定 diff/replay/rechunk。
+
+知识库必须：
+
+```text
+Immutable Snapshot
  -> Extraction Candidate
- -> structured block IR
+ -> Structured Block IR
  -> Canonical Document IR
- -> deterministic Markdown Projection
+ -> Deterministic Markdown Projection
 ```
 
-Canonical IR 保留 heading、paragraph、code、table、quote、list、image、link 等结构块；Markdown 只是可重建投影。
+Markdown 可以作为候选输入，但不是唯一真相。
 
-### 6.3 图片处理
+## 9. 页面媒体提取：候选与主图选择需要分离
 
-项目从 `result.metadata` 读取 `og:image/twitter:image`，再遍历 `result.media.images`，过滤 avatar/logo/icon/ad/banner，并保留少量图片。
+Crawl4AI 深抓后：
 
-可借鉴其“metadata + media”多通道候选，但生产方案还需要：
+- 从 `result.metadata` 读取 `og:image`、`twitter:image`、`og:image:secure_url`；
+- 从 `result.media['images']` 收集图片；
+- 过滤 `avatar/logo/icon/ad/banner`；
+- 最多向 Writer 提供 5 个候选。
 
-- 图片 URL 归一化和相对地址解析；
-- 下载到对象存储；
-- MIME/尺寸/大小/恶意文件检查；
-- SHA-256 去重；
-- 保留原 URL、最终 URL、referer、发现位置、alt、caption、宽高；
-- Markdown Projection 按策略改写为本地资产 URL。
+Writer Prompt 再要求模型只保留架构图、数据图、基准图、UI 截图等有信息价值的图片。
 
-## 7. 状态管理与成功语义
+对知识库应拆成两个完全不同的职责：
 
-项目各阶段通过 `data/*.json` 文件传递：raw -> clean -> selected -> telegram posts。`main.py` 顺序调用函数，没有数据库任务状态、lease、outbox、manifest 或 stage finalizer。
+1. **采集层不丢候选。** 只要合法且在 scope 内，尽量保存候选和 provenance；
+2. **派生层可以选图。** Digest、Newsletter、社媒发布可以使用 AI/规则挑主图。
 
-风险包括：
+不能让“适不适合发 Telegram”反过来决定原始文章资产是否被归档。
 
-- 进程中途退出只能从文件状态人工判断；
-- 多实例同时执行容易覆盖 JSON；
-- 单个阶段内部错误常被打印后 return，主流程仍可继续；
-- 最终“Pipeline Completed”并不等于每篇文章都成功；
-- 无跨运行幂等键；
-- 无法回答“这个站漏了多少、失败在哪一步、哪个结果由哪个规则版本产生”。
+## 10. Writer Agent：Prompt 版本化、结构化输出和渠道约束
 
-1000 站方案应坚持：PostgreSQL 持久化决定性状态，S3/MinIO 保存大对象，Redis Streams 只传输任务；每阶段输出结构化 Outcome，Finalizer 根据 Run Manifest 判断真正完成。
+`telegram_writer.md` 明确约束：
 
-## 8. Publisher 的降级模式
+- 目标语言；
+- 内容语气；
+- 布局；
+- 来源链接；
+- Hashtag；
+- Telegram HTML 允许标签；
+- 禁止 Markdown；
+- 输出 JSON：`telegram_post` + `approved_images`。
 
-`publisher.py` 根据图片数量选择 Telegram `sendMessage/sendPhoto/sendMediaGroup`。如果失败：
+这体现了“一个 Accepted Article 可以派生多个渠道 Projection”的设计。
 
-1. 消息过长时调用 Shortener Agent，再重试；
-2. HTML 解析失败或媒体失败时降级为纯文本/无图消息。
-
-这个设计体现了一个重要原则：下游 Delivery 可以有自己的 fallback，但不能回写或污染源文档真相。
-
-知识库方案应将 Markdown、Search、Embedding、摘要、Digest、外部发布全部视为 Accepted Document Version 的独立 Projection / Derived Workflow。某个 Delivery 失败只产生独立 `delivery_attempt` 和 dead-letter，不应让源站同步回滚。
-
-## 9. 对现有博客知识库方案的具体优化结论
-
-本次调研后建议在现有方案中显式强化以下能力。
-
-### 9.1 增加 Feed Change-Signal Plane
-
-虽然现有方案已经支持 RSS/Atom/JSON Feed，但应把 Feed 从普通 Discovery Provider 再提升为“低成本变化信号层”。引入 `provider_item_observation`：
+知识库系统可以把这抽象为：
 
 ```text
-provider_id
-provider_item_key        # GUID 优先，否则规范化 link + source evidence
-url_candidate_id
-source_published_at
-source_updated_at
-summary_hash
-media_candidates
-observed_at
-raw_item_snapshot_ref
+AI Workflow Release
+ -> Stage Release
+ -> Prompt Release
+ -> Model Release
+ -> Output Schema
+ -> Channel Policy
+ -> Artifact
 ```
 
-并保存 Provider 的 ETag、Last-Modified、最近成功轮询、最近 GUID/更新时间高水位。
+例如同一 `document_version_id` 可以分别产生：
 
-Feed 的职责是快速发现“新增/可能更新”，触发 Article Fetch；它不能单独证明历史完整性，因为 Feed 通常只保留有限窗口。
+- 中文摘要；
+- 英文摘要；
+- Weekly Digest；
+- Telegram Post；
+- Slack/Discord 通知；
+- Newsletter；
+- 专题报告。
 
-### 9.2 明确 Metadata Intake 与 Article Fetch 两级队列
+这些全部是可删除、可重跑、可重建的派生结果，不能修改 Document Version。
 
-采用：
+## 11. Publisher：独立 Delivery fallback 的设计值得直接吸收
+
+`publisher.py` 根据图片数量分别走 Telegram：
 
 ```text
-Feed/Sitemap/API metadata intake
- -> cheap candidate normalization
- -> identity/freshness decision
- -> only changed/new candidate enters article fetch
+0 图 -> sendMessage
+1 图 -> sendPhoto
+多图 -> sendMediaGroup
 ```
 
-这样 1000 站每日频繁轮询时，大部分 unchanged 信号在低成本层就被短路，不进入 Browser/正文抽取。
+发送失败后有两层 fallback：
 
-### 9.3 增加 Similarity Evidence / Duplicate Cluster
+1. “message too long” -> 调用 Shortener Agent 缩短后重试；
+2. HTML 解析或媒体获取失败 -> 丢图、去 HTML/纯文本发送。
 
-在 URL/Document Identity 之外增加非破坏性的相似内容关系：
+### 11.1 正确的抽象
+
+生产系统应把这种策略定义在 `delivery_policy_release`：
 
 ```text
-content_similarity_evidence
-story_or_duplicate_cluster
-cluster_membership
+preferred payload
+ -> channel length validation
+ -> media validation
+ -> send
+ -> retry
+ -> shorten fallback
+ -> drop-media fallback
+ -> plain-text fallback
+ -> dead-letter
 ```
 
-使用规范化标题、正文 SimHash/MinHash 等生成候选；精确 Canonical IR hash 可以判定内容完全一致，但近似相似只用于聚类，不自动删除文档。
-
-这对转载、镜像、同步到多个博客平台、Newsletter 重发特别有价值，并可改善搜索结果多样性。
-
-### 9.4 增加媒体候选 provenance
-
-把 Feed media、OpenGraph、Twitter Card、JSON-LD、正文 media 全部统一为 `asset_candidate`，记录发现方式和置信度，再由 Asset Pipeline 决定下载与主图选择。
-
-### 9.5 Browser Pool 必须是长期资源池
-
-现有方案已有 HTTP-first / Browser fallback 原则，本次进一步明确：禁止生产代码按 URL 创建完整 Browser Runtime；Worker 应长期复用 Browser，按任务创建 Page/Context，并做 host 级隔离与资源预算。
-
-### 9.6 人工审核是状态机，不是“加一个页面”
-
-PicoNewsAgent Roadmap 提到 Human-in-the-Loop Dashboard。知识库方案中应把它实现为持久状态：
+每次尝试保存：
 
 ```text
-AUTO_ACCEPTED
-NEEDS_REVIEW
-HUMAN_ACCEPTED
-HUMAN_REJECTED
-OVERRIDDEN
+delivery_id
+channel
+payload_artifact_id
+attempt
+policy_release_id
+request_at
+response_code
+remote_message_id
+error_class
+fallback_reason
+ack_at
 ```
 
-审核动作生成 append-only audit/override evidence。Web 页面只是这个状态机的操作界面。
+### 11.2 重要边界
 
-## 10. 不应直接照搬的设计
+Delivery 的任何缩短、去图、HTML 清理，只能改渠道 payload，不能回写 Canonical IR 或 Markdown。
 
-1. 用 Markdown 文件保存 Source Registry。
-2. 仅凭 Feed URL 关键字判断 Provider 类型。
-3. 发布时间缺失时用当前时间代替。
-4. `DAYS_BACK` 作为主采集过滤条件。
-5. 单次进程内 `set` 和 `SequenceMatcher` 承担持久去重。
-6. LLM 选择结果决定哪些合法文章进入知识库。
-7. 每 URL 新建一个 Crawl4AI Browser 生命周期。
-8. 正文统一清洗成纯文本并截断 2500 字符。
-9. JSON 文件串联生产阶段和保存业务状态。
-10. 只靠函数返回/打印日志判断流水线完成。
-11. 发布失败与源内容处理强耦合。
+## 12. 状态管理与成功判定：PicoNewsAgent 最大的生产化缺口
 
-## 11. 最终评价
+当前阶段间主要靠 JSON 文件：
 
-PicoNewsAgent 对“1000 个技术博客知识库”最大的价值是验证了一个合理的资源分层模型：Feed 负责便宜地发现候选，正文深抓只处理需要的 URL，Browser 并发需要严格受控，图片应从多个元数据通道联合发现，最终 Delivery 可以独立做降级。
+```text
+raw -> clean -> selected -> telegram_posts
+```
 
-但它同时展示了小型自动化脚本在扩大规模后会遇到的典型边界：文件状态、运行内去重、日期伪填、Browser 生命周期过细、正文截断、LLM gating、无 durable workflow。生产知识库方案应吸收其轻重分层与媒体候选思想，同时用版本化 Provider、持久 Frontier、不可变 Snapshot、Canonical IR、Feed Change-Signal Plane、Similarity Evidence、Outcome/Finalizer 和 Web 审核状态机补足长期运行能力。
+存在的问题：
+
+- 无数据库真相源；
+- 无多实例并发控制；
+- 文件写入缺少事务；
+- 无跨运行持久去重；
+- 中途失败难以精确恢复；
+- 阶段函数可能打印错误后直接 return；
+- `main.py` 最后仍打印“Pipeline Execution Completed Successfully”；
+- 无法回答某篇文章在哪个阶段失败、用了哪个规则版本、是否已经发布过。
+
+知识库必须继续使用：
+
+```text
+PostgreSQL authoritative state
++ S3/MinIO immutable artifacts
++ Redis Streams transport only
++ Transactional Outbox
++ idempotency key
++ lease/heartbeat
++ Run Manifest
++ Stage Finalizer
++ append-only Audit
+```
+
+**协程结束不等于业务成功，主函数走到最后也不等于 Run 成功。**
+
+## 13. 配置与 Prompt 管理
+
+`config.py` 把并发、超时、模型、时间窗、语言、语气、Source 文件和输出路径集中配置；Prompt 独立在 `prompts/*.md`。
+
+优点是开发简单，但生产上全局可变配置会破坏可重现性。正确做法：
+
+- Site/Profile/Policy/Prompt/Model/Chunker/Embedding 都生成 immutable release；
+- Run 绑定具体 release ID；
+- Secret 只保存 Secret Manager 引用；
+- Web 修改配置时创建新 release，而不是原地覆盖；
+- 任何 AI Artifact 保存 Prompt/Model/Input Version/Schema 版本。
+
+这样才能在半年后回答“这篇 Markdown/摘要/发布内容为什么长这样”。
+
+## 14. 新增优化：Source Intake / Bulk Import 的实现建议
+
+这是本次在现有主方案之上最值得新增的能力。
+
+### 14.1 为什么需要单独 Intake 层
+
+用户目标不是只维护最初 1000 站，后续还会不断增加网站。如果每新增一个站都要求手工填写完整 Profile、Provider、Schedule，会形成明显运营瓶颈。
+
+PicoNewsAgent 的 `Sources.md` 证明：**低摩擦添加来源非常有价值。** 生产系统应该把这种体验升级成可靠的批量导入流水线，而不是丢掉。
+
+### 14.2 支持的输入
+
+```text
+单个 root URL
+多个 root URL
+直接 Feed URL
+OPML
+Markdown/TXT 裸 URL 或链接
+CSV
+JSON
+Web 表格粘贴
+```
+
+### 14.3 数据模型
+
+建议增加：
+
+```text
+source_import_batch
+source_import_item
+```
+
+`source_import_batch`：
+
+```text
+batch_id
+input_type
+original_artifact_ref
+created_by
+status
+created_at
+parsed_count
+valid_count
+duplicate_count
+needs_review_count
+created_site_count
+```
+
+`source_import_item`：
+
+```text
+item_id
+batch_id
+row_or_line
+raw_value
+normalized_input
+input_kind              # ROOT_URL / FEED_URL / OPML_ENTRY ...
+resolved_site_root
+resolved_provider_url
+existing_site_id
+existing_provider_id
+probe_result_id
+status
+reason
+provenance
+```
+
+### 14.4 状态机
+
+```text
+PARSED
+ -> INVALID
+ -> DUPLICATE
+ -> MATCHED_EXISTING_SITE
+ -> NEEDS_PROBE
+ -> NEEDS_REVIEW
+ -> READY_TO_APPLY
+ -> APPLIED
+```
+
+### 14.5 站点和 Feed 的归属解析
+
+如果用户直接输入 Feed：
+
+```text
+https://example.com/blog/feed.xml
+```
+
+Intake 不应简单把它当一个独立“站点”。应先根据：
+
+- Feed channel link；
+- HTML alternate feed；
+- URL host/path；
+- redirect；
+- 已有 Site Registry；
+
+解析到逻辑 `site`，再创建 `RSS_ATOM_JSONFEED` Provider。
+
+### 14.6 Dry-run 与审核
+
+批量导入先只做预览：
+
+```text
+输入 1000 条
+ -> 920 个唯一逻辑站点
+ -> 760 个新站
+ -> 120 个已有站补充 Feed Provider
+ -> 25 个重复
+ -> 15 个无效/不可访问
+```
+
+运营人员在 Web 中确认后再创建正式 Site/Profile/Provider。这样既保留 `Sources.md` 的便利性，又不会破坏正式配置的一致性。
+
+### 14.7 幂等
+
+重复上传同一 OPML/Markdown 不应重复建站。可使用：
+
+```text
+import:{batch}:{normalized_input_hash}
+site candidate: normalized root identity
+provider candidate: site_id + provider_type + normalized endpoint
+```
+
+所有 Apply 操作写 Audit。
+
+## 15. 与现有博客知识库主方案逐项对照
+
+| PicoNewsAgent 机制 | 是否直接可用 | 主方案处理 |
+|---|---|---|
+| `Sources.md` URL 列表 | 不直接用 | 升级为 Source Registry，并新增 Bulk Source Intake |
+| Feed 普通 HTTP 并发 | 可借鉴 | 独立 Signal Worker，高并发低成本 |
+| 每次全量 GET Feed | 不足 | ETag / Last-Modified / 304 |
+| Feed 前 50 条 | 仅增量启发 | Feed 是 Change Signal，不作为历史完整性证明 |
+| 缺时间时写当前时间 | 禁止 | 发布时间 NULL + provenance |
+| URL + 标题模糊去重 | 只作证据 | URL Identity + Document Identity + Similarity Evidence |
+| LLM Choicer 先筛选再深抓 | 不用于知识主链 | AI 只在 Accepted Version 之后做派生/选稿 |
+| Browser 深抓 | 可作为 fallback | HTTP-first，证据驱动升级 Browser |
+| 每 URL crawler lifecycle | 不适合大规模 | 长期 Browser Runtime / Context Pool |
+| 正文截 2500 字符 | 禁止 | Snapshot -> Block IR -> Canonical IR，不截断 |
+| 多通道图片候选 | 值得借鉴 | `asset_candidate` + provenance + 独立 Asset Pipeline |
+| JSON 文件传阶段 | 不适合 | PostgreSQL + S3 + Queue + Outbox + Manifest |
+| Prompt 文件分离 | 值得借鉴 | Prompt/Model/Schema 全部 Release 化 |
+| Telegram Shortener/fallback | 值得借鉴 | Delivery Policy + 独立 retry/dead-letter |
+| Human-in-the-loop Roadmap | 值得借鉴 | 持久 Review State Machine + Audit |
+
+## 16. 推荐生产数据流
+
+结合该项目经验后，面向博客知识库的最终关系应是：
+
+```text
+Source Intake
+ -> Site / Provider Registry
+ -> Probe / Profile Release
+
+Change-Signal Plane
+ -> Feed / Sitemap / API metadata observations
+ -> identity + freshness decision
+ -> NEW / POSSIBLY_CHANGED
+
+Discovery / FULL_BACKFILL
+ -> Sitemap / API / Archive / Nav / Internal Link
+ -> Coverage Ledger
+ -> Durable Frontier
+
+Fetch
+ -> HTTP first
+ -> Browser only on evidence
+ -> Immutable Snapshot
+
+Extraction
+ -> Candidates
+ -> Canonical Block IR
+ -> Quality / Review
+ -> Accepted Document Version
+
+Projection
+ -> Markdown
+ -> Asset
+ -> Chunk / Search / Embedding
+
+Derived Workflow
+ -> Summary / Tag / Cluster
+ -> Digest / Newsletter / Editorial Selection
+ -> Delivery
+ -> channel-specific fallback
+```
+
+这里最关键的因果关系是：
+
+- Feed 能决定“要不要优先重新抓”，不能决定“历史是否完整”；
+- AI 能决定“要不要精选/怎么写”，不能决定“文章是否进入知识库”；
+- Delivery 能改发布 payload，不能改源文档真相；
+- 相似度能决定“如何聚类/降低搜索拥挤”，不能自动删除来源文章；
+- Markdown 是稳定 Projection，不是唯一真相；
+- 新来源导入可以很简单，但正式配置必须结构化、可审核、可版本化。
+
+## 17. 本次对主方案的实际修改点
+
+现有方案已经吸收了 PicoNewsAgent 的绝大多数核心经验，因此不重复堆叠同义组件。本次只增加一个此前缺失且与“后续持续增加网站”直接相关的能力：
+
+**Source Intake / Bulk Import。**
+
+具体需要在主方案中补充：
+
+1. Site Onboarding 下增加批量来源导入；
+2. 核心数据模型增加 `source_import_batch/source_import_item`；
+3. Web 站点管理增加 URL/Feed/OPML/Markdown/CSV/JSON 导入、dry-run、冲突预览和审核；
+4. API 增加 Source Import 创建、预览和 Apply；
+5. Phase 1 即实现 Bulk Source Intake，避免 1000 站接入依赖手工逐条配置；
+6. Web 验收标准增加“重复导入幂等、已有站点自动匹配、直接 Feed 能正确归属站点、导入历史可审计”。
+
+其余已经进入主方案的设计保持不变：Feed Change-Signal、HTTP-first、长期 Browser Pool、Canonical IR、非破坏性相似聚类、Asset provenance、AI/Delivery 独立下游、Review State Machine、Outbox/Manifest/Finalizer 等。
+
+## 18. 最终判断
+
+PicoNewsAgent 适合作为“实时 Feed -> 深抓 -> AI -> 发布”参考实现，不适合作为 1000 站历史知识库底座直接扩容。
+
+其核心价值在于把资源昂贵程度天然分层：
+
+```text
+Feed metadata 很便宜
+< HTTP article fetch
+< Browser render
+< LLM processing
+< 外部发布与媒体处理
+```
+
+生产知识库应该进一步把每一级都做成独立、持久、幂等、可观测、可重放的 Stage，并且让便宜信号尽量在昂贵 Stage 之前短路 unchanged 工作。
+
+同时，PicoNewsAgent 用一个简单 Source 列表做到“加 URL 就能扩展来源”，提醒我们：可靠性和运营体验不能二选一。最终系统既要用数据库、Release、Audit 保证真相，又要让新增几十、几百个博客来源保持批量、低摩擦和可预览，这也是本次对现有技术方案最具体的新补强。
