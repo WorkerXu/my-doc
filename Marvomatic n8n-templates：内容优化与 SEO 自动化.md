@@ -5,324 +5,451 @@
 - 编号：31
 - 项目：Marvomatic/n8n-templates
 - 地址：https://github.com/Marvomatic/n8n-templates
+- 调研基准：仓库 `main` tree `62db36512d5540031b8fb9df36c6c82897a7d1b6`
 - 类型：n8n 工作流模板集合
-- 调研目标：评估其中 Crawl4AI + n8n 的异步抓取、批处理、内容投影与外部工作流集成方式，对“1000 个技术博客全量历史抓取 + 增量同步 + Markdown 知识库 + Web 管理”的架构有什么可复用和需要规避的点。
+- 调研目标：评估其中 Crawl4AI + n8n 的异步抓取、批处理、内容投影、外部分析、交付与低代码运行时边界，对“1000 个技术博客全量历史抓取 + 增量同步 + Markdown 知识库 + Web 管理”的可复用设计与生产风险进行实现级分析。
 
-## 2. 项目定位
+## 2. 项目定位与结论
 
-该仓库不是一个完整爬虫平台，而是一组面向 SEO、内容分析和自动化运营的 n8n 工作流模板。它把搜索、抓取、LLM 分析、Google Sheets/Drive、BigQuery、MailerLite 等服务串成可视化工作流。
+该仓库不是一个完整爬虫平台，而是一组面向 SEO、内容分析和运营自动化的 n8n 工作流模板。它把 Serper/SerpAPI、Crawl4AI、BigQuery/GSC、LLM、MailerLite、Google Sheets/Drive 等服务串成可视化流程。
 
-与本知识库需求最相关的三个模板是：
+与本知识库最相关的工作流包括：
 
-1. `serp-analysis`：从 Serper/SerpAPI 获取移动端和桌面端 SERP，选取前若干结果，交给 Crawl4AI 抓取，再由 LLM 做摘要、关键词、N-gram、FAQ/Related Search 分析。
-2. `gsc-ai-seo-writer`：输入一篇文章 URL，一边从 BigQuery 读取 Google Search Console 历史表现，一边调用 Crawl4AI 抓正文，最后生成内容优化报告并保存到 Google Drive/Sheets。
-3. `mailing-list-analysis`：从 MailerLite 批量取订阅者，识别企业邮箱域名，逐个探测网站并交给 Crawl4AI 抓取，再由 LLM 抽取企业介绍、行业和服务，写入 Google Sheets。
+1. `serp-analysis/SERP_Analysis_Serper_Crawl4AI.json`：移动端/桌面端 SERP → Crawl4AI → 分析 → Sheets。
+2. `gsc-ai-seo-writer/gsc_ai_seo_writer.json`：文章 URL → Crawl4AI → BigQuery/GSC → LLM 优化报告 → Sheets/Drive。
+3. `mailing-list-analysis/mailing_list_analysis.json`：MailerLite subscriber → 邮箱域名 → 网站探测 → Crawl4AI → LLM → Sheets。
+4. 其他 SEO/AI 模板进一步说明 n8n 适合作为“业务编排层”，而不是百万 URL 抓取调度层。
 
-因此它最值得借鉴的不是“怎么把 1000 个站点爬全”，而是“外部低代码工作流如何以异步 Job 的方式消费抓取能力，以及抓取结果如何继续进入分析和交付链路”。
+结论是：项目验证了“Crawler 作为异步能力、n8n 作为外部消费者/编排器”这条路线，但模板层实现直接耦合 crawler host/task/status/result、依赖工作流默认值、允许网络节点直接访问用户派生 URL、存在继续错误输出和动态墙钟时间等问题。对 1000 站点长期知识库，应保留其业务编排优势，但必须由 Integration Gateway、持久调度、Manifest、Workflow Sanitizer/Preflight/Sandbox 和统一 egress/error/time policy 收口。
 
-## 3. 代表性工作流实现细节
+## 3. Crawl4AI 异步任务模型
 
-### 3.1 SERP Analysis：搜索结果 fan-out 到 Crawl4AI
+### 3.1 GSC AI SEO Writer 的实际调用链
 
-工作流大致为：
-
-```text
-Form(focus keyword + country)
-  -> Serper/SerpAPI mobile search
-  -> Serper/SerpAPI desktop search
-  -> 取各自 Top 3
-  -> 合并/拆分 organic results
-  -> POST http://crawl4ai:11235/crawl
-  -> 得到 task_id
-  -> Wait
-  -> GET /task/{task_id}
-  -> status == completed ?
-       yes -> 提取 metadata + cleaned_html
-       no  -> 回到 Wait
-  -> LLM 分析
-  -> Google Sheets
-```
-
-关键点：
-
-- 搜索和抓取完全分离；n8n 只负责业务编排。
-- Crawl4AI 暴露异步任务模型：提交抓取后立即返回 `task_id`，随后查询任务状态。
-- 移动端和桌面端 SERP 都会产生候选，再通过 n8n 节点 fan-out。
-- FAQ、related searches 等支线分别做 Split/Merge/Remove Duplicates，再汇总到报表。
-- 模板建议测试时限制结果数量并 pin data，以降低搜索 API、抓取和 LLM 成本。
-
-这说明“抓取服务异步化 + 工作流 fan-out/fan-in”非常适合外部消费者，但 Top 3 这类限制是业务分析预算，不是历史 Coverage 证明，不能直接迁移成知识库全量发现策略。
-
-### 3.2 GSC AI SEO Writer：固定轮询 + 工作流侧 Markdown
-
-该模板的抓取路径更清晰：
+`gsc_ai_seo_writer.json` 中直接调用：
 
 ```text
-Form(URL)
-  -> POST /crawl { urls: URL }
-  -> Wait（节点名为 5_sec）
-  -> GET /task/{task_id}
-  -> IF status == completed
-       false -> Wait -> 再查
-       true  -> 取 result.url/title/description/cleaned_html
-  -> n8n Markdown 节点：cleaned_html -> markdown
-  -> BigQuery/GSC 历史性能分析
-  -> LLM 生成优化建议
-  -> Sheets/Drive
+POST http://crawl4ai:11235/crawl
+  body.urls = form.Link
+        |
+        v
+返回 task_id
+        |
+        v
+Wait（节点显示名为 5_sec）
+        |
+        v
+GET http://crawl4ai:11235/task/{task_id}
+        |
+        v
+IF status == completed
+  false -> Wait -> 再查
+  true  -> result.cleaned_html / metadata
 ```
 
-同时，BigQuery SQL 会比较最近 30 天和此前 30 天的 clicks、impressions、CTR、average position，并把趋势保存到按文章 slug / 日期组织的 Spreadsheet 中。
+这体现了正确的服务化方向：长耗时抓取不阻塞表单请求，客户端拿 job id 后轮询。
 
-这里有两个重要技术启示：
+但它把 Crawl4AI 的内部细节暴露给了 n8n：
 
-1. **固定周期轮询虽然简单，但不适合作为平台级长期协议。** 如果大量 n8n execution 都以固定 5 秒查询任务状态，会制造无意义 QPS，并占用工作流执行上下文。生产级接口应返回 `Retry-After` 或支持长轮询/回调，客户端使用指数退避 + jitter 和绝对 deadline。
-2. **Markdown 生成位置不一致。** 该模板使用 Crawl4AI 的 `cleaned_html`，再由 n8n Markdown 节点转换；而其他模板直接使用 Crawl4AI `result.markdown`。同一个页面会因工作流和节点版本不同得到不同 Markdown。这对知识库是不允许的：Markdown 必须是平台内由版本化 Projection Release 从 Canonical IR 确定性生成的派生物。
-
-### 3.3 Mailing List Analysis：逐项循环和 raw priority
-
-该模板会：
-
-- 取全部 MailerLite subscriber；
-- 过滤 active；
-- 按邮箱域名区分公共邮箱与企业域名；
-- 使用 n8n `splitInBatches` / Loop Over Items；
-- 对企业域名先发送 HTTP 请求探测；
-- 对可访问站点调用 Crawl4AI；
-- 调用抓取时在请求体中直接给出 `priority: 10`；
-- 轮询任务状态并在 completed 后抽取 title、description、locale、markdown；
-- LLM 生成 about/niche/services，最后 append/update 到 Google Sheets。
-
-该流程对几十、几百个业务对象很实用，但不能让这种 Loop 节点成为 1000 站点知识库的数据面调度器。原因是它没有平台级的 per-host QPS、全局并发预算、租户配额、lease、fairness、durable frontier、backpressure 和失败恢复真相。
-
-此外，外部工作流直接传 `priority: 10` 也暴露了语义耦合风险：不同 crawler 或 queue 对 priority 数值方向和范围可能不同。知识库平台应只接受业务层 `priority_hint` 或 service class，再由版本化 Priority Adapter 转成统一 `normalized_priority`；真正 dispatch 前仍必须通过 Budget Reservation。
-
-## 4. 技术原理总结
-
-### 4.1 异步 Job 是正确边界，但 crawler task_id 不应成为外部协议
-
-项目通过 `POST /crawl -> task_id -> GET /task/{id}` 把长耗时抓取从 n8n 请求线程中移开，这是正确的服务化原则。
-
-问题在于 n8n 直接知道：
-
-- Crawl4AI 的内部 hostname；
-- `/crawl`、`/task/{id}` API 结构；
+- 内部 hostname/端口；
+- `/crawl`、`/task/{id}`；
 - `task_id`；
-- `status == completed`；
-- `result.cleaned_html` / `result.markdown` 等底层返回 shape。
+- `completed` 字符串；
+- `result.cleaned_html`、`result.markdown`、`result.metadata` 等返回 shape。
 
-只要 crawler 版本、路由策略、任务系统或结果结构变化，所有外部工作流都可能要改。因此需要在知识库平台前增加稳定的 Integration Gateway，外部只依赖平台级 `integration_job_id`、typed status 和 artifact reference，Crawl4AI 只作为内部 Fetch Adapter。
+任何 crawler 版本、队列、结果模型或路由策略变化都可能要求所有工作流一起迁移。因此生产系统应暴露平台级 `integration_job_id + typed status + artifact refs`，Crawl4AI 只是内部 Fetch Adapter。
 
-### 4.2 fan-out/fan-in 应由持久调度器执行
+### 3.2 轮询协议问题
 
-n8n 的 Split/Merge/Loop 非常适合业务工作流，但真正的抓取 fan-out 应转化为持久 `IntegrationJobItem/Task`：
+模板采用 Wait → GET status → IF → 回 Wait 的模式。该模式小规模可用，但大量 n8n execution 固定周期轮询会造成：
+
+- 无效状态 QPS；
+- 大量长驻 execution；
+- 同步唤醒尖峰；
+- crawler 短时拥塞时继续放大压力；
+- 缺少统一 deadline/cancel/partial-success 语义。
+
+平台级协议应支持：
 
 ```text
-External Input Manifest
-  -> normalize + dedupe
-  -> Admission
-  -> Budget Reservation
-  -> Durable Frontier
-  -> per-site fair scheduling
-  -> Fetch/Extract/Quality
-  -> Version/Artifact
-  -> Job barrier
-  -> External consumer
+POST /v1/integration-jobs
+ -> integration_job_id
+
+GET /v1/integration-jobs/{id}
+ <- status + Retry-After + ETag
+
+optional:
+- long poll
+- signed callback
+- cancel
 ```
 
-这样即使 n8n 重启、网络断开或 worker 扩缩容，抓取进度仍由 PostgreSQL + 队列状态恢复，而不是依赖某个 n8n execution 的内存上下文。
+客户端使用指数退避 + jitter 和 absolute deadline；callback 自身持久化为 Delivery Job，必须支持 HMAC、timestamp、replay window、幂等 event id、重试和 dead-letter。
 
-### 4.3 polling 要变成有协议的 polling/callback
+## 4. Markdown 与内容真相
 
-固定 Wait + GET 状态的最小实现需要升级为：
+GSC SEO Writer 的实现是：
 
-- `Retry-After`：平台告诉客户端下次建议查询时间；
-- 指数退避 + jitter：减少同步轮询尖峰；
-- absolute deadline：禁止无限循环；
-- ETag/If-None-Match 或长轮询：状态未变化时减少返回体；
-- cancellation：调用方不再需要时可取消未 dispatch 的 item；
-- terminal states：`SUCCEEDED / PARTIAL / FAILED / CANCELLED / EXPIRED / BLOCKED`；
-- item-level typed outcome：单项失败不把整个 batch 模糊成一个布尔状态；
-- callback/webhook：终态或阶段事件由平台主动推送。
+```text
+Crawl4AI result.cleaned_html
+ -> n8n Markdown node
+ -> markdown
+```
 
-Callback 本身也必须持久化为 Delivery Job，使用 HMAC、timestamp、replay window、幂等 event id、重试、dead-letter；callback URL 必须经过 Destination 配置和 SSRF 安全校验，不能让调用方在每次请求里任意指定内网 URL。
+而 Mailing List Analysis 直接取：
 
-### 4.4 batch 需要 completion policy，而不是“所有节点跑完才算完”
+```text
+Crawl4AI result.markdown
+```
 
-批量抓取至少支持：
+这意味着同一页面可以因为不同工作流、n8n Markdown 节点版本或 crawler 版本产生不同 Markdown。对知识库这是不可接受的，因为 Markdown 需要可重放、可比较、可索引、可审计。
 
-- `ALL`：全部 item 达到终态；
-- `BEST_EFFORT`：到 deadline 后返回成功和失败明细；
-- `MIN_SUCCESS(n)`：达到最低成功数量即可触发下游；
-- `DEADLINE`：以时间预算为主，超时项进入后续处理。
-
-这比 n8n 图里人工堆 Wait/IF/Merge 更适合百万级 URL 系统，也能明确部分成功语义。
-
-### 4.5 内容真相和工作流输出必须分开
-
-Google Sheets/Drive 很适合协作、报表和运营交付，但不适合作为知识库主真相：
-
-- 行列结构不是 append-only 版本模型；
-- 手工编辑难追踪 provenance；
-- 不能稳定保存 Snapshot、Canonical IR、字段来源和质量证据；
-- 很难以内容 hash 做离线 replay 和重建。
-
-正确边界是：
+正确模型应为：
 
 ```text
 Immutable Snapshot
+ -> Extraction Candidate
  -> Canonical IR
  -> Accepted Document Version
- -> Markdown Projection / Search / Embedding
- -> Derived Artifact
- -> n8n
- -> Google Sheets / Drive / Email / Newsletter
+ -> markdown_projection_release
+ -> MarkdownArtifactRef
 ```
 
-n8n 和 Google 产品消费稳定 Version/Artifact Ref，而不是成为内容真相源。
+外部工作流只能消费 `MarkdownArtifactRef`，不自行决定 HTML→Markdown 真相。
 
-## 5. 对现有博客知识库方案的具体优化
+## 5. fan-out/fan-in、去重和持久调度
 
-本项目没有改变现有“持久同步平台”的主体方向，但暴露了外部工作流边界还需要补强。建议增加 **Integration Job Contract**，把“Integration Gateway”从一个概念扩展成可实施协议。
+### 5.1 SERP mobile/desktop 的重复工作
 
-### 5.1 数据模型
+SERP 模板同时请求 mobile 与 desktop 结果，再把 organic result 送去抓取。同一 URL 很可能在两个设备结果中同时出现。低代码流程若直接 fan-out，会产生重复抓取和重复成本。
 
-建议新增：
+平台应先冻结 caller item 与 evidence，再做 canonical dedupe：
 
 ```text
-external_consumer
-- id / tenant_id / name
-- auth_client_ref / scopes
-- quota_policy_release
-- enabled
-
-integration_job
-- id / tenant_id / consumer_id
-- operation
-- idempotency_key
-- input_manifest_id / input_manifest_hash
-- requested_artifacts
-- completion_policy
-- requested/effective config
-- status
-- deadline_at
-- submitted_at / started_at / terminal_at
-
-integration_job_item
-- id / job_id / caller_item_key
-- normalized_url / document_id
-- task_id / run_id
-- status / outcome
-- document_version_id
-- artifact_refs
-- error_class
-
-callback_delivery
-- id / integration_job_id / destination_id
-- event_id / event_type
-- payload_hash
-- status / attempt / next_retry
-- response_fingerprint
+caller items
+  mobile rank=2 -> https://example.com/a
+  desktop rank=1 -> https://example.com/a
+        |
+        v
+normalize/canonical fingerprint
+        |
+        v
+1 logical TARGETED_FETCH item
+        |
+        +--> caller mapping: mobile/rank2
+        +--> caller mapping: desktop/rank1
 ```
 
-### 5.2 稳定 API
+这样只抓一次，但保留 device/rank/query 证据，后续 SERP 分析仍能还原各自语义。
 
-外部请求示例：
+### 5.2 n8n Loop 不应承担全局调度
 
-```json
-POST /v1/integration-jobs
-{
-  "operation": "TARGETED_FETCH",
-  "idempotency_key": "seo-run-2026-08-15-001",
-  "input_manifest": {
-    "items": [
-      {"key": "page-1", "url": "https://example.com/a"},
-      {"key": "page-2", "url": "https://example.com/b"}
-    ]
-  },
-  "requested_artifacts": ["DOCUMENT_VERSION", "MARKDOWN"],
-  "completion_policy": {
-    "mode": "BEST_EFFORT",
-    "deadline_seconds": 900
-  },
-  "callback_destination_id": "dest_xxx"
-}
-```
+`mailing_list_analysis.json` 使用 Loop/Batch 逐个处理订阅者域名，并直接调用 Crawl4AI。它缺少平台级：
 
-返回：
+- per-host/per-origin/per-registrable-domain QPS；
+- 全局 Browser/HTTP 容量；
+- tenant quota；
+- durable lease/heartbeat；
+- fairness/backpressure；
+- dispatch budget；
+- crash recovery 真相。
+
+因此外部 batch 必须转为 `IntegrationJobItem/Task`，由 PostgreSQL + durable queue 负责真正 fan-out/barrier。
+
+### 5.3 Completion Policy
+
+批量任务不能只用“整个图跑完/没跑完”表示状态。至少需要：
+
+- `ALL`
+- `BEST_EFFORT`
+- `MIN_SUCCESS(n)`
+- `DEADLINE`
+
+Job 可以 `PARTIAL`，Item 保存独立 Typed Outcome，单项失败不能被 Merge/Loop 的成功完成掩盖。
+
+## 6. raw priority 的语义耦合
+
+Mailing List Analysis 调用 Crawl4AI 时直接传：
 
 ```json
 {
-  "integration_job_id": "ij_xxx",
-  "status": "QUEUED",
-  "status_url": "/v1/integration-jobs/ij_xxx"
+  "urls": "https://<domain>",
+  "priority": 10
 }
 ```
 
-外部永远不拿 Crawl4AI `task_id`，也不依赖 crawler 返回字段。
+问题不在于值 10，而在于外部工作流知道底层 crawler 的原生 priority 语义。更换 crawler/queue 后，方向、范围和 tie-breaker 都可能变化。
 
-### 5.3 Input Manifest 与去重
-
-外部批量输入在提交后冻结成不可变 manifest：
-
-- 保留 caller item key，便于 n8n 回填原始行；
-- URL canonicalization 后去重；
-- 同一 URL 在同一 job 中只产生一个逻辑抓取 item；
-- 多个 caller item 可引用同一结果；
-- manifest hash 参与幂等与审计；
-- `TARGETED_FETCH` 输入 URL 和 `DERIVED_BUILD` 输入 Version Ref 使用不同 typed schema。
-
-### 5.4 结果协议
-
-默认结果不把整页 HTML/Markdown直接塞进 callback，而返回：
-
-- `document_version_ref`
-- `markdown_artifact_ref`
-- title / canonical / published_at 等轻量 metadata
-- Quality Outcome
-- lineage summary
-
-需要正文的消费者通过带 scope 的 Artifact API 拉取。这样 callback 小、可重放、可审计，也避免大文档重复传输。
-
-### 5.5 派生结果缓存
-
-项目作者推荐 n8n “pin data” 节省 API/LLM 成本，这个思想可以升级为平台级确定性缓存：
+平台应只接受业务层 `priority_hint/service_class`：
 
 ```text
-cache_key = hash(
-  input_version_refs
-  + input_manifest_hash
-  + projection_release
-  + workflow_recipe_release
-  + model_release
-  + normalized_args
-)
+External priority hint
+ -> versioned Priority Adapter
+ -> normalized_priority（越大越先）
+ -> Scheduler Adapter
+ -> underlying queue key
 ```
 
-同样输入和同样 Release 可以复用已有 Derived Artifact；规则或模型升级后自然生成新 key，不会错误复用旧结果。
+而且真正访问源站之前仍要 Budget Reservation。Priority 只能决定顺序，不能改变历史 Coverage 集合。
 
-## 6. 应采纳与不应采纳
+## 7. 所有网络节点都必须视为 egress principal
+
+这是本次复核对现有方案最重要的补充之一。
+
+Mailing List Analysis 并不是只通过 Crawl4AI 访问网页。它还有一个普通 n8n `HTTP Request` 节点，URL 由订阅者邮箱域名拼接：
+
+```text
+email
+ -> split("@").last()
+ -> "http://" + domain
+ -> HTTP Request: Ping Website
+```
+
+这说明只把 Code/Plugin 节点视为风险边界是不够的。`HTTP Request`、Browser、Code、Plugin、Tool、自定义节点都具备网络副作用，只要 URL 可以来自表单、Sheet、邮箱、LLM 或上游 JSON，就可能形成 SSRF、内网探测、云 metadata 访问、预算绕过或未审计源站访问。
+
+因此生产约束应是：
+
+```text
+Network-capable node
+ -> classify target intent
+ -> URL normalization
+ -> DNS/IP admission
+ -> egress policy
+ -> budget reservation
+ -> Gateway / Context Adapter / Destination Adapter
+ -> side effect
+```
+
+工作流沙箱默认拒绝任意互联网/内网出网，只放行：
+
+- Integration Gateway；
+- 已批准 Context Provider；
+- 已批准 Model Provider；
+- 预注册 Destination。
+
+“它只是 HTTP Request 节点”不能成为绕过抓取平台的理由。
+
+## 8. 域名识别必须使用 Public Suffix List
+
+Mailing List Analysis 用类似逻辑识别公共邮箱域名：
+
+```text
+domain = email.split('@')[1]
+baseDomain = domain.split('.')[0]
+```
+
+这种方式对简单 `gmail.com` 看似可用，但对：
+
+- `example.co.uk`
+- `blog.example.co.uk`
+- `foo.github.io`
+- 多级 ccTLD
+- IDN/punycode
+
+并不能正确表达“可注册域”“origin”“subdomain scope”。
+
+知识库的 Source identity、rate limit、SSRF、跨子域发现和 canonical 归属都需要标准化模型：
+
+```text
+normalized_host
+registrable_domain = PSL(host)
+origin = scheme + host + port
+source_scope = ORIGIN | HOST_SET | REGISTRABLE_DOMAIN
+```
+
+per-host、per-origin 和 per-registrable-domain 限流要分层，不能简单按字符串前缀/后缀分组。
+
+## 9. 节点显示名称不是执行语义
+
+`gsc_ai_seo_writer.json` 中 Wait 节点显示名为 `5_sec`，但导出的 `parameters` 是空对象。无论目标 n8n 版本最终默认等待多少，这都揭示一个重要事实：**节点名称只是标签，不能代表有效运行配置。**
+
+生产 Blueprint 发布前必须读取：
+
+```text
+node.type
+node.typeVersion
+node.parameters
+engine version
+engine defaults
+```
+
+并物化为 `effective_default_manifest`。需要 contract test 验证 import/export round-trip 后的真实行为。
+
+否则可能出现：
+
+- 节点名写“5 秒”，实际默认不是 5 秒；
+- 模板依赖某版本默认值，升级后行为变化；
+- UI 显示与导出 DSL 不一致；
+- 审计只能看到人为标签，无法解释真实执行。
+
+因此 Workflow Release 必须保存 effective parameters，而不只保存 JSON hash。
+
+## 10. `continueOnFail/onError` 不能把失败变成成功
+
+Mailing List Analysis 的状态请求节点包含类似：
+
+```text
+retryOnFail = true
+waitBetweenTries = 5000
+onError = continueRegularOutput
+```
+
+低代码业务流程里“失败后继续走”很常见，它能提高整个流程的容错性；但如果平台只看 execution 是否完成，就会把失败项误算成成功，进一步污染 Job success count、Quality、Delivery 和成本统计。
+
+需要把三个层次分开：
+
+```text
+Node execution outcome
+Item outcome
+Job/workflow outcome
+```
+
+`continueOnFail` 只表示“图继续”，不表示 Node/Item 成功。必须保留 error class、attempt、response fingerprint，并由 Completion Policy 决定 Job 是 `SUCCEEDED/PARTIAL/FAILED`。
+
+Preflight 应扫描 `continueOnFail/onError/retryOnFail`，要求显式错误路径和统计语义；Golden test 要覆盖失败分支。
+
+## 11. 动态时间必须冻结进 Manifest
+
+GSC SEO Writer 的 BigQuery SQL 使用 `CURRENT_DATE()` 计算最近 30 天和前 30 天，同时 Spreadsheet tab/title 使用 `$now` 日期。
+
+如果一个 Job 在午夜前后重试，或隔天恢复：
+
+- SQL 时间窗可能变化；
+- Sheet 名可能变化；
+- 同一 Workflow Recipe + 同一文章可能得到不同输入；
+- “重试”实际上变成了一次新分析，但系统看不出来。
+
+因此创建 Analysis/Integration Job 时必须先冻结：
+
+```text
+evaluation_time
+timezone
+window_start/window_end
+as_of
+```
+
+之后 SQL、文件命名、Context 查询、模型 prompt 都从这个冻结值派生。同一 Manifest 重试必须复用同一时间输入；如果业务要“按现在重新跑”，就新建 Manifest。
+
+同理，随机数、隐式 locale、默认 device 等会影响结果的运行时状态也应该显式化。
+
+## 12. Workflow Template Sanitizer
+
+公开 n8n 模板的导出 JSON 可能包含：
+
+- credential instance id/name；
+- webhook id；
+- internal hostname；
+- pinned execution data；
+- 示例表格/运行结果；
+- 业务环境的 project/document id；
+- 可能的 PII 或内部标识。
+
+这些字段不一定是 Secret，但不能原样进入生产 Blueprint，也不应该被当作可重复运行 Contract。
+
+建议增加模板净化阶段：
+
+```text
+Imported Template
+ -> parse engine DSL
+ -> remove credential instance binding
+ -> remove webhook instance id
+ -> remove pinned/sample execution payload
+ -> detect PII/internal host/private URL
+ -> replace concrete destination/project ids with typed slots
+ -> normalize node ids if needed
+ -> generate Sanitization Report
+ -> Preflight
+```
+
+Blueprint 保留的是 credential slot/schema、required scope、Destination type 和逻辑节点关系，而不是某台 n8n 实例的绑定信息。
+
+## 13. Google Sheets/Drive 只是 Delivery Projection
+
+GSC SEO Writer 通过文章 URL 最后一段 slug 搜索/创建 Spreadsheet，再按日期创建 Sheet。这个模式适合人工使用，但存在：
+
+- 不同 URL 可能同 slug；
+- URL 末尾 `/`、编码、canonical 变化会改变 slug；
+- 并发“先搜索、再创建”会产生 search-create 竞态；
+- Drive/Sheet 手工重命名后映射丢失；
+- `$now` 让重试写到不同日期 sheet。
+
+因此需要：
+
+```text
+delivery idempotency key
+business_object_key
+persistent destination_object_id
+explicit CREATE|UPDATE|APPEND
+artifact hash dedupe
+```
+
+Sheets/Drive 不参与 Document Identity、Version Truth、Coverage Truth 或 Integration Job 唯一状态。
+
+## 14. 外部分析数据与正文事实分离
+
+项目把 BigQuery/GSC、SERP、文章正文一起交给 LLM 生成 SEO 结果。这个方向可保留，但不同数据必须有不同真相边界：
+
+```text
+Accepted Document Version
+          +
+GSC/SERP/BigQuery Context Snapshot
+          +
+evaluation_time/timezone
+          +
+Analysis Recipe/Model Release
+          |
+          v
+Analysis Input Manifest
+          |
+          v
+Derived Artifact
+```
+
+SERP Top N 只是研究样本，不是历史 Coverage；GSC 指标变化也不等于文章正文变化。Context Provider 故障不能反向把 Source Sync 标记失败。
+
+## 15. 对主方案的具体修改
+
+本次调研最终纳入主方案的新增/加强点如下：
+
+1. **Network-capable Node 统一治理**：从仅关注 Code/Plugin，扩展到 HTTP Request、Browser、Tool、自定义节点；任意动态 URL 都必须经 egress policy 和 Gateway/Adapter。
+2. **PSL Domain Scope**：Source/Host identity 增加 `registrable_domain`、origin、subdomain scope，解决 `co.uk` 等多级后缀与跨子域限流/归属问题。
+3. **Canonical Input Dedupe**：SERP mobile/desktop 或批量 caller 的相同 URL 共享一个内部抓取项，同时保留所有 caller/rank/device evidence。
+4. **Effective Config Materialization**：节点显示名不作为 Contract，Preflight 物化 `type/typeVersion/parameters + engine defaults`。
+5. **Error Policy 显式化**：`continueOnFail/onError` 只允许图继续，Node/Item 失败事实不能被 success count 吞掉。
+6. **Time Freeze**：`evaluation_time/timezone/as_of` 进入 Manifest，禁止跨日重试重新解释 `$now/CURRENT_DATE`。
+7. **Template Sanitizer**：剥离 credential id、webhook id、pinned data、PII、内部 host，输出 Sanitization Report。
+8. **Delivery 幂等加强**：不用 slug + search-create 作为唯一识别，使用稳定 idempotency key 与持久 destination object id。
+9. **Integration Job Contract**：保留原方案的 Job/Item/Barrier/Retry-After/Callback/Artifact Ref，并把上述治理字段纳入 Workflow/Integration lineage。
+
+## 16. 应采纳与不应直接采纳
 
 ### 应采纳
 
-- 抓取能力以异步 Job 暴露给外部工作流。
-- n8n 用于业务编排、LLM、报表、Google Sheets/Drive、邮件等外围自动化。
-- fan-out/fan-in 与部分成功结果对工作流非常重要。
-- 把昂贵数据/模型调用做限制、缓存和复用。
-- 通过可视化流程快速构建不同业务消费者。
+- Crawler 以异步 Job 暴露给业务编排层。
+- n8n 用于表单、业务流程、LLM、Context、报告和外部交付。
+- fan-out/fan-in、部分成功、异步轮询是重要业务能力。
+- 搜索/抓取/分析/交付分层。
+- 通过缓存/固定输入降低昂贵 API 与模型重复调用。
 
 ### 不应直接采纳
 
-- 不让 n8n 直接访问内部 `crawl4ai:11235`。
-- 不把 Crawl4AI `task_id/status/result` 当公共 API。
-- 不用固定 5 秒无限轮询作为平台协议。
-- 不让 n8n Loop/Batch 负责全局抓取公平调度和限流。
-- 不接受外部 raw `priority=10` 直接进入底层队列。
-- 不在不同工作流中各自决定 HTML -> Markdown 逻辑。
-- 不把 Google Sheets/Drive 当主内容真相源。
-- 不以 Top N 搜索结果、工作流节点完成或抓取成功数作为历史 Coverage 完整性证明。
+- 不让 n8n 直连内部 `crawl4ai:11235`。
+- 不让外部持有 Crawl4AI `task_id/status/result` Contract。
+- 不用固定 Wait + 无限轮询作为长期协议。
+- 不让 Loop/Batch 成为全局抓取调度器。
+- 不接受 raw `priority=10` 直达底层 queue。
+- 不让不同工作流各自产生“官方 Markdown”。
+- 不让普通 HTTP Request 节点直接访问用户派生域名。
+- 不用 `split('.')` 推断 registrable domain。
+- 不相信节点名代表实际参数。
+- 不把 `continueOnFail` 等同于成功。
+- 不让 `$now/CURRENT_DATE` 在同一 Job 重试时漂移。
+- 不把 credential id/webhook id/pinned data 原样发布到生产 Blueprint。
+- 不用 slug/Sheet 名代替 Document Identity 或 Delivery idempotency key。
+- 不把 SERP Top N、GSC 指标或 Sheets 状态当 Coverage/Source Truth。
 
-## 7. 最终结论
+## 17. 最终结论
 
-Marvomatic/n8n-templates 对本项目最大的价值，是验证了“Crawler 作为异步服务、n8n 作为外部业务编排器”这条路线具有很高实用性；但它的实现仍属于工作流模板层，直接暴露 crawler host、task_id、status 和内容 shape，固定轮询和工作流侧 Markdown 也不适合百万级长期知识库。
+Marvomatic/n8n-templates 的核心价值不是提供“1000 技术博客全量抓取算法”，而是提供了大量真实低代码自动化样本，让平台边界问题非常具体：Crawler 异步任务如何被外部消费、SERP/GSC 如何与正文组合、批量 fan-out 如何发生、Google 产品如何交付，以及低代码节点默认值、动态时间、错误继续、网络直连和模板实例绑定如何造成生产风险。
 
-因此现有技术方案应保留“Source Sync/Truth Layer 与 Dify/n8n 分离”的原则，并新增可落地的 **Integration Job / Input Manifest / Item Outcome / Polling + Callback / Barrier / Artifact Ref** 协议。这样可以继续享受 n8n 的低代码效率，同时确保 1000 站点场景下的抓取调度、预算、版本、Markdown 一致性、质量、可重放性和审计仍由知识库平台统一控制。
+最终架构应把 n8n/Dify/Agent 定位为**受控业务编排器**：它们只通过 Integration Gateway、Context Adapter 和 Destination Adapter 消费平台能力；抓取调度、URL Admission、PSL domain scope、预算、Canonical Dedupe、内容版本、Markdown Projection、时间冻结、错误真相和审计都由平台统一控制。这样既保留低代码快速组合的效率，又不会让工作流模板演变成第二套不可审计的 crawler/data plane。
