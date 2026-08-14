@@ -24,6 +24,8 @@
 
 项目 README 也明确提醒 Crawl4AI 会带来较大的传递依赖链，因此供应链隔离是设计的一部分。
 
+但其 `scraping` extra 使用的是 `crawl4ai>=0.8.5`，只给下界而没有锁定最终解析结果。对个人 CLI 可接受，对长期平台不可接受：同一份源代码在不同时间重新构建可能得到不同的 Crawl4AI、浏览器及传递依赖。正确做法是把“可选依赖”进一步升级为“运行时隔离”：HTTP/Discovery Worker 镜像根本不安装 Browser/Crawl4AI，Browser Worker 使用独立 lockfile、独立镜像 digest、独立 SBOM 和独立发布门禁，缩小故障与供应链爆炸半径。
+
 ## 3. CLI 调用链
 
 核心入口在 `competitive_intel/cli.py`：
@@ -46,6 +48,8 @@ cintel scrape seo
 
 对于单机 CLI，这是合理的生命周期；对于 1000 站长期服务端则不能照搬 `asyncio.run()` + 每任务新建执行环境，而应改成长生命周期 Worker event loop。
 
+另一个工程风险是仓库同时保留根目录 `scrapers/`、`utils/`、`main.py` 与真正被 `pyproject.toml` 打包的 `competitive_intel/scrapers/`、`competitive_intel/utils/`、`competitive_intel/cli.py`。两套实现已经出现差异，例如打包版 Sitemap 抓取包含 URL 校验与 50MB 流式下载限制，而根目录版本并不完全一致。生产系统必须明确“可执行代码唯一来源”，构建、测试、审计都针对同一 package tree，避免修复了副本 A、生产实际运行副本 B 的漂移问题。
+
 ## 4. Sitemap 抓取实现
 
 `competitive_intel/scrapers/sitemap_analyzer.py` 的核心流程是：
@@ -67,12 +71,26 @@ fetch_sitemap
 - 再按 64KB chunk 读取；
 - 即使服务器未提供 Content-Length，也能在累计字节超过上限时终止。
 
-这是正确的防内存耗尽思路。知识库系统应进一步增加：
+这是正确的防内存耗尽思路，但它只是“网络读取流式”，并不是真正的“解析流式”：实现会把所有 chunk 放进列表，再 `b''.join(chunks)` 生成完整 bytes，随后 `ET.fromstring()` 一次性构造 XML DOM。接近 50MB 上限时会同时存在 chunk 列表、拼接后的 bytes 和 XML 对象，峰值内存明显高于 50MB，而且无法在解析中途形成持久 checkpoint。
+
+知识库系统应改为：
+
+```text
+HTTP stream
+ -> 限制 encoded bytes
+ -> 增量 gzip/decompression
+ -> 限制 decoded bytes / compression ratio
+ -> defusedxml/lxml iterparse
+ -> 每解析一个 url/sitemap 条目立即写 durable frontier/sitemap_task
+ -> 达到 slice 预算保存 checkpoint 并续跑
+```
+
+因此还应增加：
 
 - gzip 解压后大小限制；
 - 压缩比限制，防 zip bomb；
 - 连接/读取分离超时；
-- streaming XML parser，而不是读完再建 DOM；
+- 安全 streaming XML parser，而不是读完再建 DOM；
 - 单次执行预算耗尽后保存 checkpoint，而不是直接放弃剩余内容。
 
 ### 4.2 Sitemap Index 递归
@@ -219,12 +237,14 @@ async with AsyncWebCrawler(...)
 这是值得保留的防线，但当前实现仍有生产级缺口：
 
 1. `socket.gethostbyname()` 只得到一个 IPv4 地址，无法覆盖所有 A/AAAA 结果。
-2. DNS 解析失败时直接放行给后续抓取器，生产平台应保留明确的 DNS error 状态。
-3. 需要在连接前后防 DNS rebinding。
-4. redirect 每一跳都必须重新校验。
+2. DNS 解析失败时直接放行给后续抓取器，属于 fail-open；生产平台应记录明确 DNS error 并拒绝执行。
+3. 校验发生在“请求之前”，真正连接时客户端会再次解析 DNS，存在 TOCTOU/DNS rebinding 窗口。
+4. `requests.get()` 默认自动跟随 redirect，而入口 `validate_url()` 无法约束每个重定向目标。
 5. Sitemap 中发现的每个文章 URL 也必须单独校验。
 
-尤其第 5 点很重要：项目会验证 Sitemap URL 和嵌套 Sitemap URL，但 `scrape_feature_pages()` 直接把 Sitemap 中解析出的页面 URL 交给 `HomepageScraper`，没有在这一层再次调用 `validate_url()`。恶意或被污染的 Sitemap 理论上可以列出内网地址。因此知识库平台必须实行“每个新 URL 都重新走 Admission”，不能继承父页面信任。
+项目打包版 `fetch_sitemap()` 会重新校验嵌套 Sitemap URL，这是正确方向；但 `scrape_feature_pages()` 仍直接把 Sitemap 中解析出的页面 URL 交给 `HomepageScraper`，没有在这一层再次调用 `validate_url()`。恶意或被污染的 Sitemap 理论上可以列出内网地址。
+
+更重要的是，生产系统不能只把 SSRF 防护理解为“Admission 阶段做一次 URL 校验”。Admission 是策略决策，Egress 才是强制执行点。HTTP/Browser/Crawl4AI 的真实网络连接都必须由统一出口执行：解析全部 A/AAAA、拒绝任一不允许地址、连接到已验证目标、禁止客户端自行越过 Gateway 自动跳转，并对每个 redirect 重新解析和授权。这样才能真正抵抗 DNS rebinding 与跳转型 SSRF。
 
 ## 8. 本地 JSON 状态模型的适用边界
 
@@ -244,12 +264,13 @@ async with AsyncWebCrawler(...)
 ## 9. 可直接吸收的设计
 
 1. Crawl4AI 作为可选重型依赖，而不是整个系统的唯一抓取基础。
-2. Sitemap 下载必须有 streaming size limit。
+2. Sitemap 下载必须有 encoded/decoded streaming size limit。
 3. Sitemap Index 需要循环检测和嵌套安全校验。
 4. URL 页面类型分类可作为低成本的调度/抽取信号。
 5. 抓取并发必须使用 semaphore 或等价 bounded concurrency。
 6. CLI/Agent 只负责发起动作，采集执行层保持确定性接口。
 7. 文件名和 URL 都需要专门的安全校验层。
+8. 安装包运行代码必须只有一个 source of truth，并通过构建产物/contract test 验证实际导入路径。
 
 ## 10. 不应直接照搬的设计
 
@@ -260,8 +281,11 @@ async with AsyncWebCrawler(...)
 5. 默认 `bypass_cache=True` 作为长期增量策略。
 6. 关键词过滤直接决定“抓或不抓”。
 7. 把 cleaned HTML 扁平化为纯文本后再按标点切句。
-8. 只在入口 URL 做 SSRF 校验，而不是对 Sitemap 发现 URL、redirect 和嵌套资源逐跳校验。
+8. 只在入口 URL 做 SSRF 校验，而不是由 Egress 在真实连接和 redirect 每一跳强制校验。
 9. 用本地 JSON 文件承担长期任务和文章状态。
+10. `stream=True` 后仍把完整 Sitemap 拼回内存并构造整棵 XML DOM。
+11. 仅靠 `>=` 依赖下界重建生产抓取运行时，或让 HTTP Worker 与 Browser 重依赖共用同一镜像。
+12. 同一功能保留两套可执行源码并允许实现漂移。
 
 ## 11. 对博客知识库技术方案的具体优化
 
@@ -291,16 +315,24 @@ Worker 复用 event loop、Browser/context/page pool，单 URL 只是任务，�
 
 DOM -> Article IR -> Markdown，代码块、表格、列表、链接、图片和标题层级都作为结构节点保存；raw HTML/raw Markdown 永久可 replay。
 
-### 11.7 每 URL 独立安全准入
+### 11.7 Admission 与 Egress 分层
 
-根 URL、子 Sitemap、Sitemap 内文章 URL、redirect 每一跳都重新做 DNS/Egress/SSRF/robots/端口校验。
+Admission 负责 URL 规范化、站点策略、robots、域名/path 等业务准入；Egress 在真实网络连接时强制执行 SSRF 策略。根 URL、子 Sitemap、Sitemap 内文章 URL和 redirect 每一跳都重新做 DNS/Egress/端口校验，DNS 失败必须 fail-closed。
 
-### 11.8 可选依赖与供应链发布
+### 11.8 可选依赖升级为运行时隔离
 
-HTTP/Sitemap/Feed 主链独立于 Crawl4AI；Browser Adapter 镜像固定依赖 lock、SBOM、image digest，并通过 contract test 后发布。
+HTTP/Sitemap/Feed Worker 使用最小依赖镜像；Browser/Crawl4AI Worker 使用独立镜像和 lockfile。每种运行时分别固定 dependency lock、SBOM、image digest、Browser revision，并通过 Adapter contract test 后发布。
+
+### 11.9 真正的 Sitemap 流式处理
+
+网络读取、解压、XML 解析和 frontier 写入必须形成一条 streaming pipeline，不把整份 Sitemap 重新聚合到内存。解析到一个 `<url>` 或 `<sitemap>` 就即时做 Admission/持久化，slice 结束只保存可恢复 checkpoint。
+
+### 11.10 构建产物唯一性检查
+
+CI 必须验证实际安装 wheel/container 中只存在预期 package tree，测试导入路径与生产一致；禁止 legacy/root 副本成为第二套未受控实现。runtime bundle 记录最终 wheel/hash，而不仅是源码 commit。
 
 ## 12. 结论
 
 该项目不是为百万级博客归档设计的，但它在 Sitemap 安全保护、URL 分类、有界并发、Agent 与抓取工具职责分离、Crawl4AI optional dependency 等方面提供了可复用思路。
 
-对博客知识库最重要的改进，是把项目中的“递归 + 硬上限 + 本地内存状态 + 单机 JSON”升级为“持久化 Sitemap 任务树 + execution slice 续跑 + durable frontier + 分布式状态机”，同时保留其 size limit、cycle detection、bounded concurrency 和安全校验思路。这样既能防止异常站点拖垮系统，也不会因为安全预算导致历史文章被静默截断。
+对博客知识库最重要的改进，是把项目中的“递归 + 硬上限 + 本地内存状态 + 单机 JSON”升级为“持久化 Sitemap 任务树 + 真流式解析 + execution slice 续跑 + durable frontier + 分布式状态机”；把“入口 URL 预检查”升级为“Admission 决策 + Egress 连接时强制执行”；把“optional extra”升级为“HTTP 与 Browser 运行时物理隔离”。同时保留 size limit、cycle detection、bounded concurrency 和安全校验的基本思想。这样既能防止异常站点拖垮系统，也不会因为安全预算导致历史文章被静默截断，并能降低重型抓取依赖的供应链与运行时风险。
