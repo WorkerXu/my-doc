@@ -2,11 +2,13 @@
 
 来源项目：<https://github.com/Aparnap2/newsletter-agent>
 
-## 1. 项目定位
+调研基线：项目默认分支 `canary`。本文件只记录实现细节、技术原理、风险和对博客知识库方案的可复用结论。
 
-该项目实现的是一条“持续发现技术资讯 → 抓取 → 多阶段 AI 加工 → 邮件投递 → Web 管理”的轻量流水线。它不是面向百万级历史文档的生产级爬虫平台，但组件边界与数据流非常适合作为博客知识库系统的反例和参考：一方面能看到 Crawl4AI、RSS、搜索、LangGraph、调度器、FastAPI、邮件投递如何组合成完整闭环；另一方面也能明确哪些单机、进程内做法在 1000 个技术博客、长期增量同步场景下必须替换为持久化、可恢复的实现。
+## 1. 项目定位与整体链路
 
-项目主要模块：
+该项目是一条“小而完整”的自动资讯流水线：发现 AI/技术新闻，抓取页面，经过多阶段 LLM Agent 加工成 Newsletter，再通过 Gmail 投递，并提供 FastAPI 管理接口和进程内定时任务。
+
+核心模块：
 
 ```text
 scheduler/newsletter_scheduler.py
@@ -20,142 +22,209 @@ agents/newsletter_agents.py -> agents/llm_client.py
         v
 email_service/gmail_client.py
 
-api/fastapi_server.py 负责人工触发、状态、历史、调度开关和运行时配置
+api/fastapi_server.py
+  -> 人工触发
+  -> 状态/历史
+  -> 调度启停
+  -> 运行时配置
 ```
 
-核心链路是：
+主链路：
 
 ```text
-定时触发
+schedule / API trigger
   -> 按 topic 搜索候选 URL
-  -> Crawl4AI 抓列表页/页面
-  -> HTML/Markdown 规则提取文章卡片
-  -> 关键词相关性排序
+  -> Crawl4AI 抓取
+  -> HTML/Markdown 规则提取
+  -> 关键词相关性过滤
   -> LangGraph: Researcher -> Analyst -> Opinion Writer -> Editor
-  -> Gmail 投递
+  -> Gmail API
 ```
 
-## 2. 抓取层实现细节
+它适合验证“抓取 + AI 加工 + Web 管理 + 投递”的产品闭环，但不具备 1000 个技术博客历史全量抓取所需的覆盖证明、durable frontier、持久化 checkpoint、文档版本、质量审计和多副本一致性。
 
-### 2.1 Crawl4AI 是主路径，httpx 是异常回退
+## 2. 抓取层实现与原理
 
-`WebCrawler.crawl_with_crawl4ai()` 每处理一个 URL 都创建一次 `BrowserConfig(headless=True)` 和 `AsyncWebCrawler`，并使用 `CrawlerRunConfig` 抓取页面。配置里显式使用 `CacheMode.BYPASS`，设置低字数阈值和页面超时。成功后优先读取 `cleaned_html`，否则读取 Markdown，再用自定义规则提取条目。
+### 2.1 Browser-first，而不是 HTTP-first
 
-如果 Crawl4AI 抛异常，代码才回退到 `httpx.AsyncClient` 请求原始 HTML，并继续走 BeautifulSoup 抽取。
+`WebCrawler.crawl_with_crawl4ai()` 对每个 URL 都创建 `BrowserConfig(headless=True)` 和新的 `AsyncWebCrawler`，`CrawlerRunConfig` 使用：
 
-这个顺序对资讯 demo 容易理解，但对大规模博客知识库并不合适：
+```text
+CacheMode.BYPASS
+word_count_threshold=10
+page_timeout=60000
+```
 
-1. Browser/Crawl4AI 初始化成本远高于普通 HTTP；大量静态技术博客会浪费 CPU、内存和浏览器进程。
-2. 每 URL 新建 crawler，无法充分复用浏览器进程、连接池、DNS/TLS 会话和 context。
-3. `CacheMode.BYPASS` 使每次都重新抓，无法天然利用缓存，更没有 ETag / Last-Modified 条件请求语义。
-4. HTTP 仅在 Browser 路径异常时才使用，实际上应该反过来：HTTP-first，检测到 JS 渲染证据、正文缺失或 SPA 列表后再升级 Browser。
+成功后优先处理 `cleaned_html`，否则处理 Markdown。只有 Crawl4AI 抛异常时，才回退到 `httpx.AsyncClient`。
 
-因此，知识库平台应把 Crawl4AI 定位为“浏览器渲染和 Markdown candidate 引擎”，而不是默认网络请求层。
+这个顺序适合 demo，但对 1000 站点不经济：
 
-### 2.2 搜索发现与内容抓取被混在同一层
+1. 大量技术博客是静态 HTML，浏览器启动和 JS runtime 成本远高于普通 HTTP；
+2. 每 URL 新建 crawler，连接池、浏览器进程和 context 都不能充分复用；
+3. `CacheMode.BYPASS` 意味着默认绕过缓存，没有 ETag/Last-Modified 条件请求语义；
+4. Browser 成功不等于正文有效，SPA 壳页、挑战页、登录页仍可能返回“成功”。
 
-项目的 `search_news_urls(topic)` 直接抓 DuckDuckGo HTML，并把搜索范围硬编码到 TechCrunch、The Verge、VentureBeat、Wired 等域名。搜索结果只保留少量 URL，然后 `fetch_live_data()` 并发抓这些页面。
+生产方案应改成：
 
-这说明一个重要架构问题：**URL Discovery 与 Article Fetch 必须分离**。
+```text
+HTTP Fetch
+  -> Content Fitness / JS evidence
+  -> 静态正文足够：直接进入 Extraction
+  -> 动态证据成立：升级 Browser/Crawl4AI
+```
 
-搜索页、RSS、Sitemap、归档页、分类页、站内列表页都应该只产生“候选 URL + 发现证据”，不能直接当最终文章正文。生产系统应形成两段式：
+Crawl4AI 更适合作为昂贵的渲染/Extraction Candidate 引擎，而不是所有请求的默认网络层。
+
+### 2.2 Discovery 与 Article Fetch 混在一起
+
+`search_news_urls(topic)` 抓 DuckDuckGo HTML，搜索范围硬编码到 TechCrunch、The Verge、VentureBeat、Wired 等站点，然后只取少量 URL。`fetch_live_data()` 随后直接抓这些 URL，并在抓到的页面中继续识别“文章条目”。
+
+这会混淆两个不同问题：
+
+- Discovery：从 Search/RSS/Sitemap/Archive/Listing 得到候选 URL；
+- Article Fetch：对候选文章 URL 获取可存证的 origin Snapshot。
+
+知识库必须二阶段化：
 
 ```text
 Discovery Provider
-  -> DiscoveryRecord(url, title_hint, published_hint, evidence)
+  -> DiscoveryRecord
   -> URL Admission / Identity
-  -> durable frontier
-  -> Article Fetch
+  -> Durable Frontier
+  -> Origin Article Fetch
   -> Snapshot
   -> Extraction
 ```
 
-这样才能做到同一个文章 URL 无论来自 RSS、Sitemap、Archive、HTML Frontier 还是搜索聚合源，都落到同一个 URL Identity / Document Identity 上，同时保留各 Provider 的覆盖证据。
+搜索结果、Feed 摘要、归档卡片只能提供 discovery evidence 和 metadata hint，不能直接成为 accepted 正文。
 
-### 2.3 HTML 提取策略是“通用 selector 首个命中”
+### 2.3 通用 selector 的“首个命中即成功”会静默抓错
 
-项目依次尝试 `article`、`.post`、`.article`、`.story`、`.entry`、若干常见 class，最后甚至尝试 `h2`、`h3`。一旦某组 selector 抽到内容就停止继续尝试。条目内再找标题、链接和摘要。
-
-这种策略适合“新闻列表卡片快速抽取”，但存在几个生产风险：
-
-- 页面里的推荐、热门、侧栏、Footer 也可能匹配 `.article` / `h2`；
-- 首个 selector 有结果不代表结果质量最好；
-- 列表页条目通常只有摘要，不是最终文章；
-- selector 失效后不一定报错，可能静默抽到错误区域；
-- 没有模板版本、黄金样本和漂移检测。
-
-生产系统应把 selector 抽取结果当 candidate，并通过 Content Fitness、字段置信度、正文长度分布、链接密度、模板指纹和 Golden Sample 做质量验证。如果列表页只产生文章链接，应继续进行二次 Article Fetch，而不是把卡片摘要作为最终知识正文。
-
-### 2.4 Markdown 提取同样偏向“列表页识别”
-
-Markdown 解析通过标题行识别条目，把标题下面的若干文本拼成 summary。这里并没有保留 Markdown 原始结构，也没有把代码块、表格、图片、引用、真实链接关系构造成统一 IR。
-
-面向知识库时，应把 Crawl4AI Markdown 视为 extraction candidate，而不是最终真相。最终需要 Canonical Document IR，再由 IR 渲染 Markdown。这样能避免未来更换清洗规则时从 Markdown 反推结构。
-
-### 2.5 RSS 路径暴露了同步 I/O 与可靠性问题
-
-RSS 使用 `feedparser.parse()` 遍历条目，并对每条链接调用 `_extract_content_from_url()`。该函数内部使用同步 `requests.get()` 和 BeautifulSoup，并且只保留前 1000 字符。
-
-当前文件没有导入 `requests`，因此调用该函数时会触发 `NameError`，再被函数自身的 `except` 捕获并返回空字符串。这个问题不会导致整个任务崩溃，而会形成“RSS 条目存在，但正文默默为空”的静默退化。
-
-这类问题说明：
-
-1. 关键字段不能依赖“异常后返回空字符串”继续运行；
-2. 每个阶段要显式区分 `SUCCESS / EMPTY / INVALID / RETRYABLE_ERROR / TERMINAL_ERROR`；
-3. 质量门禁必须独立于抓取函数本身；
-4. 同步网络调用不能混入大量 async worker 热路径；
-5. 全文知识库不能把正文截成固定 1000 字符。
-
-### 2.6 并发方式只能用于小规模 demo
-
-项目用 `asyncio.gather(*crawl_tasks, return_exceptions=True)` 并发抓取搜索结果。当前搜索结果上限很小，所以风险有限；但将同样模式扩大到 1000 个站点会产生典型问题：
-
-- 瞬间创建过多协程；
-- 无跨 Worker 的域名级并发限制；
-- 无公平调度；
-- 无 backpressure；
-- 进程退出后任务集合丢失；
-- 无 lease / heartbeat / dead-letter；
-- 无持久化重试计数。
-
-因此，大规模系统应使用数据库 durable frontier + Redis Streams/Kafka 类传输层，Worker 只租约式领取有限任务，并配合 global/domain/site 三层额度。
-
-## 3. 文章过滤与元数据问题
-
-### 3.1 相关性排序
-
-项目把 topic 分词后，对标题命中加 2 分、摘要命中加 1 分；如果完全没有命中，再用一组 AI/科技关键词做兜底。最后按分数排序取前 N。
-
-优点是成本低、解释简单，适合 Newsletter 选文；缺点是不能用于 FULL_BACKFILL 的覆盖裁剪。对于知识库：
-
-- FULL_BACKFILL 不能因为“不相关”就丢历史文章；
-- 相关性只能用于抓取优先级或派生 Digest 的候选排序；
-- Newsletter/报告可进一步使用 embedding、主题簇、时间衰减、MMR/max-min diversity；
-- 选文必须生成 Selection Manifest，记录候选集、打分、过滤原因和最终选择。
-
-### 3.2 发布时间被错误合成
-
-HTML/Markdown 抽取路径把 `published_date` 直接设为当前日期。这会把“抓取时间”伪装成“文章发布时间”，对于历史知识库是严重数据污染。
-
-正确设计必须区分：
+HTML 提取依次尝试：
 
 ```text
-observed_at       本系统看到它的时间
-fetched_at        网络抓取时间
-published_at      来源声明的发布时间，允许未知
-updated_at        来源声明的更新时间，允许未知
-published_hint    Discovery Provider 提供的候选时间
+article
+.post
+.article
+.story
+.entry
+[data-testid="post"]
+...
+h2
+h3
 ```
 
-并为每个元数据字段保留 `value + source + confidence + extractor_release`。无法确定发布时间时宁可为 NULL，也不能填 `now()`。
+只要某组 selector 抽到内容就停止继续尝试。问题是：
 
-### 3.3 跨 topic 重复
+- 推荐区、侧栏、Footer、热门模块也可能命中；
+- `h2/h3` 在正文页中常常只是章节标题；
+- 一个 origin article 页面可能被错误拆成多个“文章”；
+- selector 失效时往往不会报错，而是抽到错误区域；
+- 没有模板版本、Golden Sample、DOM 指纹和漂移监控。
 
-同一文章可能同时被多个 topic 搜到，项目会把全部结果直接汇总，没有全局 canonical URL 去重。生产系统必须在 URL Identity 层做规范化和唯一约束，派生 AI 选文时再做 document_version 级去重。
+所以生产系统应允许多个 Extraction Candidate 并存，用 Content Fitness、正文/链接密度、标题一致性、DOM/template fingerprint、metadata 完整度和站点 Golden Fixture 评分，不能把“第一个 selector 有结果”当成成功证据。
 
-## 4. LangGraph 多阶段 AI 流程
+### 2.4 Markdown 只是候选，不是知识真相
 
-项目最值得保留的设计是 `NewsletterAgents` 使用 LangGraph 定义线性状态图：
+项目的 Markdown 路径按 `#` 标题切分，再把标题后的少量文本拼成 summary。这种做法会丢失代码块、表格、引用、图片、数学公式和真实链接结构。
+
+知识库应先构造 Canonical Document IR：
+
+```text
+metadata
+blocks[]
+links[]
+images[]
+attachments[]
+source_snapshot_id
+provenance
+```
+
+最终 Markdown 只是 IR 的可重建 Projection。未来修改清洗规则时，应从 Snapshot/IR 离线重放，而不是从旧 Markdown 反推结构。
+
+### 2.5 RSS 路径存在可验证的静默退化
+
+`crawl_rss_feeds()` 会调用 `_extract_content_from_url()`，该函数内部使用 `requests.get()`，但 `crawlers/web_crawler.py` 没有导入 `requests`。因此这条路径会触发 `NameError`，随后被函数自己的宽泛 `except Exception` 捕获并返回空字符串。
+
+结果不是任务崩溃，而是“RSS 条目存在、正文为空”的假成功。这比显式失败更危险，因为它会污染下游 AI。
+
+此外，该函数即使成功，也只保留正文前 1000 个字符，不满足全文知识库要求。
+
+这里暴露出生产系统必须具有的**阶段结果契约**：
+
+```text
+SUCCEEDED
+EMPTY
+INVALID
+RETRYABLE_ERROR
+TERMINAL_ERROR
+CANCELLED
+```
+
+抓取函数不能通过 `return ""` 把错误伪装成正常结果；Stage Finalizer 必须根据 Artifact、质量结果和任务状态决定是否真正成功。
+
+### 2.6 `asyncio.gather()` 只能覆盖小规模并发
+
+项目把少量搜索 URL 一次性放入 `asyncio.gather(..., return_exceptions=True)`。在当前最多几个 URL 的场景问题不大，但若直接放大到百万 URL，会出现：
+
+- 瞬时创建大量协程；
+- 无跨进程/跨 Worker 的 domain quota；
+- 无公平调度和 backpressure；
+- 进程退出后任务集合丢失；
+- 无 lease、heartbeat、retry schedule、dead-letter；
+- 大站点可能长期占满资源。
+
+生产系统应使用数据库 durable frontier，Worker 按 lease 领取有限批量，Redis Streams 只做运输；全局、站点/域名、Browser/LLM/OCR route 分别限流。
+
+## 3. 元数据、去重与选文
+
+### 3.1 发布时间被合成为当前时间
+
+HTML/Markdown 提取路径直接把 `published_date` 设为 `datetime.now()`。这会把抓取时间伪装成来源发布时间，对历史知识库属于数据污染。
+
+必须区分：
+
+```text
+observed_at       系统首次/最近观察时间
+fetched_at        网络请求时间
+published_at      来源声明的发布时间，可 NULL
+updated_at        来源声明的更新时间，可 NULL
+published_at_hint Discovery Provider 提供的候选时间
+```
+
+字段应带：
+
+```text
+value + source + confidence + extractor_release
+```
+
+未知发布时间宁可为 NULL，也不能填当前时间。
+
+### 3.2 相关性过滤不能影响历史覆盖
+
+项目按 topic 关键词给标题/摘要打分，并只保留少量结果。这适合 Newsletter 选文，但不能用于 FULL_BACKFILL。
+
+生产方案应把相关性放到 Derived AI/Selection 层：
+
+```text
+Accepted Document Versions
+  -> Candidate Set
+  -> keyword / embedding / recency / site weight
+  -> clustering + MMR diversity
+  -> Selection Manifest
+```
+
+FULL_BACKFILL 的合法历史 URL 不能因为“相关性低”被静默丢弃。
+
+### 3.3 跨 topic 需要全局 identity
+
+同一 URL 可能被多个 topic 重复搜索到。项目只是简单汇总，没有全局 canonical URL 去重。
+
+生产系统应在 URL Identity 层建立规范化和唯一约束，再在 Document Identity 层处理 redirect、canonical、slug rename、镜像和站点迁移；派生 Newsletter 再以 `document_version_id` 去重。
+
+## 4. LangGraph 多阶段 AI 工作流
+
+`NewsletterAgents` 使用 LangGraph 定义线性 DAG：
 
 ```text
 researcher
@@ -165,7 +234,7 @@ researcher
   -> END
 ```
 
-状态包含：
+State：
 
 ```text
 raw_articles
@@ -175,108 +244,106 @@ opinion_analysis
 final_newsletter
 ```
 
-### 4.1 技术原理
+### 4.1 值得保留的技术原理
 
-这实际上是把原本一个超长 Prompt 拆成多个职责单一的状态节点：
+把一个超长 Prompt 拆成多个职责单一节点是正确方向：
 
-- Researcher：分类、选重要故事、找趋势、提取事实；
-- Analyst：根据研究摘要分析战略影响、市场影响、技术趋势、机会风险；
-- Opinion Writer：在事实与分析之上生成编辑观点；
-- Editor：把前面阶段的内容整合为最终 Newsletter。
+- Researcher：分类、提取重要故事、趋势和事实；
+- Analyst：分析战略、市场、技术方向和风险；
+- Opinion Writer：生成编辑观点；
+- Editor：组织最终 Newsletter。
 
-图式工作流的优势是：
+这种 DAG 天然支持：节点替换、条件分支、人工审核、阶段级重试、A/B 模型和离线 replay。
 
-1. 每个节点职责清楚，可替换模型；
-2. 以后可以增加分支、人工审核、条件节点；
-3. 中间结果天然适合持久化；
-4. 可针对单阶段重试，不必整个报告重跑；
-5. 同一 accepted document 集可以重放不同 Prompt/模型版本。
+### 4.2 当前实现仍是进程内、自由文本工作流
 
-### 4.2 当前实现的可靠性不足
+不足包括：
 
-项目虽然用了 LangGraph，但仍然把整个图当进程内同步函数执行：
+- LangGraph state 没有持久化；
+- 中间结果没有 Artifact ID；
+- 没有 prompt/model/schema release；
+- 没有 input document manifest；
+- 没有 token/cost/latency；
+- 下游主要消费自由文本，citation lineage 容易丢失；
+- 失败后只能整体返回原始 state，缺少阶段 checkpoint。
 
-- 中间 state 没有落数据库或对象存储；
-- 任何阶段失败后只返回空文本或原始 state；
-- Agent 调用的是 `generate_completion()`，并没有使用已经实现的 `generate_with_retry()`；
-- LLM 返回自由文本，没有结构化 schema；
-- 没有保存模型版本、Prompt hash、token、cost、输入文档清单；
-- 下游只看上一阶段生成的自由文本，容易丢失 source citation；
-- 无 stage checkpoint，进程崩溃后只能整体重跑。
-
-知识库方案应该保留“DAG/Graph”思想，但把它生产化为 Versioned AI Workflow：
+因此应升级为 Versioned AI Workflow：
 
 ```text
 ai_workflow_release
 ai_stage_release
 ai_run
 ai_stage_execution
-ai_input_manifest
-ai_output_artifact
+selection_manifest
 citation_binding
+ai_output_artifact
 ```
 
-每个 Stage 必须保存：
+每个 Stage 保存明确输入版本、Prompt/Model/Schema 版本、状态、重试、成本和输出 Artifact。
+
+### 4.3 Opinion 必须是可选节点
+
+Newsletter 可有观点，但事实型知识库报告不应强制引入观点。可定义：
 
 ```text
-workflow_release_id
-stage_release_id
-input_document_version_ids
-input_artifact_ids
-prompt_release_id
-model_release_id
-structured_schema_release_id
-started_at/finished_at
-status
-retry_count
-token_usage/cost
-output_artifact_id
-error_code
+FACTUAL_DIGEST:    Research -> Analysis -> Editor
+EDITORIAL_DIGEST:  Research -> Analysis -> Opinion -> Editor
+TECH_TREND_REPORT: Cluster -> Evidence -> Analysis -> Editor
+SITE_CHANGE_REPORT: Diff -> Evidence -> Summary
 ```
 
-这样才能实现失败续跑、阶段重试、模型 A/B、离线 replay 和完整 lineage。
+## 5. LLM 客户端实现细节
 
-### 4.3 Opinion 阶段应该可配置
+`OpenRouterClient.generate_completion()` 使用同步 `requests.post()`，并在异常时返回空字符串。虽然另有 `generate_with_retry()`，Agent 节点实际调用的是不带 retry 的 `generate_completion()`。
 
-“观点”适合 Newsletter，但不适合所有知识库报告。生产系统中应把 `OPINION` 定义成可选节点：
+生产改造要求：
 
-- `FACTUAL_DIGEST`：Research -> Analysis -> Editor；
-- `EDITORIAL_DIGEST`：Research -> Analysis -> Opinion -> Editor；
-- `TECH_TREND_REPORT`：Cluster -> Evidence -> Analysis -> Editor；
-- `SITE_CHANGE_REPORT`：Diff -> Evidence -> Summary。
+1. LLM 放独立 Worker Pool，不能阻塞抓取 Worker；
+2. 按 HTTP 状态和 provider error 分类 retry，支持 Retry-After、指数退避、抖动、熔断；
+3. 结构化输出做 schema validation；
+4. Prompt/Model/Schema 版本化；
+5. 记录 token、cost、latency 和 provider request ID；
+6. 输出为空不能视为成功；
+7. LLM 故障不能阻塞源站同步。
 
-同一底层文档集合可以由不同 workflow release 生成不同类型的派生产物。
+另一个细节是参数默认值使用 `temperature or self.temperature`。这会让显式传入 `0.0` 时仍回落到默认 temperature。生产代码应使用 `temperature if temperature is not None else default` 这类显式语义，避免配置值被 truthy/falsy 规则改变。
 
-## 5. 调度器实现与生产问题
+## 6. 调度器与 FastAPI 的运行时问题
 
-`NewsletterScheduler` 使用 Python `schedule` 库，在进程中登记每天的时间点，然后 `while self.is_running` 循环，每分钟 `schedule.run_pending()`，并 `time.sleep(60)`。
+### 6.1 进程内 schedule 不具备恢复语义
 
-这种实现适合单进程 demo，但不是持久化调度：
+`NewsletterScheduler` 使用 Python `schedule` 库，`while self.is_running` 中每分钟 `schedule.run_pending()`，并 `time.sleep(60)`。
 
-- 进程重启后计划全部丢失；
-- 多副本会重复调度；
-- 没有 leader election；
-- 没有 misfire/recovery 语义；
-- 没有数据库里的 next_run / last_run / schedule_version；
-- 无法对“同一时间窗是否已生成/已发送”做幂等判断。
+问题：
 
-更重要的是，FastAPI 中 `/schedule/start` 通过 `asyncio.create_task(run_scheduler())` 启动任务，而 `run_scheduler()` 随即调用同步的 `scheduler.start_scheduler()`。后者内部是 `while + time.sleep(60)`，会占住当前 event loop 所在线程，可能把同一 Uvicorn Worker 的其他异步请求一起阻塞。
+- 重启后 schedule 丢失；
+- 多副本会重复触发；
+- 无 leader election；
+- 无 misfire/catch-up；
+- 无持久化 next_run/last_run；
+- 无稳定的时间窗幂等键。
 
-生产方案应该使用 HA Scheduler：
+### 6.2 FastAPI 中还会阻塞 event loop
 
-1. schedule 作为数据库实体持久化；
-2. Scheduler 只负责生成 due command；
-3. 通过 PostgreSQL advisory lock / leader lease 避免多副本重复；
-4. 创建 `run` 后经 Transactional Outbox 投递任务；
-5. 每个 run 有唯一幂等键；
-6. missed schedule 可配置 `SKIP / CATCH_UP_ONCE / CATCH_UP_ALL`；
-7. Web API 只写 command，不直接在请求进程里跑长任务。
+`/schedule/start` 通过 `asyncio.create_task(run_scheduler())` 启动；`run_scheduler()` 是 async 函数，但内部直接调用同步的 `scheduler.start_scheduler()`，后者进入 `while + time.sleep(60)`。
 
-## 6. FastAPI Web 管理实现
+因此同一 Uvicorn Worker 的 event loop 可能被长期占住，其他 async 请求也会受影响。
 
-项目提供了 `/status`、`/generate`、`/history`、`/schedule/start`、`/schedule/stop`、`/config`、`/health` 等接口，并用一个简单 HTML 首页展示状态。
+生产系统必须把 Scheduler 从 API 进程剥离：
 
-这个接口集合非常适合作为知识库 Web 管理面的最小功能参考，但当前状态完全依赖内存：
+```text
+DB-backed schedule
+  -> HA Scheduler / leader lease
+  -> create durable command/run
+  -> transactional outbox
+  -> worker queue
+```
+
+API 只写命令，不直接跑持久长任务。
+
+### 6.3 Web 状态和配置全部是进程内事实
+
+`api/fastapi_server.py` 使用：
 
 ```text
 newsletter_history = []
@@ -284,108 +351,138 @@ system_status = {...}
 global scheduler instance
 ```
 
-FastAPI `BackgroundTasks` 也只是进程内后台执行。如果进程崩溃、滚动发布、Pod 被驱逐，任务和状态都可能丢失。多 Uvicorn/Gunicorn Worker 时，每个 Worker 还会拥有不同的内存状态。
+`/config` 也只修改当前进程里的 `config` 对象，重启后丢失；多 Worker 时各进程还能出现不同配置。
 
-`/config` 修改的也是进程内对象，并明确说明重启后不保留。多副本下不同 Worker 看到的配置也可能不一致。
+因此 Web Control Plane 的 Run、History、Schedule、Config 必须写 PostgreSQL，并采用版本化 Release；页面刷新、滚动发布或 API 多副本不能改变业务事实。
 
-`/health` 无论数据库、爬虫、LLM、邮件服务是否可用都固定返回 healthy，这只能做进程存活探针，不能作为 readiness。
+### 6.4 `/health` 只能算 liveness
 
-知识库 Web Control Plane 应设计为：
+项目 `/health` 无论 Crawl4AI、OpenRouter、Gmail 是否可用都返回 healthy。生产应拆成：
 
 ```text
-POST /runs
-  -> DB transaction: create command/run + outbox
-  -> 立即返回 run_id
-
-GET /runs/{id}
-  -> 从 PostgreSQL 读取真实状态
-
-POST /schedules
-  -> 写 versioned schedule
-
-GET /health/live
-  -> 仅进程存活
-
-GET /health/ready
-  -> 检查 PG/Redis/S3 等核心依赖
-
-GET /health/components
-  -> Browser/Crawl4AI/LLM/Search/Email 等能力健康矩阵
+/health/live
+/health/ready
+/health/components
 ```
 
-Web 页面刷新、API 进程重启都不应改变后台任务事实。
+ready 检查 PG/Redis/S3 等核心依赖；components 展示 Browser、Search、LLM、Email 等可选能力。
 
-## 7. LLM 客户端实现问题
+## 7. 最关键的新问题：上层会把投递失败计为成功
 
-OpenRouter 客户端使用同步 `requests.post()` 调用 chat completions。它有一个 `generate_with_retry()`，固定等待 2 秒重试，但 Agent 实际没有调用这个带重试版本。
+`NewsletterScheduler.newsletter_run()` 调用：
 
-生产上需要进一步升级：
+```text
+success = gmail_client.send_newsletter(...)
+```
 
-- LLM 调用放到独立 Worker Pool，不能阻塞抓取 Worker；
-- async client 或受控线程池；
-- Retry-After、指数退避、抖动、限流和熔断；
-- provider/model fallback 由 policy 决定；
-- Prompt、Model、Schema 版本化；
-- 输入必须引用 accepted document_version；
-- 结构化输出做 schema validation；
-- 所有观点/摘要保留 source citation；
-- cost/token/latency 记录到 stage execution；
-- LLM 故障不能把抓取 Run 改成失败。
+如果 `success=False`，它只写错误日志，并不会抛异常，也不会返回结构化失败结果。
 
-## 8. 对博客知识库方案的可复用部分
+FastAPI 的 `run_newsletter_generation()` 只要 `await scheduler.newsletter_run()` 正常返回，就继续：
 
-这个项目值得直接吸收的不是它的单机调度代码，而是以下产品与架构思想：
+```text
+system_status["status"] = "idle"
+system_status["total_sent"] += 1
+newsletter_history.append(status="completed")
+```
 
-### 8.1 “抓取事实”和“内容消费”解耦
+因此存在一条完整的**假成功链路**：
 
-Newsletter 是知识库的下游消费方式之一。知识库同步成功后，可以继续生成：
+```text
+Gmail send failed
+  -> scheduler 仅日志 error
+  -> async function 正常 return
+  -> API 认为 completed
+  -> total_sent + 1
+```
 
-- 每日技术 Digest；
-- 每周趋势；
-- 站点更新摘要；
-- 主题 Newsletter；
-- 研究报告；
-- 邮件/Slack/飞书推送。
+这说明生产系统不能用“函数没有抛异常”作为业务成功判据。
 
-但这些都不能成为源站抓取主链路的同步依赖。
+必须引入**阶段成功契约 + evidence-based finalization**：
 
-### 8.2 Versioned AI Workflow
+```text
+StageResult {
+  status,
+  produced_artifact_ids,
+  counters,
+  provider_ack_ids,
+  error_code,
+  retryable
+}
+```
 
-保留 LangGraph/DAG 的分阶段思路，将其升级成可持久化、可回放、可审计的 `AI Workflow Release`。Research/Analysis/Opinion/Editor 每阶段都形成独立 Artifact 和 lineage。
+例如 Delivery 只有在 provider ACK 已持久化时才可进入 `SENT`：
 
-### 8.3 Web 管理面应覆盖“人工触发 + 调度 + 历史 + 配置”
+```text
+PENDING -> LEASED -> SENDING -> SENT
+                         |-> RETRY_WAIT
+                         |-> DEAD_LETTER
+```
 
-项目提供的端点说明运营人员确实需要直接查看状态和触发任务。大规模系统应把这些功能拓展成真正的 Control Plane，同时禁止使用 FastAPI BackgroundTasks、全局内存列表或进程内 scheduler 充当业务状态真相。
+Newsletter 生成成功与邮件发送成功必须是两个独立事实；`total_sent` 应由 `delivery.status=SENT` 聚合，而不是由任务函数返回推断。
 
-### 8.4 Discovery 与 Fetch 必须二阶段化
+这个原则同样适用于抓取：HTTP 200、Extractor 无异常、Worker 函数 return 都不能自动等价于 Accepted Document。
 
-项目把搜索结果页、列表页抽取和文章内容混在一个类里。知识库应明确：RSS/Sitemap/Search/Archive/HTML Listing 只发现 URL；最终正文必须重新抓 origin article URL，并保存 Snapshot。
+## 8. Gmail Delivery 实现与生产化
 
-### 8.5 元数据必须有来源语义
+`GmailClient` 使用本地 `credentials.json`、`token.json` 和 `InstalledAppFlow.run_local_server(port=8090)` 完成 OAuth，并将刷新后的 token 写回本地文件。
 
-抓取时间不能伪装发布时间；发现 hint、原站 metadata、JSON-LD、OpenGraph、HTML time、Feed pubDate 都应作为 evidence 合并，并保留解析来源和置信度。
+对单机开发方便，但生产多副本存在问题：
 
-## 9. 针对 1000 站点场景需要补齐的能力
+- token 文件不是共享业务状态；
+- Pod 重建或无持久卷时 token 丢失；
+- 多副本可能并发刷新/覆盖；
+- 交互式本地 OAuth callback 不适合无头服务启动；
+- Provider message ID 只写日志，没有成为 durable delivery evidence；
+- 没有 delivery idempotency key，重试可能重复发送。
 
-该项目没有覆盖但博客知识库必须具备：
+生产 Delivery Plane 应：
 
-1. FULL_BACKFILL 的历史覆盖证明；
-2. Sitemap/RSS/API/Archive/HTML Frontier 等多 Provider 对账；
-3. ETag、Last-Modified、Feed GUID、cursor、lastmod 和 body/IR hash 增量；
-4. durable frontier、lease、heartbeat、dead-letter；
-5. 跨 Worker 的 domain quota、公平调度和 backpressure；
-6. Snapshot/IR/Markdown 的不可变版本与 lineage；
-7. canonical、redirect、slug rename、站点迁移后的 Document Identity；
-8. 抽取模板漂移检测；
-9. 数据库持久化的 Web 状态和操作审计；
-10. 版本化 Adapter/Provider/Extractor/AI Workflow；
-11. 搜索、版本 diff、离线 reprocess；
-12. 依赖感知健康检查与告警；
-13. Notification 的幂等投递、重试和 dead-letter；
-14. LLM 派生结果的结构化输出、引用和成本治理。
+1. OAuth/SMTP/API 凭据存 Secret Manager/Vault，只在 DB 保存 `secret_ref`；
+2. 渠道实现为 `DeliveryAdapter`；
+3. delivery 表持久化 channel、audience、window、content artifact、attempt、provider_message_id；
+4. 对同一 workflow/audience/window/channel 建唯一幂等键；
+5. 失败按 retry policy 重试，超过阈值进 dead-letter；
+6. 投递失败不回滚已经 Accepted 的知识文档或已经生成的报告。
 
-## 10. 结论
+## 9. 配置、凭据与版本化
 
-该项目适合作为“小而完整”的 AI 内容流水线参考。它验证了 Crawl4AI + 多来源发现 + LangGraph 多阶段加工 + FastAPI 管理 + 定时投递这一产品闭环，但其 Browser-first、每 URL 新建 crawler、CacheMode.BYPASS、列表页直接充当文章、合成发布时间、进程内 schedule、FastAPI BackgroundTasks、内存 history/config、阻塞式 scheduler、自由文本 Agent state 和缺少持久化 checkpoint 等实现，不能直接放大到 1000 站点生产环境。
+`config.py` 从 `.env` 加载 OpenRouter、Gmail、调度、主题和抓取参数。FastAPI 又允许运行时直接改内存字段。
 
-对博客知识库最有价值的优化是：在既有抓取平台之外补齐一个**持久化、版本化的 Derived AI Workflow Plane**，把 Research -> Analysis -> Optional Opinion -> Editor 变成独立可重放 DAG；同时进一步明确 Discovery 与 Article Fetch 二阶段模型、元数据 provenance、Control Plane 长任务命令化、依赖感知健康检查以及 Digest/Delivery 的时间窗幂等。这样既保留项目的产品闭环价值，又不会把单机 demo 的运行时状态误当作生产事实。
+生产系统需要把“配置值”和“凭据”分开：
+
+```text
+site_profile_release / system_config_release
+  -> 可审核、可回滚、可追踪
+
+secret_binding
+  -> 只保存 secret_ref，不保存明文
+```
+
+一个 Run 必须记录它实际使用的配置 Release ID，不能只记录“当前配置”。这样才能解释为什么同一 URL 在不同时间得到不同路由、Extractor 或质量结果。
+
+## 10. 对博客知识库方案的直接优化结论
+
+本项目值得吸收的是产品闭环和分层思想，而不是单机实现。对约 1000 个博客的方案应明确加入：
+
+1. **HTTP-first + Browser escalation**：Crawl4AI 仅在动态证据成立时使用，并复用长期 runtime；
+2. **Discovery / Article Fetch 二阶段**：Search/RSS/Sitemap/Archive 只产 URL candidate 和 evidence；
+3. **Canonical Document IR**：Markdown 为 Projection，不作为唯一真相；
+4. **Durable Frontier**：lease、heartbeat、retry、dead-letter、公平调度、backpressure；
+5. **Coverage Ledger**：FULL_BACKFILL 必须说明每个 Provider 是否真正穷举；
+6. **Metadata Provenance**：发布时间未知保持 NULL，禁止用抓取时间伪造；
+7. **Stage Success Contract**：EMPTY/INVALID/ERROR 不能通过空字符串或正常 return 被吞掉；
+8. **Evidence-based Finalizer**：阶段成功由数据库事实、Artifact 和 ACK 对账决定；
+9. **Versioned AI Workflow**：Research/Analysis/Optional Opinion/Editor 可重放、可审计；
+10. **Persistent Control Plane**：Run/History/Schedule/Config 不依赖 FastAPI 内存；
+11. **独立 Delivery Plane**：provider ACK、重试、幂等和 dead-letter 持久化；
+12. **Secret/Config 分离**：凭据使用 Secret Manager，Run 绑定配置 Release；
+13. **健康检查分层**：liveness、readiness、component capability 分开；
+14. **License Gate**：该项目仓库当前未声明开源许可证，代码复用前应确认授权；设计思想可参考，但不能默认把源码直接纳入生产实现。
+
+## 11. 结论
+
+`newsletter-agent` 证明了“抓取 → 多阶段 AI → Web 管理 → 定时投递”的完整产品链路，并且 LangGraph 的 Researcher/Analyst/Opinion/Editor 分工很适合作为知识库下游 Digest/Report 的原型。
+
+但它同时暴露了生产系统最容易被忽略的问题：Browser-first 成本、列表页/正文语义混淆、selector 静默错抓、RSS 错误被空字符串吞掉、抓取时间伪装发布时间、进程内 schedule/config/history、sync I/O 阻塞 async、LLM 中间状态不持久化，以及“邮件实际发送失败但上层仍统计成功”的事实不一致。
+
+因此对博客知识库真正有价值的升级不是再增加一个爬虫库，而是建立**持久化事实模型**：Provider Coverage、Durable Frontier、Immutable Snapshot、Canonical IR、Metadata Provenance、Stage Success Contract、Versioned Workflow 和 Idempotent Delivery。只有这些事实都可恢复、可对账、可重放，1000 个站点长期增量同步才具有可解释的正确性。
