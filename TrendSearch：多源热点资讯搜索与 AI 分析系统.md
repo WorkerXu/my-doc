@@ -2,126 +2,60 @@
 
 项目地址：https://github.com/LIhong42/TrendSearch
 
-## 1. 项目定位
+调研结论：**可借鉴其“统一数据源接口、聚合型上游数据源、分层 AI 分析、Embedding 多样性排序、Web 反馈和 Channel Adapter”设计，但不能直接作为 1000 个技术博客全量历史知识库抓取底座。** TrendSearch 面向的是“近期热点聚合与需求挖掘”，核心数据窗口、去重语义、存储保留、抓取完整性和任务可靠性都与长期博客知识库不同。最值得吸收的能力应放在 Source Adapter 开发体验、Aggregator Discovery Provider、Derived AI Pipeline、Feedback Signal Projection 和 Web 运营层；其 URL 存在即跳过、30 天自动删除、SQLite、进程内队列、反射式注册和直接删除 Markdown 链接等做法不应进入权威抓取链路。
 
-TrendSearch 是一个“多数据源热点采集 → 网页正文抓取 → LLM 分析/需求挖掘 → 排序评分 → 报告生成 → Web 展示/飞书推送”的完整应用。它不是面向千站历史归档设计的通用爬虫平台，但代码中包含若干对博客知识库有直接参考价值的工程模式：统一数据源接口、结构化 API 负责低成本发现、Crawl4AI 负责网页正文补全、数据库唯一约束、分阶段 AI Pipeline、FastAPI + React Web、用户运营状态、以及 Channel/MessageBus 形式的消息投递抽象。
+## 1. 项目定位与总体结构
 
-对“约 1000 个技术博客抓取全量历史文章，并长期增量同步为 Markdown 知识库”的目标而言，TrendSearch 更适合作为“小规模原型 + 反例集合”。它证明了 Adapter、Pipeline、Web、Channel 分层方向是有效的，同时也清楚暴露出从热点聚合扩展到长期知识库时的边界：URL 存在即永久跳过、Browser 串行抓取、随机 sleep 代替全局限流、进程内 gather、进程内消息队列、SQLite 单机状态、30 天自动清理、批量完成后才落库、Web 全量读入后过滤，以及通知发送缺少 durable delivery 语义。
+TrendSearch 是一个“多源热点抓取 -> 正文补全 -> LLM 单条分析 -> 分组分析 -> 全局分析 -> 评分/排序 -> 报告 -> Web 展示/飞书推送”的应用。
 
-## 2. 代码架构与主数据流
+README 给出的技术栈为：
 
-仓库主要结构：
+- React 18 + TypeScript + Ant Design；
+- FastAPI；
+- LangChain/OpenAI 兼容模型；
+- SQLite；
+- Crawl4AI + aiohttp；
+- 飞书开放平台。
 
-```text
-frontend/                         React + TypeScript + Ant Design
-backend/app/data_sources/         数据源适配器
-backend/app/pipeline/             分阶段处理流水线
-backend/app/agent_framework/      LLM Agent、Prompt、工具
-backend/app/storage/              SQLite 数据层
-backend/app/router/               FastAPI API
-backend/app/analyze_script.py     总流程编排
-backend/app/channels/             消息总线、Channel、飞书实现
-backend/app/embedding/            Embedding 抽象
-```
-
-核心数据流：
+后端代码大致拆分为：
 
 ```text
-DataSource.fetch()
-  -> DataItem(title/url/source/...)
-  -> fetch_with_urls()
-  -> Crawl4AI 抓网页并生成 Markdown
-  -> SingleNewsDemandMiningPipeline
-  -> LLM 分析 + Embedding
-  -> SQLite news/demands
-  -> Report Pipeline
-  -> FastAPI / React / Feishu
+backend/app/
+  data_sources/      数据源适配
+  pipeline/          分析流水线
+  agent_framework/   Agent、Prompt、模型配置、工具/中间件注册
+  storage/           SQLite 存储
+  router/            FastAPI API
+  channels/          飞书与消息总线
+  embedding/         Embedding
+  analyze_script.py  端到端编排入口
 ```
 
-这套分层对应用级项目足够清晰，但知识库需要继续拆分为独立可靠性域：
+这个拆分说明项目已经有“Source -> Pipeline -> Storage -> API/Channel”的边界意识，但它仍属于单机应用级结构，而不是具有 durable frontier、不可变 Snapshot、版本模型、Coverage Ledger、分布式任务和恢复语义的抓取平台。
 
-```text
-Source Adapter
-  -> Discovery
-  -> URL Admission
-  -> Durable Frontier
-  -> HTTP/Browser/PDF Fetch
-  -> Immutable Snapshot
-  -> Extraction Candidate
-  -> Canonical Document IR
-  -> Fitness / Drift / Quality
-  -> Accepted Document Version
-  -> Search / Markdown / LLM Analysis / Publish Projection
-```
+## 2. 数据源抽象：策略模式的优点与边界
 
-原因是这些阶段的重试、幂等、完成判定、版本和成本语义完全不同，不能由一次 Python 调用链隐式承担。
+### 2.1 `BaseDataSource` + `DataItem`
 
-## 3. 数据源策略模式：最值得保留的思想
-
-### 3.1 `BaseDataSource + DataItem`
-
-`backend/app/data_sources/base.py` 定义了标准 `DataItem`：
-
-```text
-title
-url
-content
-source
-summary
-```
-
-同时定义抽象 `BaseDataSource.fetch()`。不同来源只需要实现各自获取逻辑，上层 Pipeline 不必理解 Hacker News、知乎、GitHub 等具体协议。
-
-这是典型 Strategy/Adapter 模式，价值在于：
-
-1. 来源接入点统一；
-2. 上层消费统一结构；
-3. 新来源对现有流程影响较小；
-4. 可以把“平台差异”限制在一个边界内。
-
-### 3.2 当前注册方式为什么不能直接扩到 1000 站
-
-`backend/app/data_sources/__init__.py` 显式 import 各 Source，再通过：
+`backend/app/data_sources/base.py` 定义：
 
 ```python
-{cls.__name__: cls() for cls in BaseDataSource.__subclasses__()}
+class DataItem(BaseModel):
+    title: Optional[str]
+    url: Optional[str]
+    content: Optional[str]
+    source: Optional[str]
+    summary: Optional[str]
+
+class BaseDataSource(ABC):
+    @abstractmethod
+    async def fetch(self, **kwargs) -> list[DataItem]:
+        ...
 ```
 
-构造全部数据源实例。
+这实际上是一个轻量 Source Adapter SDK：不同来源只需要实现 `fetch()` 并统一返回 `DataItem`。知乎、B 站、GitHub、HackerNews、财联社等来源都在这个协议上工作。
 
-小规模时简单直接，但生产知识库存在这些问题：
-
-- 注册依赖代码 import，无法由管理端动态启停；
-- Adapter 没有业务版本，无法复现“某次 Run 用了哪一版”；
-- 没有 capability 描述，不知道是否支持 BACKFILL、INCREMENTAL、cursor、分页、认证、附件、文档导航；
-- 没有配置 schema/result schema；
-- 没有 Golden Sample、Canary、健康检查和回滚；
-- 站点配置与 Worker 镜像发布耦合；
-- 一个特殊来源的故障容易扩大到整个运行时。
-
-因此知识库应升级成：
-
-**Versioned Source Adapter SDK + Capability Registry + Adapter Binding Release**。
-
-能力至少描述：
-
-```text
-DISCOVER
-BACKFILL
-INCREMENTAL
-CURSOR_PAGINATION
-TIME_RANGE_PAGINATION
-AUTH
-SITEMAP
-FEED
-API
-ARCHIVE
-DOC_NAVIGATION
-BROWSER_DISCOVERY
-ATTACHMENT_DISCOVERY
-```
-
-Adapter 输出的应是标准 `DiscoveryRecord/FetchHint`，而不是最终 Markdown：
+对博客知识库的启发是：**适配器必须有一个小而稳定的接口**。但生产协议不应只返回标题、URL、正文、摘要，而应至少返回 `DiscoveryRecord`，携带：
 
 ```text
 source_item_id
@@ -136,444 +70,567 @@ discovery_evidence
 raw_metadata_ref
 ```
 
-然后统一进入 Admission、Frontier、Content Fetch、Extraction 和 Quality。
-
-## 4. “结构化发现 + 通用正文抓取”的技术原理
-
-`backend/app/data_sources/hackernews.py` 使用 Algolia HN API 获取条目，再构造 `DataItem`，随后调用 `fetch_with_urls()` 抓正文。
-
-这个设计揭示了一条很适合知识库的原则：
-
-**URL 发现优先走廉价、结构化、可分页、带时间语义的数据源；正文获取再走统一 Fetch 层。**
-
-映射到技术博客：
+TrendSearch 的接口把“发现 URL”和“抓取正文”放在同一个 Source 类中，适合小项目，但长期知识库应该继续坚持：
 
 ```text
-Sitemap / Feed / API / Archive / Docs Navigation
-                    ↓
-               URL Discovery
-                    ↓
-              Durable Frontier
-                    ↓
-          HTTP-first Content Fetch
-                    ↓
-        有明确证据才升级 Browser
+Source Adapter / Discovery Provider
+            ↓
+       DiscoveryRecord
+            ↓
+      URL Admission
+            ↓
+       Content Fetch
 ```
 
-相比从首页递归点击所有链接，这更容易控制成本，也更容易证明历史覆盖。
+这样 Adapter 不会绕过统一的 robots、Scope、SSRF、限流、Snapshot、重试和质量链路。
 
-TrendSearch 的不足是 `fetch_with_urls()` 仍放在 `BaseDataSource` 内，Discovery 与 Content Fetch 耦合。生产系统应彻底分离：Adapter 只表达来源特有发现语义；通用 Fetch 负责条件请求、快照、重试、限流、Content-Type 路由、Browser 升级、质量与审计。
+### 2.2 反射式自动注册
 
-## 5. Crawl4AI 使用方式及吞吐瓶颈
-
-`BaseDataSource.fetch_with_urls()`：
-
-1. 创建一个 `AsyncWebCrawler` context；
-2. `for item in datalist` 顺序遍历；
-3. 对每个 URL 调用 `crawler.arun()`；
-4. `magic=True`，并设置 `delay_before_return_html=1.0`；
-5. 把 `result.markdown` 写入 `item.content`；
-6. 每项随机 sleep 1~4 秒。
-
-优点是没有每个 URL 重建 Browser，且单项异常会被捕获。但吞吐模型本质仍是串行：
-
-```text
-for item:
-    await crawler.arun(item.url)
-    await sleep(...)
-```
-
-对于百万级 URL 历史回灌不可扩展。随机 sleep 只能约束一个 Python 进程，无法阻止多个 Worker 同时轰击同一域名，也无法处理 429/Retry-After、站点级公平性和 Browser 资源隔离。
-
-生产设计应为：
-
-- PostgreSQL durable frontier 小批量 claim；
-- domain/site 级 token bucket + 最大并发；
-- HTTP Worker 与 Browser Worker 分池；
-- Browser 只在 Preflight 证据充分时升级；
-- Browser runtime 长生命周期复用；
-- 每个 URL 的 Snapshot/Attempt 立即提交，而不是整批结束再落库；
-- 429/503 依据 Retry-After 做域级退避与熔断；
-- worker-local Semaphore 只做局部资源保护，跨 Worker 配额由控制面负责。
-
-## 6. `clear_markdown_url()`：对知识库是不可逆信息损失
-
-TrendSearch 用正则把：
-
-```text
-[text](https://example.com)
-```
-
-转换为：
-
-```text
-text
-```
-
-热点摘要场景可以减少视觉噪声，但知识库不能这样处理，因为 URL 承载：
-
-- 原始引用关系；
-- 站内上下文与上一篇/下一篇；
-- 图片、附件和源码地址；
-- broken-link 检测；
-- 文档图谱；
-- provenance 与审计；
-- 后续重新抓取的线索。
-
-因此最终 Markdown 不应是唯一真相。应先保留 Canonical Document IR 和 `document_link_edge`，再从 IR 生成 Markdown。如果需要“无 URL 的 LLM 文本版”，它只能是额外 Projection，不能覆盖结构化真相。
-
-## 7. URL 去重正确，但 `url_exists()` 不能代表 Freshness
-
-### 7.1 值得保留：数据库唯一约束
-
-`storage.py` 使用 SHA256(url) 得到 `url_hash`，`news.url` 与 `url_hash` 均有 UNIQUE，并使用 `INSERT OR IGNORE`。
-
-这说明一个正确原则：数据库唯一约束是最终幂等保障；内存 Set、Bloom Filter 只能加速。
-
-### 7.2 关键问题：已存在 URL 被永久跳过
-
-抓取前执行：
-
-```text
-if data_store.url_exists(url):
-    skip fetch
-```
-
-这把“identity 已知”错误等价为“内容永远新鲜”。技术博客同 URL 会发生正文修订、代码修复、标题/标签变化、canonical 改变、文档滚动升级和 redirect。
-
-正确语义应该是：
-
-```text
-known URL
-  -> next_check_at
-  -> If-None-Match / If-Modified-Since
-  -> 304: 只更新 freshness
-  -> 200 + body/IR hash 未变: 更新 freshness
-  -> 200 + IR 实质变化: 创建 document_version candidate
-```
-
-Discovery 再次看到已知 URL 也应 UPSERT `last_seen_at/discovery_evidence/freshness_hint`，而不是丢弃本次观察事实。
-
-## 8. `asyncio.Semaphore + gather` 的边界
-
-`SingleNewsDemandMiningPipeline` 用：
+`backend/app/data_sources/__init__.py` 使用：
 
 ```python
-self.semaphore = asyncio.Semaphore(max_concurrency)
+return {cls.__name__: cls() for cls in BaseDataSource.__subclasses__()}
 ```
 
-限制 LLM 调用并发，这是合理的 worker-local 保护。
+优点是开发体验很好：新增一个子类后几乎零配置即可被系统发现。
 
-但 `run_for_all_sources()` 的流程是：
+缺点是 import 顺序、运行时模块装载和代码版本会隐式决定“当前有哪些 Adapter”，无法可靠回答：
 
-1. 对所有 Source 逐个 `await source.fetch()`，抓取阶段串行；
-2. 全部新闻积累到内存；
-3. 一次构造全部 `_process_single_news()` coroutine；
-4. `asyncio.gather(..., return_exceptions=True)`；
-5. 全部处理完后批量入库。
+- 某次历史 Run 到底用了哪个 Adapter 版本；
+- 配置变更发生在什么时候；
+- 哪个 Adapter Release 已经通过 Golden/Canary；
+- 如何回滚；
+- 同名实现和依赖镜像发生变化后如何复现。
 
-这个模式适合短任务，不适合长期爬虫：
+因此推荐保留两层：
 
-- 进程崩溃后内存任务全部丢失；
-- 无 lease/heartbeat/checkpoint；
-- 无 task-level idempotency；
-- 大批量对象长期驻留内存；
-- 来源串行导致头阻塞；
-- Semaphore 只约束 LLM，不约束 HTTP、Browser、PDF、OCR、数据库等资源；
-- 无站点公平调度；
-- 批量落库前发生故障，会出现大量重复工作。
+```text
+开发态：ABC / Protocol + entrypoint/反射自动发现，提高写 Adapter 的效率
+生产态：显式 Manifest + source_adapter_release + adapter_binding_release，作为唯一业务真相
+```
 
-所以生产知识库应采用“小批 claim + durable task + lease + bounded concurrency + 每项提交”。`asyncio` 仍可作为 Worker 内部执行模型，但不能成为业务队列和业务状态真相。
+反射可以成为“生成待发布 Manifest”的工具，但不能成为运行中 Registry 的事实来源。
 
-## 9. SQLite WAL 的合理性与生产边界
+## 3. 聚合型上游 API：值得抽象成 Aggregator Discovery Provider
 
-TrendSearch 为 SQLite 开启 WAL，使用 thread-local connection，并为 URL、时间、score 等建立索引。这对单机应用是务实选择。
+TrendSearch 多个来源并不是直接从目标平台枚举热点，而是通过 `fetch_data_with_news_now()` 请求环境变量 `NEWS_API_URL` 指向的聚合 API：
 
-但千站知识库需要：
+```text
+NEWS_API_URL?id=<source>&latest
+```
 
-- 多 Worker 并发；
-- `SKIP LOCKED` 任务 claim；
-- lease/heartbeat；
-- Outbox；
-- HA；
-- 百万文档与千万 URL 元数据；
-- 大量版本和审计记录；
-- 复杂服务端过滤与聚合。
+然后各个 Source 类把聚合 API 的 `items` 映射为 `DataItem`，再按 URL 抓正文。
 
-因此 PostgreSQL 更适合作为生产业务真相源。SQLite 可以保留为本地开发、测试或离线单机演示模式。
+这是一种很实用的“两级发现”结构：
 
-## 10. 30 天自动清理与历史知识库目标直接冲突
+```text
+Aggregator API
+   ↓ 只给候选 URL/标题/热度等
+Source-specific mapping
+   ↓
+Origin Content Fetch
+```
+
+对博客知识库可以新增 `AGGREGATOR_API` Provider，支持：
+
+- 第三方目录/聚合站；
+- GitHub/社区维护的博客列表；
+- NewsNow 类热门源；
+- 搜索 API；
+- 企业内部 URL 清单 API。
+
+但必须明确：**Aggregator 只能提供发现证据，不能证明历史覆盖，也不能成为正文事实来源。**
+
+具体约束：
+
+1. Aggregator 返回 URL 后仍需 URL Admission；
+2. 正文仍由 origin fetch 获取并保存 Snapshot；
+3. Aggregator 的 item ID、时间、排名、payload 作为 `discovery_evidence`；
+4. 聚合源掉数据不能删除已有文档；
+5. 不能因为 Aggregator 只给最近 N 条就把 FULL_BACKFILL 判为完整；
+6. Aggregator Provider 必须有独立 checkpoint、健康状态和覆盖说明。
+
+## 4. Crawl4AI 正文抓取实现与不适用点
+
+`BaseDataSource.fetch_with_urls()` 的主流程是：
+
+```text
+创建 BrowserConfig/CrawlerRunConfig
+  -> 启动 AsyncWebCrawler
+  -> 逐条遍历 DataItem
+  -> 先 url_exists(url)
+  -> 不存在则 crawler.arun(... magic=True ...)
+  -> result.markdown
+  -> clear_markdown_url()
+  -> 随机 sleep 1~4 秒
+```
+
+### 4.1 可取之处
+
+- Crawl4AI 生命周期覆盖一批 URL，而不是每个 URL 重建进程；
+- 对单 URL 异常做局部捕获，不直接终止全部；
+- 有随机 sleep，说明作者意识到不要无限制打源站；
+- 抓取结果直接进入 Markdown，适合快速验证原型。
+
+### 4.2 不适合作为知识库主链路的地方
+
+#### URL 已存在就跳过
+
+代码先执行：
+
+```python
+if self.data_store.url_exists(item.url):
+    continue
+```
+
+这把“identity 已知”和“内容仍然新鲜”混为一谈。博客文章会修订，文档站更会持续更新；URL 一旦入库便永久跳过会让增量同步失效。
+
+正确语义应是：
+
+```text
+URL 已知
+  -> 更新 last_seen/discovery evidence
+  -> 根据 freshness policy 判断是否 revalidate
+  -> ETag/Last-Modified/lastmod/body hash/IR hash 判定变化
+  -> 有实质变化才创建新 document_version
+```
+
+#### 直接删除 Markdown URL
+
+`clear_markdown_url()` 将 `[text](https://...)` 替换为纯 `text`。对新闻摘要可能可接受，但知识库会因此永久丢失引用、外链、文档内部导航和 Link Graph 证据。
+
+主链路必须保留真实链接。若 AI 分析需要“去 URL 的纯文本”，应额外产生一个 Projection：
+
+```text
+Canonical Document IR
+  ├─ FINAL_MARKDOWN（保留链接）
+  └─ LLM_PLAIN_TEXT（可去 URL）
+```
+
+#### 所有正文默认走 Browser/Crawl4AI
+
+TrendSearch 面向少量热点条目，直接 Browser 的成本尚可；1000 个站点的全历史抓取必须 HTTP-first，再根据 `CSR_SHELL/EMPTY_BODY/LOAD_MORE` 等证据升级 Browser。
+
+## 5. 并发模型：LLM 有 Semaphore，但抓源仍偏串行
+
+`SingleNewsDemandMiningPipeline` 的 `run_for_all_sources()` 分成两个阶段。
+
+第一阶段逐来源：
+
+```python
+for source_name in self.data_source.keys():
+    news_items = await self.data_source[source_name].fetch(...)
+```
+
+所有数据源抓取是串行的。
+
+第二阶段将新闻分析任务一次性建立：
+
+```python
+tasks = [self._process_single_news(news) for news in all_fetched_news]
+results = await asyncio.gather(*tasks, return_exceptions=True)
+```
+
+而 `_process_single_news()` 内使用：
+
+```python
+async with self.semaphore:
+    await agent.ainvoke(...)
+```
+
+这说明项目正确地区分了“任务数量”和“LLM 并发额度”，但仍有两个生产问题：
+
+1. `asyncio.gather()` 一次性创建全量 task，只适用于数量可控的数据集；
+2. Semaphore 是进程内额度，无法表达跨 Worker/跨站点公平性和 durable checkpoint。
+
+博客知识库继续采用：
+
+```text
+PostgreSQL durable task/frontier
+ -> claim 小批 20~100
+ -> Redis Streams 运输
+ -> worker-local Semaphore
+ -> site/domain token bucket
+ -> lease/heartbeat/retry/dead-letter
+```
+
+也就是说，TrendSearch 的 Semaphore 思想只适合保留为“worker-local 最后一层并发闸门”。
+
+## 6. SQLite 存储、URL Hash 与批量写入
+
+`storage.py` 有几个值得注意的实现细节。
+
+### 6.1 SQLite WAL + Thread Local Connection
+
+它对每个线程复用 SQLite connection，并设置：
+
+```sql
+PRAGMA journal_mode=WAL;
+PRAGMA foreign_keys=ON;
+```
+
+这是单机 SQLite 中比较合理的并发优化，但不适合作为百万文档、多 Worker 的中心状态库。
+
+博客知识库仍应使用 PostgreSQL。
+
+### 6.2 URL SHA256 + 唯一约束
+
+项目同时保存 `url` 和 `url_hash=SHA256(url)`，并对 URL/hash 建唯一索引，用 hash 快速判断 URL 是否存在。
+
+这可以吸收为性能优化，但必须建立在“规范化 URL identity”之后：
+
+```text
+raw_url
+ -> normalized_url(versioned normalization rules)
+ -> normalized_url_hash
+```
+
+Hash 只是索引加速，不应替代真实 normalized URL，也不能承担 canonical/document identity。
+
+### 6.3 `INSERT OR IGNORE` 与 `executemany`
+
+项目通过 `INSERT OR IGNORE` 避免先 SELECT 再 INSERT，并使用 `executemany()` 做批量写入，减少 Python/SQLite 往返。
+
+生产 PostgreSQL 中可对应为：
+
+```sql
+INSERT ... VALUES (...), (...)
+ON CONFLICT (...) DO UPDATE/NOTHING
+RETURNING ...
+```
+
+但“冲突后做什么”必须按领域语义区分：
+
+- URL Observation 冲突：更新 `last_seen_at` 和 discovery evidence；
+- document identity 冲突：增加 evidence，不覆盖版本；
+- task idempotency 冲突：返回已有任务；
+- accepted version：append-only，不能 `DO UPDATE` 覆盖旧事实。
+
+### 6.4 30 天自动清理与长期知识库冲突
 
 `DataStore.__init__()` 会调用：
 
-```text
-clean_old_data(days=30)
+```python
+self.clean_old_data(days=30)
 ```
 
-并删除超过 cutoff 的 news/demands。
+`clean_old_data()` 直接删除 30 天以前的 news/demands。
 
-对热点产品合理，对历史知识库却是反目标。知识库应按数据角色做 retention：
+对于热点分析这很自然，但对历史知识库是明确反模式。权威 Snapshot、accepted document/version、quality lineage 默认应长期保留；GC 必须基于 retention class 和引用图，而不是创建时间。
 
-```text
-AUTHORITATIVE
-  accepted document/version
-  lineage root snapshot
-  quality/drift manifest
-  run context / audit
-  默认长期保留
+## 7. AI Agent 框架：配置驱动、Prompt 外置与分层分析
 
-RECONSTRUCTIBLE
-  extraction candidate
-  index payload
-  可重建 projection
-  确认可从权威对象重放后才回收
+### 7.1 Agent 配置驱动
 
-EPHEMERAL
-  staging/temp/cache
-  可 TTL
-```
+`AgentConfigManager` 从 `agents_config.yaml` 读取：
 
-GC 应是 lineage-aware mark-and-sweep，并记录 tombstone/audit，不应简单按“超过 N 天”删除。
+- model provider；
+- model name；
+- temperature；
+- max_tokens；
+- JSON response mode；
+- tools；
+- middleware。
 
-## 11. Web API：功能形态值得借鉴，查询方式不能照搬
-
-TrendSearch 已有 FastAPI + React 管理/阅读界面，这说明抓取系统最终需要可视化运营面，而不是只靠 CLI。
-
-但 `/api/news` 和 `/api/demands` 的实现会：
-
-1. 先从 SQLite 获取 12h/24h 的全部记录；
-2. 在 Python 内存里做 source/keyword/score 等过滤；
-3. 再排序；
-4. 注释明确“不再分页，返回全部数据”。
-
-在几十/几百条热点数据上没问题，在百万文档上会导致 API 内存、延迟和网络传输失控。
-
-生产知识库应改成：
-
-- PostgreSQL/OpenSearch 服务端过滤；
-- keyset/cursor pagination；
-- 聚合统计走 materialized view/预聚合；
-- 详情页按 document/version 精确读取；
-- Dashboard 不做全表 Python filter；
-- 浏览器刷新不影响后台 Run/Task 状态。
-
-## 12. Channel + MessageBus：值得升级成持久化通知投递层
-
-这是 TrendSearch 中现有博客知识库方案容易忽略的一部分。
-
-### 12.1 实现结构
-
-`backend/app/channels/bus/events.py` 定义：
+模型密钥通过环境变量解析，并支持 OpenAI-compatible provider。`AgentBase` 再组合：
 
 ```text
-InboundMessage
-  channel
-  sender_id
-  chat_id
-  content
-  timestamp
-  media
-  metadata
-  session_key
-
-OutboundMessage
-  channel
-  chat_id
-  content
-  reply_to
-  media
-  metadata
+AgentConfigManager
+PromptManager
+ToolRegistry
+MiddlewareRegistry
+LangChain create_agent()
 ```
 
-`backend/app/channels/bus/queue.py` 的 `MessageBus` 用两个 `asyncio.Queue`：
+这个分层对 Derived AI 平面有价值：模型、Prompt、Schema、Tool、Middleware 不应硬编码在业务代码里。
+
+博客知识库应进一步把这些配置做成不可变 release：
 
 ```text
-inbound  : channel -> core
-outbound : core -> channel
+model_provider_release
+prompt_release
+schema_release
+toolset_release
+runtime_release
 ```
 
-`ChannelManager` 负责：
+每个 `derived_job` 记录完整 release identity 和 `input_hash`，从而支持离线重放和结果比较。
 
-- 初始化启用的 Channel；
-- 启停 Channel；
-- 后台 `_dispatch_outbound()` 消费出站消息；
-- 按 `msg.channel` 路由到具体实现；
-- 当前包含 Feishu；
-- 提供 `send_notification()` 与报告广播方法。
+### 7.2 多层级分析流水线
 
-这个结构的思想是正确的：核心逻辑不直接绑定某个消息平台，Channel 作为 Adapter，MessageBus 作为解耦边界。
-
-### 12.2 为什么不能直接用于生产告警
-
-当前 MessageBus 是进程内 `asyncio.Queue`：
-
-- 进程重启，未消费消息丢失；
-- 没有持久化 delivery 状态；
-- 没有 idempotency key；
-- 没有 retry schedule/dead-letter；
-- 没有 dedup/silence/escalation；
-- `send_notification()` 还能直接 `await ch.send()`，调用方可能被外部信道延迟拖慢；
-- 广播是顺序发送，单信道故障只能日志记录。
-
-### 12.3 对知识库方案的升级方式
-
-知识库应把这个模式升级为独立 **Notification/Delivery Plane**：
+TrendSearch 的编排顺序是：
 
 ```text
-Domain Event / Alert Decision
-      ↓
-notification_delivery 写 PostgreSQL
-      ↓
-Transactional Outbox
-      ↓
-Notification Worker
-      ↓
-Channel Adapter
-  Feishu / Slack / Email / Webhook
+阶段 1：单条新闻分析 / 需求挖掘
+阶段 2：部分新闻分组分析
+阶段 3：全量新闻综合分析
+阶段 4：需求评分 + 新闻筛选
+阶段 5：新闻/需求报告
+阶段 6：飞书投递
 ```
 
-核心原则：
+这比“一次把所有文档塞进超长 Prompt”更合理，核心原理是分层压缩上下文：
 
-1. 抓取 Run 完成不依赖消息平台可用性；
-2. 通知失败不能把已成功抓取的 Run 改成 FAILED；
-3. delivery 自己有 `PENDING/SENDING/SENT/RETRY/DEAD`；
-4. `(event_id, channel_binding_id)` 做幂等；
-5. 支持 retry/backoff、dedup window、silence、severity、route rule；
-6. 支持 Run PARTIAL、dead-letter、coverage gap、drift、freshness lag、access challenge、GC blocked 等结构化事件；
-7. Web 可查看投递历史并手工重发。
+```text
+Document-level facts
+  -> Group-level synthesis
+  -> Window/corpus-level synthesis
+  -> Ranking / Report
+```
 
-这样既保留 TrendSearch Channel abstraction 的优点，又补上生产可靠性。
+这非常适合博客知识库的下游 AI：
 
-## 13. `is_liked`：从简单点赞演化为独立人工标注/运营反馈层
+- 单文档摘要/主题/实体；
+- 同主题或同时间窗聚类；
+- 周/月技术趋势；
+- 站点级 digest；
+- 跨站点综合报告。
 
-`news` 和 `demands` 表都包含 `is_liked`，存储层还有 `toggle_news_like()` / `toggle_demand_like()`。这说明 TrendSearch 已经把“机器生成内容”和“用户运营状态”放在同一产品中考虑。
+需要强调：这些都必须从 accepted document version 出发，不能反过来决定“源正文是否抓取成功”。
 
-对知识库而言，不能简单复制一个 boolean，而应把它升级成 append-only 的 **Curation/Feedback Plane**：
+## 8. Embedding 多样性排序：Farthest-First / Max-Min 的价值
+
+`BasePipeline.merge_lists_with_min_max_sim()` 实现了一个有价值的多样性排序算法。
+
+大意是：
+
+1. 对已有 `list1` 和候选 `list2` 的 Embedding 做 L2 归一化；
+2. 对每个候选，计算它与当前已选集合的“最大相似度”；
+3. 每轮选择这个“最大相似度最小”的候选；
+4. 新选入一个元素后，只增量更新所有候选与它的相似度；
+5. 重复直到排序完成。
+
+其目标不是找“最像”的文档，而是优先补充当前集合最缺失的语义方向，本质接近 farthest-first traversal / max-min diversity。
+
+对博客知识库的下游报告非常有用：如果仅按热度或向量中心性选 100 篇，结果容易被高度重复的话题占满。可以把“相关性”和“覆盖度”分成两层：
+
+```text
+Candidate Filter: 时间窗/站点/主题/质量/用户偏好
+  -> Relevance Score
+  -> Diversity Selector(MMR 或 max-min)
+  -> Bounded Context Set
+  -> Group/Global LLM Analysis
+```
+
+必须保存 Selection Manifest：
+
+```text
+selection_run_id
+candidate_set_hash
+selected_document_version_ids
+ranking_release_id
+diversity_algorithm/params
+feedback_profile_release_id
+created_at
+```
+
+这样报告能够解释“为什么这批文章被选中”。
+
+## 9. Web API 与用户反馈：从“点赞”升级为 Feedback Signal Projection
+
+TrendSearch 的 FastAPI 提供：
+
+- 新闻列表/详情；
+- 需求列表/详情；
+- 新闻报告/需求报告；
+- stats；
+- 新闻/需求点赞。
+
+前端把“浏览 + 搜索/筛选 + 报告中心 + 点赞”做成闭环。README 还明确说明点赞会影响后续需求挖掘和个性化推荐。
+
+这个思路值得加入知识库，但不能把 `is_liked` 直接混在源文档事实里。推荐改成 append-only 事件：
 
 ```text
 curation_event
-  event_id
-  actor_id
-  document_id/version_id
-  action
-  label/note/reason
-  created_at
-  supersedes_event_id
+  operation = LIKE/FAVORITE/PIN/TAG/REJECT/QUALITY_FEEDBACK
 ```
 
-可支持：
+再异步投影为：
 
-- favorite / pin；
-- 标签、集合、笔记；
-- “正文缺失”“抽错区域”“metadata 错误”“需要重抓”等质量反馈；
-- 人工 approve/reject/quarantine；
-- 发起 TARGETED_FETCH 或 REPROCESS；
-- 对站点/规则的人工备注。
+```text
+preference_signal_projection
+  actor/team
+  topic/site/tag/entity
+  positive_weight/negative_weight
+  decay_policy
+  source_event_watermark
+  release_id
+```
 
-关键边界：
+Derived AI 的 selection/ranking 可以引用某个 `feedback_profile_release_id`，但：
 
-- 人工反馈是独立事实，不能直接覆盖不可变 Snapshot；
-- 不能因为“点了赞”就改变源文档 identity；
-- 质量修正应触发新 candidate/version/override event，而不是原地改旧版本；
-- 所有人工 Override 保存 actor、reason、时间和被覆盖的机器判定；
-- 可将反馈作为规则优化/Golden Sample 的输入，但不能让线上 LLM 直接自学习后无版本发布。
+- 不允许据此跳过历史抓取；
+- 不允许修改 accepted version；
+- 不允许覆盖原始 metadata；
+- 不允许把个人兴趣当成“质量真相”。
 
-这会显著提升千站长期运营能力，因为真实生产问题往往需要“人发现异常 → 定位 URL → 重处理/修正规则 → 可审计恢复”的闭环。
+这样既保留 TrendSearch 的个性化价值，又保持知识库事实层纯净。
 
-## 14. AI 分析应该是 Accepted Document 的下游 Projection，而不是抓取主链路
+## 10. 消息总线与飞书：概念正确，可靠性不足
 
-TrendSearch 的业务价值主要来自 LLM 需求挖掘、评分和报告，但它把这些阶段放在一次主分析流程里。
+`channels/bus/queue.py` 使用两个 `asyncio.Queue`：
 
-知识库不应让 LLM 分析阻塞源内容同步。更合理的是：
+```text
+inbound
+outbound
+```
+
+用于解耦 Channel 与核心逻辑。这个抽象方向正确，说明“消息通道”和“分析逻辑”应该解耦。
+
+但进程内 `asyncio.Queue` 在进程退出后全部丢失；没有 ack、lease、retry、dedup 和 dead-letter，不能承担生产投递事实。
+
+`analyze_script.py` 在报告生成后直接调用飞书发送。如果飞书失败，代码只返回失败结果；也没有持久化 Delivery 状态。
+
+博客知识库现有的 Notification/Delivery Plane 更适合：
+
+```text
+Domain Event
+ -> notification_delivery(PENDING)
+ -> Transactional Outbox
+ -> Notification Worker
+ -> Feishu/Slack/Email/Webhook Adapter
+ -> SENT/RETRY/DEAD
+```
+
+TrendSearch 的 Channel Adapter 可以作为协议层参考，但 transport 必须 durable。
+
+## 11. Web 管理能力的差距
+
+TrendSearch 的 Web 是内容消费/分析 Web，不是抓取控制面。
+
+目前 API 主要处理近期数据展示，甚至有“12 小时无数据再查 24 小时”的逻辑，列表中部分接口会直接把当前窗口全部数据装入 Python 后过滤/排序。
+
+对于百万级博客知识库，需要的是：
+
+```text
+站点接入 / Probe
+Adapter Registry
+Provider Coverage
+Run / Task / Dead-letter
+URL 诊断
+HTTP/Browser Route
+Snapshot / Candidate / IR / Quality
+Drift
+Version Diff
+Retention / GC
+搜索
+Curation / Feedback
+Derived AI / Report
+Notification Delivery
+```
+
+查询必须使用数据库/OpenSearch 服务端过滤和 keyset/cursor pagination，不能复制 TrendSearch 的“小窗口全量加载”方式。
+
+## 12. 建议吸收到博客知识库方案中的能力
+
+### 12.1 Source Adapter 开发体验层
+
+新增明确约定：
+
+```text
+Python ABC/Protocol + typed DiscoveryRecord
+本地可用 entrypoint/反射自动发现
+生成 Adapter Manifest 草稿
+Contract/Golden/Checkpoint Test
+Canary
+发布 source_adapter_release
+生产只从 Registry 加载已发布 Release
+```
+
+这样兼顾 TrendSearch 的扩展效率和生产可追溯性。
+
+### 12.2 Aggregator Discovery Provider
+
+增加 `AGGREGATOR_API` 能力类型，专门接入“聚合 API/目录/搜索服务给 URL”的来源，严格限制为 discovery evidence。
+
+### 12.3 Hierarchical Derived AI Pipeline
+
+把 Derived AI 从简单的“每文档一个 Job”扩展为：
+
+```text
+L0 Deterministic Features / Embedding
+L1 Document Analysis
+L2 Cluster/Batch Analysis
+L3 Window/Corpus Synthesis
+L4 Ranking / Personalized Digest / Report
+```
+
+每层输入都引用具体 accepted version 和上游 artifact，失败独立重试。
+
+### 12.4 Diversity Selector
+
+在报告/摘要/人工 Review Queue 中加入 MMR/max-min/farthest-first 选择器，避免高重复内容占满上下文预算。
+
+### 12.5 Feedback Signal Projection
+
+从 append-only `curation_event` 生成可版本化偏好画像，供 Derived AI 排序/报告使用；画像只影响“看什么、怎么排”，不影响“抓不抓、事实是什么”。
+
+### 12.6 批量 UPSERT
+
+吸收 URL hash + 批量写的性能思路，在 PostgreSQL 中使用批量 `INSERT ... ON CONFLICT`，但每个领域对象定义不同冲突语义。
+
+## 13. 明确不应吸收的实现
+
+以下做法不应进入长期知识库主链路：
+
+1. **URL 已存在即永久不抓**：破坏 freshness 和增量更新；
+2. **30 天自动删除权威数据**：破坏历史知识库；
+3. **抽取后直接删除 Markdown 链接**：破坏 Link Graph 和可追溯性；
+4. **SQLite 作为中心业务真相**：无法支撑多 Worker 与百万级长期状态；
+5. **反射式 `__subclasses__()` 作为生产 Registry**：无法版本化和回放；
+6. **进程内 `asyncio.Queue` 作为可靠消息系统**：崩溃即丢状态；
+7. **一次性 `asyncio.gather()` 全量任务**：规模增大后产生内存和恢复问题；
+8. **所有正文优先 Browser**：成本高且不必要；
+9. **聚合 API 的近期列表当历史覆盖**：无法证明 FULL_BACKFILL；
+10. **报告投递与主任务同步耦合**：外部 Channel 故障会扩大故障域；
+11. **Web 小时间窗全量加载再 Python 过滤**：无法扩展到百万级；
+12. **LLM 输出直接承担源数据质量判定**：AI 幻觉不能成为抓取正确性的证明。
+
+## 14. 对现有博客知识库技术方案的具体优化
+
+本次建议在现有方案上补充以下设计，而不是替换其核心架构：
+
+1. `Source Adapter SDK` 增加“开发态自动发现、生产态 Manifest/Release”的双层机制；
+2. Discovery Provider 增加 `AGGREGATOR_API` 类型；
+3. `curation_event` 增加 Signal Projector，生成版本化 `preference_signal_projection`；
+4. Derived AI 增加 Hierarchical Analysis Run；
+5. Derived AI Selection 增加 MMR/max-min 多样性策略和 `selection_manifest`；
+6. 报告中心保存输入集合 hash、选中文档 version、Prompt/Model release 和偏好 profile release；
+7. 数据模型新增 `analysis_run`、`derived_selection_manifest`、`preference_signal_projection`；
+8. 测试增加偏好投影可重放、Selection 可解释、分层 AI 上游 lineage 完整性；
+9. 验收要求用户 Like/Favorite 只影响派生排序，不改变源抓取覆盖或 accepted truth。
+
+## 15. 推荐的派生 AI 数据流
 
 ```text
 Accepted Document Version
-   ├─ Markdown Projection
-   ├─ Search Index
-   ├─ Embedding
-   ├─ Summary/Tags
-   ├─ Topic/Entity Extraction
-   └─ Periodic Report
+  -> Deterministic Feature Job
+      -> Embedding / Topic / Entity
+  -> Document Analysis Job
+      -> Summary / Key Points / Trend Signals
+
+Time Window / Query / Collection
+  -> Candidate Set
+  -> Relevance Rank
+  -> Feedback Profile Adjustment
+  -> Diversity Selector(MMR / Max-Min)
+  -> Selection Manifest
+  -> Cluster/Batch Analysis
+  -> Corpus Synthesis
+  -> Report Artifact
+  -> Notification Delivery
 ```
 
-派生 AI Job 必须：
+这个结构把 TrendSearch 最有价值的“单条 -> 分组 -> 全局 -> 排序 -> 报告”思想转化为可追溯、可重放、可控制成本的下游能力。
 
-- 引用确定的 `document_version_id`；
-- 记录 model/prompt/schema/release；
-- 可独立 retry/reprocess；
-- 失败不影响 accepted source document；
-- 新模型上线可基于已有 Document IR 重算，不重新访问源站；
-- 结果作为 Derived Artifact，不反向覆盖源正文；
-- 成本与配额独立控制。
+## 16. 最终评价
 
-这样既能保留 TrendSearch “采集后进一步分析”的能力，又不会把 LLM 的非确定性和费用引入抓取可靠性核心。
+TrendSearch 对本项目最大的价值并不在“如何抓网页”，而在于它展示了三个很实用的应用层模式：
 
-## 15. 完成状态不能由协程结束或报告生成来证明
+1. **同一协议接多来源，降低扩展成本；**
+2. **分层 AI 分析和 Embedding 多样性排序，降低上下文冗余；**
+3. **Web 点赞/偏好 -> 后续排序/分析，形成反馈闭环。**
 
-TrendSearch 的流程编排主要由 `analyze_script.py` 直接调用 Pipeline，异常多通过日志/try-except 处理。对于应用脚本足够，但知识库必须定义独立业务完成语义。
+但其抓取、状态和存储语义是典型的“近期热点应用”语义，不具备长期知识库所需的历史完整性、Freshness、不可变版本、可靠任务、质量门禁和可恢复性。
 
-建议：
-
-```text
-Worker success
-   ≠ Stage success
-   ≠ Run success
-```
-
-Stage Finalizer 应对账：
-
-- 计划实体数；
-- admitted/frontier 数；
-- fetch attempt 与 COMPLETE Snapshot；
-- extraction candidate；
-- quality result；
-- retry/dead-letter；
-- accepted version；
-- publish/index manifest。
-
-最后给出 `COMPLETED/PARTIAL/FAILED/INCONSISTENT`，避免“协程都结束了但部分产物没落盘”的假成功。
-
-## 16. 可直接迁移与必须重构的清单
-
-### 可以保留的思想
-
-- Strategy/Adapter 数据源接口；
-- 标准化数据对象；
-- 结构化 API 优先用于发现；
-- Crawl4AI 作为网页正文候选生成器；
-- 数据库唯一约束；
-- worker-local Semaphore；
-- Pipeline 分阶段思想；
-- FastAPI + React 管理面；
-- Channel Adapter + 消息事件抽象；
-- 用户运营/反馈状态；
-- 下游 AI 分析与报告能力。
-
-### 必须重构的实现
-
-- import-time `__subclasses__()` → Versioned Capability Registry；
-- DataSource 内直接抓正文 → Discovery/Fetch 分离；
-- Browser 全量串行 → HTTP-first + Browser evidence escalation；
-- random sleep → 全局 domain quota + Retry-After；
-- `url_exists => skip forever` → identity/freshness 分离；
-- Markdown 链接删除 → Document IR + Link Graph；
-- 大 `gather()` → durable task/frontier；
-- 整批结束才入库 → 每项/小批持久化；
-- SQLite → PostgreSQL 生产状态真相；
-- 30 天统一清理 → lineage-aware Retention/GC；
-- API 全量加载后过滤 → 服务端查询 + keyset pagination；
-- `asyncio.Queue` MessageBus → durable Notification Outbox；
-- boolean `is_liked` → append-only Curation/Feedback Event；
-- LLM 分析内嵌主链路 → Accepted Version 下游 Derived Job；
-- try/except + 日志完成 → Artifact 对账 Finalizer。
-
-## 17. 对最终博客知识库方案的结论
-
-TrendSearch 不应作为千站知识库的直接基础代码，但很适合作为架构启发来源。最值得吸收的是四类思想：
-
-1. **来源 Adapter 化**：不同来源统一协议，上层消费统一对象；生产中进一步升级为版本化 Capability Registry。
-2. **结构化发现与网页正文分工**：Feed/API/Sitemap/Archive 负责低成本枚举，正文统一进入 HTTP-first Fetch/Browser 路由。
-3. **产品化运营面**：Web 不只展示结果，还要承载站点、Run、URL、版本、质量、人工标注和重处理闭环。
-4. **Channel 与下游分析解耦**：通知、报告和 LLM 分析都应成为 accepted 文档之后的独立可靠性域，不能绑死抓取主链路。
-
-对于约 1000 个技术博客，真正决定长期可靠性的不是“一个 URL 能不能被 Crawl4AI 转成 Markdown”，而是能否证明历史抓全、已知 URL 持续校验 freshness、动态页不会静默抓空、模板变化不会静默抓错、链接与结构不会在清洗时丢失、任务与通知在进程崩溃后可恢复、人工反馈可审计地形成修复闭环、历史不会被错误 TTL 清理、以及每个最终 Markdown/派生 AI 结果都能追溯到确定的 Snapshot、Run Context、规则版本和 Document Version。
+因此最终落地应坚持现有的 PostgreSQL + S3 + durable frontier + 多 Provider + HTTP-first + Snapshot/IR/Version + Quality/Drift + Retention/GC 主架构，同时把 TrendSearch 的 Adapter 开发体验、Aggregator Provider、Hierarchical Derived AI、Diversity Selection、Feedback Signal Projection 和 Report Center 作为增强能力并入。
