@@ -4,90 +4,213 @@
 
 - 编号：25
 - 原文：How to Turn Any Website into a Graph Knowledge Base With A Production-Ready Co-Pilot
-- 原文地址：https://todatabeyond.substack.com/p/how-to-turn-any-website-into-a-graph
-- 作者页面标注日期：2025-10-07
-- 核心组件：Crawl4AI、BFSDeepCrawlStrategy、FilterChain、URLPatternFilter、ContentTypeFilter、LXMLWebScrapingStrategy、LLMExtractionStrategy、Pydantic Schema、R2R / GraphRAG
+- 调研地址：https://todatabeyond.substack.com/p/how-to-turn-any-website-into-a-graph
+- 原始 Medium 版本：https://medium.com/gitconnected/how-to-turn-any-website-into-a-graph-knowledge-base-with-a-production-ready-co-pilot-28ce88e8988e
+- 时间说明：Substack 页面标注 2025-10-07；原始 Medium/Level Up Coding 版本标注 2025-05-05，因此前者应视为后续转载/重发时间，而不是最初发布时间。
+- 核心组件：Crawl4AI、`BFSDeepCrawlStrategy`、`FilterChain`、`URLPatternFilter`、`ContentTypeFilter`、`LXMLWebScrapingStrategy`、`LLMExtractionStrategy`、Pydantic/JSON Schema、R2R、Hybrid Search、Knowledge Graph、RAG。
 
-本文展示了一条很典型的“网站 -> 深度抓取 -> 结构化抽取 -> 图谱知识库 -> AI 助手”链路。它对博客知识库方案最有价值的地方，不是照搬 R2R，也不是把所有页面交给 LLM，而是提供了三个可以独立吸收的设计思想：
+文章展示了一条完整的 PoC 链路：
 
-1. 把站内遍历策略、URL 过滤策略、正文/结构化抽取策略拆成可组合配置；
-2. 把结构化 Schema 当成抽取契约，而不是在业务代码里临时解析 JSON；
-3. 在全文和向量检索之外，把知识图谱作为可重建的派生检索投影，而不是替代原始文档事实层。
+```text
+Website
+ -> Crawl4AI Deep Crawl
+ -> URL Filter Chain
+ -> HTML Scraping
+ -> Schema-constrained LLM Extraction
+ -> JSON Records
+ -> R2R Document Ingestion
+ -> Chunk / Embedding / Entity / Relation
+ -> Hybrid RAG / Knowledge Graph
+```
 
-对“1000 个技术博客全量历史文章 + Markdown 清洗 + 后续扩站 + 增量同步 + Web 管理”的目标而言，文章中的演示代码只能作为单站点 PoC，不能直接作为生产爬虫架构；但其 Deep Crawl、Filter Chain、Schema Extraction、Graph Projection 思路值得加入现有方案。
+这条链路适合证明“网页可以被抓取、结构化并送入图谱/RAG 系统”，但不能直接等价于“1000 个技术博客的生产级全量历史知识库”。生产系统还必须解决历史覆盖证据、增量同步、稳定文档身份、幂等任务、跨站限流、Snapshot 重放、Markdown 质量、数据边界、图谱 provenance、检索作用域、Web 运维和成本治理。
+
+本文最值得吸收的不是某个具体框架，而是四类可组合能力：
+
+1. Discovery / Filter / Fetch / Extraction 策略解耦；
+2. Schema 作为结构化抽取契约；
+3. Graph 作为 Document Version 的可重建 Projection；
+4. 把 GraphRAG 放在 BM25/Vector 之外作为可验证的额外召回通道，而不是默认宣称“建了图就一定提升检索”。
 
 ---
 
-## 2. 文章实现链路拆解
+## 2. Crawl4AI 深度抓取实现与原理
 
-### 2.1 深度抓取
-
-文章使用 Crawl4AI 的 `BFSDeepCrawlStrategy` 做站内广度优先遍历，并同时设置：
-
-- 最大深度；
-- 最大页面数；
-- 是否允许外域；
-- URL 过滤链；
-- 内容类型过滤。
-
-BFS 的工作原理是按链接层级扩展 frontier：先处理入口页，再处理入口页直接发现的链接，再处理下一层。它适合层级较规则、文章详情页距离入口不深的网站，因为可以较快覆盖“离入口近”的页面。
-
-但 BFS 本身不等于“全量历史发现”。博客可能有：
-
-- sitemap 中存在但当前导航已不可达的旧文章；
-- RSS 只保留最近几十篇；
-- Archive 按年份分页；
-- category/tag/author 页形成大量重复入口；
-- JavaScript Load More；
-- 旧 URL 已迁移或只在历史索引里存在；
-- Docs/Blog 混合站点中大量非文章页面。
-
-因此，生产方案中 Deep Crawl 只能是 Discovery Provider 之一，主要用于未知结构探索和补洞，而不能用“BFS 队列耗尽”证明历史覆盖完整。
-
-### 2.2 FilterChain
-
-文章用 `FilterChain` 组合 URL pattern 和 content type 条件，核心收益是“先阻止无价值 URL 进入昂贵抓取/抽取阶段”。
-
-这一点对 1000 站点非常重要。抓取成本不是只有网络请求，还包括：
-
-- Browser 秒数；
-- HTML 解析 CPU；
-- LLM token；
-- 对象存储；
-- Embedding；
-- 搜索索引；
-- 图谱实体关系抽取。
-
-如果在 URL discovery 阶段就能排除明显的登录、搜索、标签分页、资源文件、重复参数页，可以显著降低后续放大成本。
-
-但 FilterChain 也有高风险：过滤规则一旦写错，会静默漏文章。因此生产实现应把过滤分成两类：
+文章使用 `AsyncWebCrawler` 配置浏览器环境，再在 `CrawlerRunConfig` 中挂载 `BFSDeepCrawlStrategy`。示例核心参数包括：
 
 ```text
-HARD_FILTER
-- 明确禁止/无意义资源
-- robots/policy
-- 非允许域
-- 明确静态资产
-- 已知登录/后台路径
-
-SOFT_FILTER
-- URL pattern 推测
-- 路径模板推测
-- 相关性评分
-- category/tag/navigation 推测
+max_depth = 2
+include_external = false
+max_pages = 2
+filter_chain = ...
 ```
 
-SOFT_FILTER 不应删除 URL Observation，而应保存“为什么被过滤”的 evidence，并允许在 Coverage 页面查看、抽样和重新放行。
+并使用 `LXMLWebScrapingStrategy` 处理页面内容。
 
-### 2.3 结构化 Schema 抽取
+### 2.1 BFS frontier
 
-文章定义 Pydantic 模型，再把 JSON Schema 交给 `LLMExtractionStrategy`，要求模型按固定字段返回结构化对象。
+BFS 维护按深度分层的 frontier：
 
-技术原理可以概括为：
+```text
+Depth 0: seed
+  -> extract links
+Depth 1: links from seed
+  -> extract links
+Depth 2: links from depth 1
+  -> ...
+```
+
+它的优势是覆盖行为直观，适合从首页、博客入口、目录页向较浅层文章扩散；缺点是导航、分类、作者、tag、分页、登录、搜索页会大量占据浅层预算。
+
+对技术博客历史抓取而言，BFS 只能是一个 Discovery Provider，不能成为 Coverage 判定依据。原因包括：
+
+- 旧文章可能只存在 sitemap 或 archive 中；
+- RSS/Feed 常只有最近窗口；
+- 文章可能从当前导航断链；
+- category/tag/author 产生大量重复入口；
+- JS Load More/virtual scroll 不一定暴露静态链接；
+- 旧 URL 可能已迁移、跳转或只出现在历史索引；
+- Docs 与 Blog 混合站点会产生大量非文章路径；
+- BFS queue exhausted 只能证明“当前策略在当前预算和可见链接图上没有继续扩展”，不能证明“历史文章已全部发现”。
+
+因此生产顺序应当是：
+
+```text
+CMS/API
+ -> Sitemap
+ -> Historical Feed
+ -> Archive / Category / Author
+ -> Docs TOC / Blog Index
+ -> Common Crawl URL Index
+ -> Best-First gap discovery
+ -> bounded BFS/DFS
+```
+
+权威 Provider 负责覆盖证明，Deep Crawl 负责未知结构探索和补洞。
+
+### 2.2 Durable frontier
+
+PoC 可把 frontier 留在 crawler 内存；生产系统不能这样做。任何被发现 URL 应尽快写成 durable Observation：
+
+```text
+url_observation
+- source_id
+- observed_url
+- normalized_url
+- provider_type
+- provider_run_id
+- parent_url nullable
+- anchor_text nullable
+- depth nullable
+- discovered_at
+- filter_decision
+- evidence_ref
+```
+
+后续抓取任务由平台 Scheduler 生成。Worker 崩溃时只丢失尚未 checkpoint 的短执行窗口，不需要从首页重新遍历。
+
+---
+
+## 3. FilterChain：降低放大成本，但必须可审计
+
+文章组合 `URLPatternFilter` 与 `ContentTypeFilter`，其本质是在昂贵处理前减少候选集合。
+
+对 1000 站点而言，一条错误 URL 如果进入完整链路，成本会被逐层放大：
+
+```text
+network
+ -> browser seconds
+ -> HTML parsing
+ -> object storage
+ -> extraction
+ -> LLM token
+ -> chunk
+ -> embedding
+ -> fulltext/vector index
+ -> graph extraction
+ -> graph storage
+ -> downstream analysis
+```
+
+因此“早过滤”很重要，但“误过滤”比“多抓一些”更危险：它可能静默造成历史缺口。
+
+生产实现应区分：
+
+```text
+HARD_REJECT
+- 非允许域
+- 明确后台/登录路径
+- robots/policy 禁止
+- 明确静态资产
+- 明确危险协议/地址
+
+SOFT_REJECT / DEPRIORITIZE
+- 看起来像 tag/category/navigation
+- 路径模板推断
+- 相关性评分低
+- 参数页/分页的概率判断
+- article template 不确定
+```
+
+所有 decision 必须保留：
+
+```text
+url_filter_decision
+- url_id
+- filter_release_id
+- rule_id
+- action
+- reason_code
+- score nullable
+- evidence_ref
+- decided_at
+```
+
+SOFT_REJECT 不删除 Observation，只改变是否立即抓取/调度优先级。新 Filter Release 上线前，用已知文章 URL fixture 做 recall 回归，避免规则升级后大面积漏文章。
+
+---
+
+## 4. LXML、HTTP 与 Browser 的边界
+
+文章虽然使用 Crawl4AI 运行抓取，但内容策略选择 `LXMLWebScrapingStrategy`。这个细节说明 Crawl4AI 并不意味着所有页面都必须依赖真实浏览器执行。
+
+生产系统应拆成三层：
+
+```text
+Discovery Strategy
+Fetch Route
+Extraction Strategy
+```
+
+默认路线：
+
+```text
+HTTP_STATIC
+ -> deterministic HTML parser
+ -> quality check
+```
+
+只有出现以下条件才升级 Browser：
+
+- 页面主体依赖 JS 渲染；
+- 必须点击 Load More/分页按钮；
+- 需要滚动后才能得到完整 DOM；
+- 静态响应只返回壳；
+- HTTP 抽取质量低于阈值且 Browser 有明显改善。
+
+这使 Browser 成为受控 fallback，而不是默认成本。
+
+---
+
+## 5. Pydantic + LLMExtractionStrategy 的技术原理
+
+文章定义 Pydantic 数据模型，并把生成的 JSON Schema 交给 Crawl4AI 的 `LLMExtractionStrategy`。示例还设置了 chunk token threshold、overlap、模型温度等参数。
+
+核心链路：
 
 ```text
 HTML
- -> chunking
+ -> normalize / chunk
  -> prompt + JSON Schema
  -> LLM structured generation
  -> JSON parse
@@ -95,50 +218,58 @@ HTML
  -> structured records
 ```
 
-相较“让模型自由输出 JSON”，Schema 约束的优势是：
+### 5.1 Schema 的价值
 
-- 字段类型明确；
-- 可以统一校验 required field；
-- 输出可以直接进入程序化 pipeline；
-- Schema 可以版本化；
-- 可以对历史 Snapshot 重放；
-- 可以统计字段缺失率和漂移。
+Schema 不只是“让 JSON 好看”，而是生产契约：
 
-文章还配置了 chunk token 阈值和 overlap。其原理是避免超长 HTML 一次进入模型上下文，同时通过少量重叠减轻语义被切断的问题。
+- required field 可验证；
+- 类型可验证；
+- 多条记录结构统一；
+- Schema 可以独立版本化；
+- 同一 Snapshot 可用新 Schema 离线重放；
+- 可以统计缺失率、类型错误、漂移；
+- deterministic extractor 与 LLM extractor 可以输出到同一契约后比较。
 
-但对于百万级技术博客文章，不能把 LLM Extraction 作为默认正文抽取方式。主要原因：
-
-1. token 成本随 HTML 体积线性放大；
-2. 吞吐受模型 API 限制；
-3. 输出存在非确定性；
-4. Schema 变化会触发大规模重放；
-5. 文章正文的 Markdown 清洗并不需要 LLM 才能完成。
-
-更合理的生产顺序是：
+更合理的系统模型是：
 
 ```text
-平台 API / JSON-LD / CSS / XPath / Regex
- -> Trafilatura / Readability / Crawl4AI deterministic extraction
- -> quality validation
- -> LLM structured extraction only for complex/unstructured fields
+structured_schema_release
+- schema_json
+- required_fields
+- field_descriptions
+- validation_policy
+- fixture_refs
+
+structured_extraction_release
+- engine: API / JSON_LD / CSS / XPATH / REGEX / LLM
+- schema_release_id
+- input_projection
+- selector_or_instruction
+- chunk_policy
+- model_release_id nullable
+- prompt_release_id nullable
+- runtime_release_id
+- quality_policy
 ```
 
-当前 Crawl4AI 官方文档也提供 JSON CSS、XPath、Regex 等无需 LLM 的结构化抽取策略；LLM 适合复杂、缺乏稳定 DOM 规则的场景。因此应把 LLM Extraction 定位为“高成本可选 Projection”，而不是 canonical Markdown 的必要依赖。
+### 5.2 LLM 不应进入 canonical 关键路径
 
-### 2.4 LXMLWebScrapingStrategy 与 Browser 的关系
+技术博客正文清洗的目标是稳定保留标题层级、段落、列表、代码、表格、图片和链接，这完全可以优先用确定性抽取完成。
 
-文章虽然通过 Crawl4AI 执行抓取，但内容处理使用 LXML 路线。对生产系统的重要启示是：
+生产顺序：
 
-- Crawl4AI 不应被理解成“所有页面都必须打开真实浏览器”；
-- 深度发现、抓取路由、解析和 Markdown 生成应该拆开；
-- 静态 HTML 优先走 HTTP/LXML；
-- 只有 JS 必须执行、动态分页、交互后才能得到正文时才升级 Browser。
+```text
+platform API / JSON-LD / CSS / XPath / Regex
+ -> Trafilatura / Readability / Crawl4AI deterministic extraction
+ -> Canonical IR / Markdown
+ -> optional LLM Structured Extraction
+```
 
-这与“HTTP First, Browser Last”原则一致。
+LLM 更适合抽取复杂语义字段、关系、分类等长尾需求。模型故障、限流或预算耗尽时，canonical Markdown 仍必须正常 READY。
 
-### 2.5 Token 使用量与成本
+### 5.3 Token 成本必须成为事实数据
 
-文章演示了统计 LLM extraction token usage。生产系统不能只打印日志，而应形成可查询的成本事实：
+文章展示 token usage，但生产系统不能只输出日志，应落库：
 
 ```text
 structured_extraction_usage
@@ -154,424 +285,468 @@ structured_extraction_usage
 - outcome
 ```
 
-并支持按 Source、Schema、Model、日期、成功文档数聚合，最终形成：
-
-```text
-llm_extract_cost_per_accepted_document
-llm_extract_tokens_per_document
-llm_extract_schema_failure_rate
-```
-
-这样才能判断某个站点是否应该继续使用 LLM Extraction，还是投入一次性成本编写 CSS/XPath Schema 更划算。
+这样可以按 Source/Schema/Model 比较“继续调用 LLM”与“编写稳定 CSS/XPath 规则”的长期成本。
 
 ---
 
-## 3. Crawl4AI Deep Crawl 的生产化理解
+## 6. 文章样例暴露的第一个生产问题：记录边界污染
 
-Crawl4AI 当前官方文档把 Deep Crawl 设计为可插拔策略，包含 BFS、DFS、Best-First，并支持 URL/domain/content relevance 等过滤。
+文章把多个抓取到的商品对象写入一个 JSON 文件，然后把整个文件作为一个 R2R Document 摄取。样例 RAG chunk 中可以看到一个商品记录附近出现下一个商品的标题/描述内容。
 
-### 3.1 BFS
+这说明仅靠通用 token chunking，结构化数组中的相邻 item 可能进入同一个 chunk。对技术博客场景，类似问题会变成：
 
-优点：
+- 两篇独立文章被打进同一个逻辑文档；
+- 多个 structured item 被同一个 embedding 表示；
+- graph extraction 把相邻记录的实体/属性混在一起；
+- provenance 无法准确指出事实属于哪个记录。
 
-- 层级覆盖直观；
-- 适合从博客入口向文章页扩散；
-- 容易设置 max depth / max pages。
-
-缺点：
-
-- 在导航很多的网站上，低层级无关页会占用大量预算；
-- 不知道哪条链接更值得优先；
-- 无法证明站点历史完整。
-
-### 3.2 DFS
-
-优点：可以快速深入某条路径。
-
-缺点：容易被无限分页、日历、参数路径拖入局部深井，不适合作为默认历史发现策略。
-
-### 3.3 Best-First
-
-对博客知识库更有潜力。可以根据 URL、anchor、路径模式、时间、已知 article template 等给候选打分，优先抓“更像文章”的链接。
-
-生产中建议：
+生产方案必须定义 **Hard Boundary**：
 
 ```text
-authoritative providers first
- -> sitemap/feed/CMS/archive
- -> URL template clustering
- -> best-first gap discovery
- -> bounded BFS for unknown surfaces
+DOCUMENT_VERSION boundary
+STRUCTURED_RECORD boundary
+CODE/TABLE optional atomic boundary
 ```
 
-Deep Crawl 的 frontier 不应只存在 Worker 内存。平台应把“被发现 URL”及时变成 durable Observation/Task；Worker 崩溃后可以恢复，而不是重新从首页开始。
+规则：
+
+1. 一个 canonical 文章对应一个独立 `Document Version`；
+2. Structured Extraction 返回多个 item 时，为每个 item 生成稳定 `structured_record_id`；
+3. Chunk 不允许跨 `Document Version` 或 `Structured Record` 硬边界；
+4. Graph Extraction 默认输入单位是一个 Document Version 或一个 Structured Record；
+5. Embedding、Graph Evidence、Retrieval Trace 都保存 boundary ID；
+6. 测试指标 `chunk_boundary_violation_rate` 必须为 0。
+
+这比单纯调整 chunk overlap 更重要，因为 overlap 只能缓解语义切断，不能修复记录隔离问题。
 
 ---
 
-## 4. Graph Knowledge Base 的技术原理
+## 7. R2R 摄取、Hybrid Search 与 Graph 的实际边界
 
-文章后半部分把抓取结果交给 R2R 构建知识图谱。R2R 官方项目目前把 Knowledge Graph、Hybrid Search、Document/Collection Management 和 Agentic RAG 作为核心能力之一。
+文章把 JSON 文件上传/创建为 R2R 文档，R2R 再完成 chunk、embedding、实体/关系等派生处理。这个思路适合把 R2R 当成独立 RAG 平台。
 
-对本项目而言，不建议让 R2R 或任意图数据库成为文档事实真相。更稳妥的边界是：
+但本项目已经需要维护：
 
-```text
-Snapshot / Canonical IR / Document Version = Truth
-Markdown / Chunk / Embedding / Graph = Projection
-```
+- Source / Site Profile；
+- Coverage Provider；
+- URL Observation；
+- Fetch Snapshot；
+- Canonical IR；
+- Document Identity / Version；
+- 增量同步；
+- Web Ops / Audit；
+- Release / Generation；
+- Scope / ACL。
 
-### 4.1 图谱实体
+若再让 R2R 同时成为 canonical 文档生命周期真相，会出现双写、删除语义、版本漂移和权限不一致。
 
-技术博客语料可抽取的实体包括：
-
-- 人物/作者；
-- 公司/组织；
-- 开源项目；
-- 编程语言；
-- 框架/库；
-- API/协议；
-- 数据库；
-- 模型；
-- 产品；
-- 论文；
-- CVE/漏洞；
-- 技术概念。
-
-### 4.2 图谱关系
-
-例如：
+正确边界：
 
 ```text
-PROJECT --USES--> LIBRARY
-PROJECT --DEPENDS_ON--> DATABASE
-ARTICLE --MENTIONS--> PROJECT
-PERSON --AUTHORED--> ARTICLE
-COMPANY --MAINTAINS--> PROJECT
-TECHNOLOGY --ALTERNATIVE_TO--> TECHNOLOGY
-VERSION --FIXES--> CVE
-ARTICLE --CITES--> ARTICLE/PAPER
+Platform Truth:
+Snapshot / Document / Document Version / Canonical IR
+
+Projection:
+Markdown / Structured / Chunk / Embedding / Fulltext / Graph / R2R
 ```
 
-### 4.3 Provenance 是关键
+### 7.1 R2R Adapter Contract
 
-每个实体和关系都必须能回到原文证据，否则图谱很快变成不可审计的“LLM 生成数据库”。
+如使用 R2R，应定义显式映射：
+
+```text
+platform_document_version_id <-> r2r_document_id
+structured_record_id nullable
+source_id
+scope_id / acl_tags
+graph_generation_id
+projection_release_id
+content_hash
+```
+
+要求：
+
+- 默认一条平台 Document Version 对应一个 R2R 文档，不把多篇文章拼成同一文档；
+- R2R document ID 不能反向成为平台 Document Identity；
+- 删除/重建 R2R projection 不影响平台 canonical；
+- 只有能映射回平台 Document/Chunk Evidence 的图谱结果才允许进入 ACTIVE Graph；
+- R2R 可替换为其他 Graph/RAG 后端，不改变 Source Sync 主链路。
+
+---
+
+## 8. 文章样例暴露的第二个问题：建了 Graph，不代表 Graph 参与了答案
+
+文章的示例 RAG 响应中，最终回答来自 chunk search，而 `graph_search_results` 是空的。也就是说，该例确实已经生成实体和关系，但演示问答本身并没有展示 Graph channel 对答案产生增量贡献。
+
+这是非常关键的生产判断：
+
+```text
+Graph Built != Graph Retrieval Worked
+Graph Retrieval Worked != Graph Improved Answer
+```
+
+因此不能只用 `entity_count`、`relation_count` 作为 GraphRAG 成功指标。应把 Graph Retrieval 做成可观测、可门禁的召回通道。
+
+### 8.1 Graph Retrieval Mode
 
 建议：
 
 ```text
-graph_entity
-- graph_generation_id
-- entity_id
-- canonical_name
-- entity_type
-- aliases
-- confidence
+OFF
+ON_DEMAND   # 默认
+ALWAYS      # 仅实验/特定场景
+```
 
-graph_relation
+`ON_DEMAND` 根据 query intent、实体识别、多跳需求、结构化关系词等决定是否启用图扩展。精确错误字符串、代码符号、版本号问题通常让 BM25/Vector 先处理；“哪些项目共同依赖 X”“A 与 B 通过什么技术关联”更适合 Graph。
+
+### 8.2 Trace 必须记录“有没有贡献”
+
+```text
+graph_attempted
+graph_seed_entities
+graph_expanded_nodes
+graph_expanded_edges
+graph_search_result_count
+graph_linked_chunk_count
+graph_context_contributed
+graph_latency_ms
+graph_cost
+```
+
+当 `graph_search_result_count=0` 时，不应把该请求统计成“Graph 成功”。
+
+### 8.3 增量价值评估
+
+固定同一 judgment set，对比：
+
+```text
+Baseline: BM25 + Vector
+Candidate: BM25 + Vector + Graph
+```
+
+指标：
+
+```text
+graph_activation_rate
+graph_nonempty_result_rate
+graph_context_contribution_rate
+graph_incremental_recall_at_k
+graph_incremental_ndcg
+graph_multi_hop_answer_gain
+graph_latency_delta
+graph_cost_per_contributed_query
+```
+
+只有增量收益超过阈值，某个 Graph Retrieval Release 才能升级为 ACTIVE。
+
+---
+
+## 9. 文章样例暴露的第三个问题：标量值不应该伪装成全局实体
+
+文章展示的知识图谱中，除了书名、作者、版本等合理实体，还出现类似 `Price`、`Inventory Count`、`UPC` 等泛化节点，并通过关系把商品连到这些节点。
+
+对单一 Demo，这种图还能展示；进入大规模知识库后会出现明显语义问题：
+
+- 所有商品都可能连到同一个“Price”实体；
+- 数量、日期、版本、分数、配置值被错误提升为实体；
+- 图产生超高连接“垃圾枢纽”；
+- entity resolution 会误合并本应属于不同文档的值；
+- 多跳检索产生无意义路径。
+
+技术博客中同样存在大量标量：版本号、发布日期、CVSS 分数、吞吐量、延迟、端口、配置值、参数默认值等。
+
+### 9.1 Entity / Relation / Statement 分层
+
+生产图谱应至少区分：
+
+```text
+Entity
+- 有稳定身份、可复用、值得跨文档归并的对象
+
+Relation
+- Entity -> Entity 的语义边
+
+Statement / Fact
+- Entity -> Entity 或 Entity -> Literal 的带类型事实
+```
+
+建议模型：
+
+```text
+graph_statement
 - graph_generation_id
-- relation_id
-- source_entity_id
+- statement_id
+- subject_entity_id
 - predicate
-- target_entity_id
+- object_entity_id nullable
+- object_value_json nullable
+- value_type nullable
+- unit nullable
+- valid_from nullable
+- valid_to nullable
 - confidence
+```
 
+约束：`object_entity_id` 与 `object_value_json` 二选一。
+
+示例：
+
+```text
+PostgreSQL 16 --RELEASED_AT--> "2023-09-14"^^date
+BenchmarkRun --THROUGHPUT--> 125000 requests/s
+CVE-2025-xxxx --CVSS_SCORE--> 9.8
+PackageX --LATEST_VERSION--> "3.2.1"
+```
+
+这样不会把 `9.8`、`2023-09-14`、`Price`、`Inventory Count` 变成全局实体节点。
+
+---
+
+## 10. Graph Ontology Release：约束“什么能成为节点”
+
+仅有 LLM prompt 不足以稳定控制图结构。应把图谱本体/事实规则版本化：
+
+```text
+graph_ontology_release
+- allowed_entity_types
+- allowed_predicates
+- literal_types
+- predicate_domain_range
+- cardinality_rules
+- inverse/symmetric_rules
+- entity_vs_attribute_policy
+- temporal_policy
+- identifier_policy
+- fixture_refs
+```
+
+`entity_vs_attribute_policy` 用于明确：
+
+- GitHub repo、Package、CVE、DOI、Person、Company 可成为 Entity；
+- 日期、分数、数量、配置值默认是 Literal Statement；
+- 版本是否建实体由查询价值决定；
+- URL 可以作为稳定 identifier，不一定要单独建 URL Entity。
+
+Graph Extraction 输出先通过 ontology validation，再进入 Entity Resolution/Generation。
+
+---
+
+## 11. Provenance：文章样例提醒必须设置“证据门禁”
+
+文章展示的关系对象中可见有关系缺少直接 chunk 证据映射的情况。生产系统若把这种 LLM 关系直接放入 ACTIVE Graph，会逐渐形成无法审计的“生成式数据库”。
+
+正确模型：
+
+```text
 graph_evidence
-- relation_or_entity_id
+- graph_object_type: ENTITY / RELATION / STATEMENT
+- graph_object_id
 - document_version_id
-- chunk_id
+- structured_record_id nullable
+- chunk_id nullable
 - block_range
 - quote_hash
 - extraction_release_id
-- model_release_id
-- prompt_release_id
+- model_release_id nullable
+- prompt_release_id nullable
 ```
 
-`quote_hash` 用于稳定引用证据，不要求数据库重复存大段正文。
+规则：
 
-### 4.4 Entity Resolution
+1. ACTIVE Relation/Statement 必须至少有一条有效 evidence；
+2. evidence 必须能回到当前可访问的 Document Version/Chunk；
+3. 无 provenance 的候选进入 QUARANTINE，不进入在线 Graph Retrieval；
+4. `graph_provenance_coverage` 对 ACTIVE 边/事实必须为 1.0；
+5. 文档重版本、Chunk Release 变化时，evidence lineage 可重建，而不是直接失效成黑盒关系。
 
-真正困难的不是“让 LLM 抽出实体”，而是同一实体的归并：
+---
+
+## 12. Entity Resolution 才是图谱长期质量核心
+
+LLM 抽实体并不难，困难的是跨百万文档归一。
+
+典型冲突：
 
 - `Postgres` / `PostgreSQL`；
 - `Node` / `Node.js`；
-- `OpenAI API` 与 `OpenAI`；
+- 公司名与产品名相同；
 - GitHub repo rename；
-- 公司名和产品名相同；
-- 同名开源项目。
+- 同名开源项目；
+- 包名、组织名、品牌名共用 token。
 
-因此应把实体识别和实体归一拆开：
+建议流程：
 
 ```text
 Mention Extraction
- -> Candidate Entity
+ -> type validation
  -> deterministic normalization
+ -> stable identifier match
  -> alias lookup
- -> identifier match (URL/GitHub/package/CVE/DOI)
- -> embedding/name similarity
+ -> candidate generation
+ -> name/embedding similarity
  -> optional LLM adjudication
  -> canonical entity
 ```
 
-优先使用稳定外部 ID，例如 GitHub repo URL、package identifier、DOI、CVE ID，而不是仅靠名称相似度。
+稳定 identifier 优先：
+
+```text
+GitHub repository URL
+package ecosystem + package name
+DOI
+CVE ID
+RFC ID
+official domain
+vendor/product identifier
+```
+
+Entity merge/split 必须版本化、可回放，并有 fixture 测试，不能直接在图数据库中人工改完就失去历史。
 
 ---
 
-## 5. GraphRAG 不应替代 Hybrid Search
+## 13. GraphRAG 与 BM25/Vector 的合理组合
 
-图谱检索擅长：
+三种通道解决的问题不同：
 
-- 多跳关系；
-- 关联项目/人物/技术栈；
-- 聚合关系；
-- “谁依赖谁”“哪些项目共同使用某组件”这类结构问题。
+### BM25
 
-BM25 擅长：
+强项：
 
-- 精确技术 token；
-- 错误信息；
-- API 名称；
-- 版本号；
-- 代码符号。
+- 类名、函数名、包名；
+- 错误字符串；
+- CVE/版本号；
+- `snake_case`/`camelCase`；
+- C++、.NET、Node.js 等精确 token。
 
-Vector Search 擅长：
+### Vector
+
+强项：
 
 - 语义近似；
+- 自然语言问题；
 - 同义表达；
-- 自然语言问题。
+- 跨语言/长问题。
 
-因此推荐：
+### Graph
+
+强项：
+
+- 多跳关系；
+- 项目/人物/公司/技术依赖；
+- 共同邻居；
+- 实体聚合和结构化关系问题。
+
+推荐：
 
 ```text
 Query
  ├─ BM25 recall
  ├─ Vector recall
- └─ Graph seed + bounded expansion
-        ↓
-     graph-linked chunks
-        ↓
- hard scope / ACL filter
-        ↓
- fusion
-        ↓
- optional reranker
-        ↓
- context assembly
+ └─ Graph gate
+      -> entity seed
+      -> bounded expansion
+      -> graph-linked chunks
+
+all channels
+ -> hard SOURCE/DOCUMENT/VERSION/ACL scope
+ -> controlled fusion / RRF
+ -> optional reranker
+ -> context assembly
 ```
 
-Graph Retrieval 必须有预算：
+Graph 有严格预算：
 
 ```text
-max_hops
 max_seed_entities
+max_hops
 max_nodes
 max_edges
 max_linked_chunks
 timeout_ms
 ```
 
-否则高连接实体会产生候选爆炸。
-
-同时，Graph channel 不能绕过现有 Scope。用户只查某个 Source/Document 时，图扩展后进入上下文的 Chunk 仍必须满足相同 scope/ACL。
+Scope 必须在 Graph expansion 和 linked chunk 两个阶段都执行，不能先跨 tenant 扩图后再只过滤最终文本。
 
 ---
 
-## 6. 对现有博客知识库方案的具体优化
-
-### 6.1 增加 URL Filter Release
-
-现有 Site Profile 中虽然有分类和规则，但应明确增加有序 URL Filter Chain：
-
-```text
-url_filter_release
-- id
-- version
-- rules[]
-- rule_type
-- action            # HARD_REJECT / SOFT_REJECT / DEPRIORITIZE / ACCEPT
-- reason_code
-- fixture_refs
-- created_at
-```
-
-所有 filter decision 写入 evidence，支持 Web 模拟和抽样。
-
-### 6.2 增加 Structured Extraction Release
-
-把“输出 Schema”和“执行策略”分离：
-
-```text
-structured_schema_release
-- schema_json
-- required_fields
-- field_descriptions
-- validation_policy
-
-structured_extraction_release
-- engine            # CSS/XPATH/REGEX/LLM
-- input_format
-- schema_release_id
-- selector_or_instruction
-- chunk_policy
-- model_release_id nullable
-- prompt_release_id nullable
-- quality_policy
-- runtime_release_id
-```
-
-这样同一 Schema 可以分别用 CSS、XPath、LLM 实现，并在 fixture 上比较成本、正确率和稳定性。
-
-### 6.3 增加 Structured Record Projection
-
-```text
-STRUCTURED_RECORD
-```
-
-它和 canonical Markdown 并列，都是 Document Version 的派生物。结构化抽取失败不影响 Markdown READY。
-
-### 6.4 增加 Graph Projection
-
-新增：
-
-```text
-ENTITY_MENTION
-GRAPH_ENTITY
-GRAPH_RELATION
-GRAPH_COMMUNITY nullable
-GRAPH_SUMMARY nullable
-```
-
-Graph index/build 必须使用 Generation：
-
-```text
-BUILDING -> VALIDATING -> READY -> ACTIVE -> RETIRED
-```
-
-不能在生产图谱上边跑新模型边原地覆盖旧关系。
-
-### 6.5 增加 Graph Release
-
-```text
-graph_projection_release
-- entity_schema_release_id
-- relation_schema_release_id
-- extraction_release_id
-- entity_resolution_release_id
-- community_release_id nullable
-- graph_storage_adapter_release_id
-- runtime_artifact_release_id
-```
-
-### 6.6 图数据库选型
-
-首期不需要为了“有图谱”立刻引入复杂集群。
-
-可以分阶段：
-
-1. 百站以内：PostgreSQL 保存实体/关系/evidence，验证价值；
-2. 图查询成为核心能力后：增加 Neo4j/Memgraph/其他图引擎作为可重建 projection；
-3. R2R 可作为实验性 Graph/RAG Adapter，但不能接管 Source、Coverage、Document Version、Task 等平台真相。
-
-这样避免同时维护两套文档生命周期和权限模型。
-
----
-
-## 7. 1000 个技术博客场景下的端到端实现
+## 14. 对 1000 个技术博客的生产化端到端映射
 
 ```text
 Source Onboarding
  -> Probe
- -> Authoritative Discovery
- -> URL Filter Chain
+ -> Provider Discovery
+      CMS/API/Sitemap/Feed/Archive/TOC/CommonCrawl/DeepCrawl
  -> URL Observation
- -> Normalize / Resolve / Resource Probe
- -> HTTP-first Fetch
- -> Snapshot
+ -> Normalize
+ -> Evidence-preserving Filter
+ -> Resolve / Resource Probe
+ -> HTTP-first Fetch / Browser fallback
+ -> Immutable Snapshot
  -> Deterministic Extraction
  -> Canonical IR
- -> Markdown
- -> Document Version
-     ├─ Chunk -> BM25
-     ├─ Chunk -> Embedding -> Vector
-     ├─ Structured Extraction -> Structured Record
-     └─ Entity/Relation Extraction -> Graph Projection
+ -> Document Identity / Version
+ -> Canonical Markdown
+
+Async Projections
+ ├─ Structured Record
+ ├─ Chunk -> BM25
+ ├─ Chunk -> Embedding -> Vector
+ ├─ Entity/Relation/Statement -> Graph
+ └─ Summary/Topic/Other AI
 
 Query
- -> BM25 + Vector + optional Graph
- -> scope/ACL enforcement
- -> fusion/rerank
- -> context
- -> answer
+ -> BM25 + Vector + on-demand Graph
+ -> Scope/ACL
+ -> Fusion/Rerank
+ -> Context
 ```
 
-其中 Source Sync 的成功条件到 Document Version/Canonical Markdown 即可。Graph、Embedding、LLM Structured Extraction 都允许异步积压。
+Source Sync 的成功边界到 `Document Version + Canonical Markdown READY` 即可。Embedding、Graph、LLM Structured Extraction、AI Analysis 可以独立 backlog。
 
-这点极其重要：如果图谱模型服务故障，不能导致博客增量同步停止。
+这保证：图模型服务故障不会阻止新博客文章同步；R2R 故障不会破坏 canonical；Graph Release 升级不需要重新抓源站。
 
 ---
 
-## 8. Web 管理功能应补充
+## 15. Web 管理应具备的相关能力
 
-### 8.1 URL Filter 调试
+### 15.1 Deep Crawl / Filter Debug
 
-对任意候选 URL 展示：
+展示：provider、parent URL、depth、anchor、命中规则、HARD/SOFT、decision、Release、预算、是否被其他 Provider 发现。
 
-- 命中了哪条规则；
-- HARD/SOFT；
-- decision；
-- rule release；
-- 是否曾被其他 Provider 发现；
-- 抽样放行后的结果。
+### 15.2 Structured Record Debug
 
-支持输入一组 URL 运行新旧 Filter Release diff，防止发布规则后大面积漏文章。
+展示：Snapshot、Schema、engine、record boundary、输出 JSON、validation error、token、cost、CSS/XPath/LLM diff、fixture pass rate。
 
-### 8.2 Structured Extraction 调试
+### 15.3 Graph Explorer
 
-展示：
+展示：Entity、Relation、Statement、literal value、unit、valid time、Evidence、Graph Generation、Ontology Release、Entity Resolution 过程、merge/split、quarantine。
 
-- 输入 Snapshot；
-- Schema；
-- engine；
-- 输出 JSON；
-- validation error；
-- token usage；
-- latency；
-- fixture pass rate；
-- CSS/XPath 与 LLM 输出 diff。
+人工纠错必须生成 versioned correction，不直接无审计改 ACTIVE 图。
 
-### 8.3 Graph Explorer
+### 15.4 Retrieval Trace
 
 展示：
-
-- Entity；
-- Relation；
-- 证据 Document/Chunk；
-- confidence；
-- Graph Release；
-- Entity Resolution 过程；
-- relation diff；
-- source scope。
-
-管理员应能把误归并实体拆开、添加 alias 或标记关系为 quarantine，但这些操作必须形成版本化 correction，而不是直接无审计修改图数据库。
-
-### 8.4 Graph Retrieval Trace
-
-Search/Ask 调试台增加：
 
 ```text
+BM25_CANDIDATE
+VECTOR_CANDIDATE
+GRAPH_GATE
 GRAPH_SEED
 GRAPH_EXPAND
 GRAPH_LINKED_CHUNK
-GRAPH_FUSION
+SCOPE_FILTER
+FUSION
+RERANK
+CONTEXT_ASSEMBLY
 ```
 
-并显示 hop、edge、来源实体、对应证据和最终进入上下文的 chunk。
+并明确：Graph 是否 attempted、是否有非空结果、是否真正贡献最终 Context。
 
 ---
 
-## 9. 可靠性与成本边界
+## 16. 可靠性、预算和回放
 
-### 9.1 Deep Crawl 预算
-
-每个 Source/Profile 配置：
+### Deep Crawl
 
 ```text
 max_discovered_urls
@@ -583,39 +758,39 @@ max_wall_clock
 max_browser_seconds
 ```
 
-触发预算只表示 `known_gap / budget_exceeded`，不能表示历史完成。
+达到预算只能产生 `known_gap / budget_exceeded`，不能标记历史完整。
 
-### 9.2 LLM Extraction 预算
+### LLM Structured Extraction
 
 ```text
-max_llm_extract_documents_per_run
+max_documents_per_run
 max_input_tokens_per_document
 max_cost_per_source_per_day
 max_schema_retry
 ```
 
-超预算时 Structured Projection 进入 backlog，不影响 canonical 文档。
+超预算进入 projection backlog。
 
-### 9.3 Graph 预算
+### Graph Extraction
 
-图谱构建应限制：
+```text
+max_entities_per_document
+max_relations_per_document
+max_statements_per_document
+max_resolution_candidates
+min_relation_confidence
+min_statement_confidence
+```
 
-- 单文档实体数；
-- 单文档关系数；
-- 单实体 alias 数；
-- 关系置信度阈值；
-- entity resolution 候选数；
-- 图查询最大 hop/node/edge。
+### Replay
+
+Extractor、Schema、Ontology、Graph、Embedding、Chunk、Retrieval Release 升级优先基于已有 Snapshot/Document Version 离线重放，不重新访问源站。
 
 ---
 
-## 10. 测试与发布门禁
+## 17. 测试与发布门禁
 
-### 10.1 URL Filter Recall Test
-
-建立已知文章 URL fixture。新 Filter Release 必须保证已知文章 recall 不下降到阈值以下。
-
-指标：
+### URL Filter
 
 ```text
 article_url_recall
@@ -623,99 +798,91 @@ non_article_reject_rate
 soft_filter_false_negative_rate
 ```
 
-### 10.2 Structured Extraction Contract Test
+### Record Boundary
 
-每个 Schema 至少测试：
+- Chunk 不跨 Document Version；
+- Chunk 不跨 Structured Record；
+- Graph Evidence 的 record/document 映射唯一；
+- `chunk_boundary_violation_rate = 0`。
 
-- required field；
-- 类型；
-- 空值；
-- 多 item；
-- 超长输入 chunk；
-- DOM 变化；
-- 模型无效 JSON；
-- 模型超时；
-- deterministic engine 与 LLM engine 差异。
+### Structured Extraction
 
-### 10.3 Graph Provenance Test
+required/type/null/multi-item/DOM drift/invalid JSON/timeout/chunk 边界，并比较 deterministic 与 LLM engine。
 
-任何 ACTIVE relation 必须至少有一个有效 evidence 指向 Document Version/Chunk。
+### Graph Ontology
 
-### 10.4 Entity Resolution Test
+- 不允许未声明 entity type/predicate；
+- Literal 不被错误升级成通用实体；
+- predicate domain/range 正确；
+- merge/split fixture 通过。
 
-固定容易混淆的实体集，评估 merge precision / split recall，防止版本升级后把同名项目错误合并。
+### Graph Provenance
 
-### 10.5 Graph Scope Leak Test
+- ACTIVE Entity/Relation/Statement 均有有效 evidence；
+- `graph_provenance_coverage = 1.0`；
+- 无证据候选只能 quarantine。
 
-DOCUMENT/SOURCE/ACL scope 下运行图谱多跳检索，最终上下文不得含 scope 外 Chunk。
+### Graph Retrieval
 
-### 10.6 Graph Release Replay
+同一 judgment set 比较基线与 +Graph：
 
-同一批 Document Version 使用新 Graph Release 离线重建，比较：
+```text
+Recall@K
+nDCG
+MRR
+multi_hop_answer_hit_rate
+graph_nonempty_result_rate
+graph_context_contribution_rate
+graph_incremental_recall_at_k
+latency_delta
+cost_delta
+ScopeLeakRate
+```
 
-- entity count；
-- relation count；
-- unsupported relation rate；
-- entity merge/split drift；
-- query benchmark；
-- token/cost。
+### 发布
 
-验证通过后切换 Graph Generation。
-
----
-
-## 11. 为什么不直接照搬文章方案
-
-文章是一个很好的端到端 Demo，但与 1000 博客生产系统存在几个规模和语义差异。
-
-### 11.1 Demo 的 `max_depth/max_pages` 不是 Coverage
-
-文章为了演示只抓极少页面。生产系统需要 Provider evidence、cursor、exhaustion reason 和 known gap。
-
-### 11.2 电商 Schema 与技术博客正文不同
-
-书籍详情字段高度结构化，而博客正文的核心目标是完整保留 heading、段落、代码、表格、图片和链接。博客 canonical Markdown 应以确定性 IR 为核心；Schema extraction 是补充。
-
-### 11.3 全量 LLM Extraction 成本不可接受
-
-稳定模板应使用 CSS/XPath/Regex；LLM 只解决复杂字段或长尾站点。
-
-### 11.4 Graph 不是唯一检索答案
-
-技术文档包含大量精确 token、版本、错误字符串和代码符号，BM25 仍不可替代。Graph 应作为第三召回通道。
-
-### 11.5 R2R 不应成为第二套平台真相
-
-R2R 的 Hybrid Search、Knowledge Graph、Document Management 很适合做独立 RAG 系统，但本项目已经需要 Source、Coverage、Snapshot、Version、Incremental Sync、Web Ops、Release、Audit 等完整控制面。如果再让 R2R 持有独立 canonical 文档生命周期，会产生双写、删除语义、权限和版本漂移问题。
-
-最合理的方式是：把 R2R/图数据库置于 Adapter/Projection 边界，必要时可替换。
+```text
+fixture
+ -> offline replay
+ -> benchmark
+ -> shadow
+ -> canary
+ -> staged rollout
+ -> ACTIVE
+```
 
 ---
 
-## 12. 本次方案结论
+## 18. 结论
 
-本次调研对现有方案的优化应落在以下能力：
+文章是一个清晰的“Deep Crawl + Schema Extraction + R2R Graph/RAG”端到端 Demo，对本项目有直接参考价值，但需要把 Demo 能力放进更严格的生产边界。
 
-1. URL Filter Chain 正式版本化，并区分 HARD/SOFT decision；
-2. Deep Crawl 保留 BFS/DFS/Best-First Adapter，但只用于探索和 gap filling；
-3. Structured Schema 与 Structured Extraction Strategy 分离；
-4. 新增 STRUCTURED_RECORD Projection，LLM extraction 不进入 canonical 关键路径；
-5. 新增 Graph Projection、Graph Release、Graph Generation、Graph Provenance；
-6. GraphRAG 作为 BM25 + Vector 之外的可选第三召回通道；
-7. 图谱检索同样执行硬 Scope/ACL；
-8. R2R 可做 Graph/RAG Adapter 或实验 backend，不成为业务 truth；
-9. Web 增加 Filter、Schema、Graph、Token Cost、Graph Trace 管理；
-10. 发布门禁增加 URL recall、Graph provenance、Entity Resolution、Graph ScopeLeak 和成本回归。
+最终应吸收的能力是：
 
-这些优化可以获得文章“深度抓取 + 结构化抽取 + GraphRAG”的价值，同时不破坏现有方案最重要的 Coverage、Snapshot、Version、Incremental、可重放和可运营边界。
+1. Crawl4AI BFS/DFS/Best-First 作为可替换 Deep Crawl Adapter，而不是 Coverage 真相；
+2. URL Filter Chain 版本化并保留 HARD/SOFT decision evidence；
+3. HTTP/LXML 优先，Browser 仅作为动态页面和质量 fallback；
+4. Schema 与 Extraction Strategy 分离，LLM 不进入 canonical Markdown 必需链路；
+5. Structured Record、Document Version、Chunk、Graph Extraction 均执行硬记录边界，禁止跨记录污染；
+6. R2R 作为可重建 Projection/Adapter，不接管 Source、Coverage、Snapshot、Version、Task 真相；
+7. 图模型使用 Entity + Relation + Statement，标量/时间/数量不伪装成全局实体；
+8. 引入 Graph Ontology Release，约束实体类型、关系、literal、domain/range 和 entity-vs-attribute 策略；
+9. ACTIVE Graph 强制 provenance，未绑定 Document/Chunk Evidence 的生成关系不得上线；
+10. Graph Retrieval 默认按需启用，并用“非空结果、Context 贡献、增量 Recall/nDCG、多跳收益、延迟和成本”证明价值；
+11. BM25 + Vector 仍是技术博客检索基线，Graph 是第三通道；
+12. 所有 Graph/Schema/Chunk/Embedding/Retrieval 变化均通过 Release、Generation、Replay、Benchmark、Canary 管理。
+
+通过这些约束，可以获得文章中知识图谱与 AI 助手的增强能力，同时保持 1000+ 技术博客场景最重要的完整历史覆盖、低成本增量同步、稳定 Markdown、可审计 provenance、可回放和长期可运营性。
 
 ---
 
-## 13. 参考资料
+## 19. 参考资料
 
-- 调研文章：https://todatabeyond.substack.com/p/how-to-turn-any-website-into-a-graph
+- 调研入口：https://todatabeyond.substack.com/p/how-to-turn-any-website-into-a-graph
+- 原始 Medium 版本：https://medium.com/gitconnected/how-to-turn-any-website-into-a-graph-knowledge-base-with-a-production-ready-co-pilot-28ce88e8988e
 - Crawl4AI Deep Crawling：https://docs.crawl4ai.com/core/deep-crawling/
 - Crawl4AI Strategies：https://docs.crawl4ai.com/api/strategies/
 - Crawl4AI LLM Strategies：https://docs.crawl4ai.com/extraction/llm-strategies/
 - Crawl4AI LLM-Free Extraction：https://docs.crawl4ai.com/extraction/no-llm-strategies/
 - R2R：https://github.com/SciPhi-AI/R2R
+- R2R Application：https://github.com/SciPhi-AI/R2R-Application
