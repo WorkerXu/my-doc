@@ -905,3 +905,160 @@ HTTP API 只接受命令并返回 durable task id；真正的抓取、解析、E
    https://docs.haystack.deepset.ai/docs/chromaembeddingretriever
 8. Chroma Update / Upsert：  
    https://docs.trychroma.com/docs/collections/update-data
+
+---
+
+## 21. 代码级二次审计：集合分裂、Scope 泄漏与 Query Runtime
+
+进一步核对文章完整代码后，可以看到教程实现里有几个比“用什么向量库”更关键的生产问题，这些问题直接影响多文档知识库的正确性和吞吐。
+
+### 21.1 `identify_url()` 的真实判定链
+
+教程不是单纯按后缀判断，而是：
+
+```text
+HEAD allow_redirects
+ -> Content-Type == text/html ? article
+ -> MIME -> extension
+ -> final URL path -> MIME/extension
+ -> GET(stream=True) 读取前 2048 bytes
+ -> filetype.guess()
+```
+
+这比纯 suffix 已经更可靠，但仍有生产缺口：HEAD 可能被禁用、Content-Type 可能错误、GET fallback 必须受响应大小/超时/SSRF 约束，而且 Query 路径不应该再次执行这个网络探测。正确演进仍然是将其提升为持久化、版本化的 Resource Probe。
+
+### 21.2 文件管线和 URL 管线实际上被拆成两个物理语料库
+
+教程的文件摄取使用：
+
+```text
+FileTypeRouter
+ -> PyPDFToDocument / TextFileToDocument / MarkdownToDocument
+ -> DocumentJoiner
+ -> DocumentCleaner
+ -> DocumentSplitter(split_by="word", split_length=2000, split_overlap=500)
+ -> OllamaDocumentEmbedder
+ -> Chroma collection: file-index
+```
+
+URL 摄取则是：
+
+```text
+Crawl4AI / LLM extraction
+ -> concatenate_content()
+ -> JSONConverter(extra_meta_fields=["tag", "url"])
+ -> OllamaDocumentEmbedder
+ -> Chroma collection: url-index
+```
+
+这意味着“输入是文件还是网页”被编码进了物理 Collection。对于教程演示很直观，但不适合长期知识库。摄取来源和资源类型应该是 metadata，而不是检索拓扑。HTML、PDF、Markdown、TXT 在进入 Canonical IR / Chunk 后应进入同一个逻辑 Corpus/Index Generation；只有 Embedding 维度/Release、租户或安全边界、容量分片等真正影响索引兼容性的因素才应该决定物理分区。
+
+否则会出现：
+
+- 跨 HTML + PDF 的一次搜索必须查两个 Collection 再人工融合；
+- 新增 JSON/Feed/Office 文档会继续产生更多 Collection；
+- Collection 名称逐渐承担业务路由真相；
+- Resource Kind 变更或 URL 重定向到另一种类型时迁移困难；
+- Hybrid Search / Generation 切换需要维护多套并行索引。
+
+### 21.3 `/generate(url, question)` 存在真实的 Scope 泄漏风险
+
+教程的 generate 路径会重新调用 URL 类型识别，然后按类型选择 `get_url_result()` 或 `get_file_result()`。但两个 query 函数中的 Chroma retriever 都只选择 Collection，并没有按传入 URL 做 metadata filter。
+
+因此如果已经摄取：
+
+```text
+URL A -> url-index
+URL B -> url-index
+```
+
+用户调用：
+
+```text
+/generate(url=A, question=...)
+```
+
+实际语义只是“去 `url-index` 搜”，并不是“只在 A 中搜”。Retriever 完全可能返回 B 的 Chunk。文件集合也同样存在这一问题。
+
+这说明生产系统不能把“URL 参数存在”误认为“检索已限定到该 URL”。必须执行稳定身份解析：
+
+```text
+requested URL
+ -> normalize only（无远程网络访问）
+ -> URL Alias / Canonical Mapping
+ -> document_id
+ -> active document_version_id（或显式指定版本）
+ -> metadata filter
+ -> BM25 / Vector retrieval
+```
+
+如果 URL alias 无法解析到已入库 Document，返回 `DOCUMENT_NOT_FOUND`，而不是重新访问远程 URL 来判断它属于 `file-index` 还是 `url-index`。
+
+### 21.4 Query Path 不应依赖“此刻的远程资源类型”
+
+教程在生成答案时再次执行 `identify_url(url)`，意味着一个纯读取请求仍可能发送 HEAD/GET。这样会导致：
+
+- 源站暂时不可用时，已经入库的数据也无法查询；
+- URL 从 PDF 改成 HTML 后查询被路由到另一 Collection；
+- 重定向变化导致历史文档的查询语义漂移；
+- Query API 获得不必要的 SSRF/网络权限；
+- 查询延迟受外部站点网络影响。
+
+生产系统必须坚持 Query Plane 的网络隔离：`search/ask` 只访问内部 Truth/Projection；远程 URL 只在 Ingestion/Sync Plane 中访问。
+
+### 21.5 Query Pipeline 不应每个请求重新构建
+
+教程的 `get_file_result()` 和 `get_url_result()` 每次调用都会重新创建：
+
+```text
+Haystack Pipeline
+OllamaTextEmbedder
+ChromaDocumentStore
+ChromaEmbeddingRetriever
+PromptBuilder
+OllamaGenerator
+```
+
+功能上没问题，但服务化后会带来重复对象初始化、连接/客户端抖动、配置漂移和额外延迟。生产 Query Service 应把 Pipeline 视为 `retrieval_release_id` 对应的已编译运行图：
+
+```text
+service startup / release activation
+ -> build or load pipeline graph
+ -> initialize long-lived model/store clients
+ -> warm up
+ -> cache by retrieval_release_id
+
+request
+ -> resolve scope
+ -> inject query / filters / top_k / token budget
+ -> execute cached pipeline
+```
+
+Haystack/LlamaIndex 的职责是编排，不负责保存唯一业务状态。Release 切换时加载新 Pipeline 实例，验证后原子切 active pointer，旧实例在 in-flight 请求结束后回收。
+
+### 21.6 教程的 Chunk 策略不能直接迁移到技术博客
+
+文件管线固定使用 `split_length=2000`、`split_overlap=500`，即 25% word overlap；URL 管线则依赖 Crawl4AI/LLM extraction 产生的 item 粒度，代码中没有统一的后置 splitter。
+
+生产风险包括：
+
+- 2000 words 可能超过部分 Embedding 模型有效窗口；
+- 500 words overlap 会显著放大存储和 Embedding 成本；
+- fenced code、表格和标题层级可能被切断；
+- URL 与 PDF 的 Chunk 粒度完全不一致；
+- LLM extraction item 太大时可能整块被模型截断。
+
+因此必须在 Canonical IR 后执行统一、版本化的 Structure-aware Chunk Release；资源解析器只负责产生结构块，不直接决定最终检索 Chunk。
+
+### 21.7 对主方案的新增约束
+
+在已有 Resource Probe、Manual Ingestion、Retrieval Scope 基础上，主方案还应明确增加以下约束：
+
+1. **Ingress-neutral Corpus**：`file-index` / `url-index` 这种按输入形态拆 Collection 的方式仅用于教程，不进入生产；
+2. **Stable Query Target**：URL scope 先解析成 `document_id/version_id`，Query 不访问远程 URL；
+3. **Hard Scope Filter**：scope 必须在 BM25/Vector 召回阶段执行，不能只靠选择 Collection 或写入 Prompt；
+4. **Compiled Query Runtime**：Haystack Query Pipeline 与 Store/Model Client 按 Retrieval Release 复用；
+5. **Unified Chunk Release**：HTML/PDF/MD/TXT 都在 Canonical IR 后使用统一 Chunk 契约；
+6. **Cross-resource Contract Test**：同时摄取多篇 HTML 与 PDF，验证 `DOCUMENT` scope 零泄漏，并验证 `ALL/SOURCE` 可以跨资源类型召回。
+
+这几条将教程中的“能跑通单 URL RAG”进一步升级为“多来源、多文档、可持续运行且不会串文档的知识库检索服务”。
