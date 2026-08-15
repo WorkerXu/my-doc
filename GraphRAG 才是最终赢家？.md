@@ -10,87 +10,90 @@
 - 发布时间：2025-05-16
 - 主题：Crawl4AI、LangChain、Neo4j、向量检索、全文模糊检索、GraphRAG
 
-本文的价值不在于证明“GraphRAG 应该替代普通 RAG”，而在于通过一个可运行实现暴露 GraphRAG 在真实工程中的几个关键事实：图构建成本高、图质量强依赖模型与领域 Schema、自然语言直接生成 Cypher 不可靠、图三元组很容易挤占上下文但贡献有限。因此，对于“1000+ 技术博客全历史抓取 + 增量同步 + Markdown 知识库 + Web 管理”的系统，GraphRAG 不适合作为采集和知识存储主链，而适合作为 **Canonical 内容之上的可选派生增强层**。
+本文真正有价值的结论不是“GraphRAG 应替代普通 RAG”，而是通过一个可运行 Demo 暴露 GraphRAG 的工程约束：图构建成本高、图质量强依赖模型与领域 Schema、自由 NL-to-Cypher 容易猜错 Schema、原始三元组容易挤占上下文但未必增加答案信息量。因此，对“1000+ 技术博客全历史抓取 + 增量同步 + Markdown 知识库 + Web 管理”系统，GraphRAG 最合理的位置是 **Canonical 内容之上的可选、可重建、受预算约束的关系增强投影**，而不是抓取链、事实层或默认检索入口。
 
 ---
 
-## 2. 原方案的完整实现链路
+## 2. 原文实现链路还原
 
-原文实现可以拆为四段：网页获取、内容切块、知识图谱构建、混合检索。
+原文实现可拆为四段：网页获取、内容切块、知识图谱构建、混合检索。
 
 ```text
 文章 URL
   -> Crawl4AI AsyncWebCrawler
-  -> XPath 抽取 title/h2/h3/p
+  -> JsonXPathExtractionStrategy 抽取 title/h2/h3/p
   -> 文本拼接
   -> RecursiveCharacterTextSplitter
   -> LangChain Document(chunk + source metadata)
   -> LLMGraphTransformer
   -> Neo4j Entity/Relationship/Document Graph
-  -> 文档向量索引 + 实体全文模糊索引
+  -> Document 向量索引 + Entity 全文模糊索引
   -> Structured Graph Retrieval + Vector Retrieval
   -> 合并上下文
   -> LLM Answer
 ```
 
-这一链路有两个值得借鉴的架构边界：
+这里有两个正确的架构边界：
 
-1. **抓取结果先变成 Document/Chunk，再做图谱派生**，图谱不是网页事实本身；
-2. **最终检索不是纯图查询**，而是将图关系与原始文本块共同提供给模型。
+1. 抓取结果先形成 Document/Chunk，再做图谱派生，图谱不是网页原始事实；
+2. 最终回答并非只依赖图查询，而是把结构化关系与原始文本共同提供给模型。
 
-这与博客知识库需要坚持的“事实层与派生层分离”是一致的。
+对博客知识库应进一步把边界前移：先保存 Raw Snapshot，再生成 Canonical IR 和 Document Version；Chunk、Embedding、Graph 都应成为从 Document Version 可重建的 Projection。
 
 ---
 
-## 3. Crawl4AI 抓取实现分析
+## 3. Crawl4AI 抓取实现与生产化差异
 
-### 3.1 AsyncWebCrawler 的作用
+### 3.1 AsyncWebCrawler 与 asyncio.gather
 
-原文使用 `AsyncWebCrawler` 并通过 `asyncio.gather` 并发处理多个 URL。其本质是 I/O 并发：一个请求等待网络、浏览器或页面加载时，事件循环可以推进其他任务，因此对批量网页抓取比串行执行有效。
+原文通过 `AsyncWebCrawler` 和 `asyncio.gather` 并发抓多个 URL。本质是 I/O 并发：请求等待网络、浏览器或页面加载时，事件循环可以推进其他任务，因此在小批量 URL 上明显优于串行执行。
 
-对 1000 个博客系统而言，不能简单把 `asyncio.gather` 扩大到所有 URL。生产环境必须在异步并发之前增加：
+但对 1000 个站不能简单把 `gather()` 扩到所有任务。生产平台必须在 Worker 内部异步能力之外补齐：
 
-- 每域名 token bucket；
-- 全局并发上限；
-- Browser 独立资源池；
-- Source/Domain 公平调度；
-- Retry/DLQ；
-- 可恢复 Task 与 checkpoint；
+- Global Admission；
+- per-domain token bucket / semaphore；
+- Source 公平调度；
+- HTTP 与 Browser 独立资源池；
+- Retry / DLQ；
+- lease、fencing token、checkpoint；
 - robots/访问策略；
-- 超时、最大响应大小、重定向次数和 SSRF 校验。
+- 超时、最大响应大小、重定向限制；
+- SSRF 与 Browser 子请求 egress policy；
+- Backpressure。
 
-所以 `asyncio` 是 Worker 内部吞吐优化，不应该成为平台级任务语义。
+因此 `asyncio` 只是 Worker 内部吞吐优化，不是平台的任务真相和调度语义。
 
-### 3.2 XPath 结构化抽取
+### 3.2 JsonXPathExtractionStrategy
 
-原文通过 `JsonXPathExtractionStrategy`，选择：
+原文选择：
 
 ```text
 //title | //h2 | //h3 | //p
 ```
 
-优点：实现简单、输出相对干净、对文章页面可快速得到正文候选。
+优点是简单、快速、容易获得正文候选；缺点是会丢失或误抽：
 
-缺点也非常明显：
+- 导航、推荐、评论中的 `p/h2/h3`；
+- list/table/code/blockquote/image 结构；
+- 正文容器边界；
+- 页面改版后 selector “仍然命中但命错”的静默错误。
 
-- 会把导航区域、推荐区域、评论中的 `p/h2/h3` 一并抽出；
-- 丢失列表、表格、代码块、引用、图片等结构；
-- 不知道哪些节点属于正文容器；
-- 页面改版后 XPath 仍可能“命中但命错”；
-- 对 1000 个异构站点无法只靠一个 XPath。
+因此生产知识库不应使用一个通用 XPath 作为 Canonical 抽取器。更合理的是：
 
-因此生产知识库应采用 **Generic Extractor + Deterministic Recipe 双轨**：默认使用正文密度/readability/trafilatura 类算法，并针对高价值 Site Family 配置 CSS/XPath Recipe；两者做 Candidate Agreement 或抽样 Shadow Extraction，防止 selector 静默漂移。
+```text
+Generic Extractor
+  + Site Family Deterministic Recipe
+  + Candidate Agreement / Shadow Extraction
+  + Quality Gate
+```
 
-### 3.3 Chunk 的位置
+Crawl4AI 的 CSS/XPath extraction 适合作为确定性 Recipe Adapter，而不是整个知识库的事实模型。
 
-原文抓取后立即通过 `RecursiveCharacterTextSplitter` 生成 LangChain Document。这对 Demo 合理，但对长期知识库不能把 Chunk 当事实层。原因是：
+### 3.3 Chunk 的正确位置
 
-- chunk size/overlap 会随着模型上下文和 Embedding 策略改变；
-- Markdown 渲染规则会升级；
-- 同一正文可能需要多个投影（搜索、RAG、摘要、代码检索）；
-- 增量更新时必须区分“文章版本变化”和“仅 chunk 算法变化”。
+原文在抓取后立即 `RecursiveCharacterTextSplitter`。Demo 中合理，长期知识库中则必须延后，因为 chunk size、overlap、结构边界、Embedding 模型都会变化。
 
-更稳妥的数据链为：
+生产链应是：
 
 ```text
 Raw Snapshot
@@ -102,223 +105,391 @@ Raw Snapshot
  -> Optional Graph Projection(versioned)
 ```
 
-Chunk 必须可从 Canonical Version 重建，而不能反过来成为文章唯一存档。
+文章“是否变化”和“Chunk 算法是否变化”必须是两件不同的事。
 
 ---
 
-## 4. Graph 构建原理分析
+## 4. LLMGraphTransformer 的技术原理
 
-### 4.1 LLMGraphTransformer 做了什么
+`LLMGraphTransformer` 做的不是普通格式转换，而是 **概率性的语义结构抽取**。LLM 读取一个文本块，尝试生成：
 
-原文使用 LangChain `LLMGraphTransformer` 将文本块交给 LLM，让模型从自然语言中识别：
+- Entity / Node；
+- Entity Type；
+- Relationship / Edge；
+- 可选属性；
+- Source Document 与实体之间的来源联系。
 
-- Entity：人物、组织、概念、产品等；
-- Relationship：实体之间的语义关系；
-- Source/Document 与实体之间的溯源关系。
-
-然后通过 Neo4j 将这些节点和边持久化。
-
-这一步的核心不是“数据库转换”，而是一个 **概率性的语义抽取过程**。同一段文本在不同模型、提示词、Schema、温度或模型版本下，都可能产生不同节点和边。因此图谱结果必须带上：
-
-- source/document/version/chunk_id；
-- graph_extractor_version；
-- model/provider/model_version；
-- prompt/schema version；
-- generated_at；
-- confidence/validation result；
-- cost/token usage。
-
-图谱永远不能覆盖 Canonical 文本事实。
-
-### 4.2 为什么小模型会产生“孤岛”
-
-原文对比了小模型与较大模型生成的图。小模型容易出现大量 disconnected islands，其根本原因包括：
-
-1. 实体归一化不足：`OpenAI`、`Open AI`、`the company` 被识别成多个节点；
-2. 关系抽取不一致：同一语义产生不同 relation type；
-3. 跨 Chunk 共指消解不足；
-4. 缺少领域 Schema 时，模型自由生成关系，关系空间迅速膨胀；
-5. Chunk 过小导致上下文不足，过大又增加成本和噪声。
-
-因此，生产 GraphRAG 必须优先设计 Schema，而不是先换更大模型。更大的模型可以改善抽取，但不能解决无限制 Schema 漂移。
-
-### 4.3 领域 Schema 的必要性
-
-对于技术博客，可以将允许的实体和关系限制为例如：
+同一文本在 Model、Prompt、Schema、Normalizer、版本变化后可能生成不同图，因此每次 Graph Projection 都必须记录：
 
 ```text
-Entity:
-Technology | Library | Product | Company | Person | Paper | Standard | Version | Vulnerability | Concept
-
-Relationship:
-USES | DEPENDS_ON | IMPLEMENTS | REPLACES | COMPARES_WITH | CREATED_BY |
-AFFECTS | RELEASED_AS | PART_OF | SUPPORTS | INTEGRATES_WITH | MENTIONS
+source_id
+document_id
+document_version_id
+source_chunk_id
+graph_schema_version
+prompt_version
+extractor_release
+model_provider
+model_release
+normalizer_release
+created_at
+input_tokens/output_tokens/cost
+quality_result
 ```
 
-并要求未知关系进入 `OTHER` 或待审核，而不是任意创建新的关系类型。
+图谱不能覆盖 Canonical 文本，也不能仅在 Neo4j 中通过裸 `MERGE` 留下一份无法定位来源的“当前真相”。
 
-这样做的收益：
+### 4.1 为什么小模型容易产生图孤岛
 
-- 提高跨文章可合并性；
-- 降低实体/关系类型爆炸；
-- 让 Cypher/图遍历可预测；
-- 可针对实体类型设计不同归一化策略；
-- 可评估 extraction precision/recall。
+原文用较小模型和 Llama 3.3 70B 对比构图，较小模型更容易得到 disconnected islands。原因不是单一“参数量不足”，而是以下问题叠加：
+
+1. 同义实体未归一，例如产品名、缩写、仓库名产生多个节点；
+2. 同义关系被自由命名成不同 predicate；
+3. 跨 Chunk 共指消解不足；
+4. Chunk 太小缺少关系上下文，太大又增加噪声和成本；
+5. 自由 Schema 让关系类型基数持续膨胀；
+6. 小模型更容易遗漏跨句关系或生成泛化程度不一致的边。
+
+更强模型能改善抽取，但不能替代 Schema、实体解析和质量 Gate。
 
 ---
 
-## 5. 为什么“自然语言 -> Cypher -> Answer”容易失败
+## 5. Schema-guided Graph Extraction
 
-原文首先尝试让 LLM 根据问题生成 Cypher，但模型猜出了数据库中不存在的 Label、Relationship 和 Property，最终无结果。
+技术博客不适合让模型任意创造 Node/Relation 类型。建议受控实体：
 
-这是一个重要工程结论：**数据 Schema 是确定的，LLM 对 Schema 的猜测却是概率的。**
+```text
+Technology | Library | Product | Company | Person | Paper |
+Standard | Version | Vulnerability | Concept
+```
 
-常见失败模式包括：
+受控关系：
+
+```text
+USES | DEPENDS_ON | IMPLEMENTS | REPLACES | COMPARES_WITH |
+CREATED_BY | AFFECTS | RELEASED_AS | PART_OF | SUPPORTS |
+INTEGRATES_WITH | MENTIONS
+```
+
+Schema、Prompt、Model、Normalizer 必须同时版本化。未知关系不应直接扩张生产 Schema，而应：
+
+```text
+unknown candidate
+ -> quarantine/review
+ -> schema proposal
+ -> replay evaluation
+ -> new graph schema release
+```
+
+这样可以控制关系类型爆炸，并使检索、质量评估和升级回放都具有确定边界。
+
+---
+
+## 6. 实体身份与 Entity Resolution
+
+GraphRAG 真正困难的地方之一不是“抽出实体”，而是判断两个 mention 是否属于同一个实体。
+
+建议独立维护：
+
+```text
+graph_entity
+- entity_id
+- entity_type
+- canonical_name
+- normalized_key
+- external_ids JSONB
+- status
+
+graph_entity_alias
+- entity_id
+- alias
+- normalized_alias
+- source
+- confidence
+```
+
+解析顺序：
+
+```text
+external/stable id
+ -> exact canonical match
+ -> exact alias match
+ -> normalized match
+ -> fuzzy candidate generation
+ -> type/context disambiguation
+ -> resolved entity / unresolved candidate
+```
+
+原文 Lucene `~2` 模糊匹配适合 **召回候选**，不适合直接决定实体合并。尤其短技术词、包名、版本号对固定编辑距离非常敏感，误合并会比漏合并更难修复。
+
+因此必须做到：
+
+- exact/alias 优先，fuzzy fallback；
+- fuzzy 只做候选，不自动 `MERGE` 身份；
+- 结合 entity type、邻域、source context 再判定；
+- 保存 merge/split 审计记录；
+- Graph Schema/Normalizer 升级后可重放。
+
+---
+
+## 7. 为什么自由“自然语言 -> Cypher -> Answer”容易失败
+
+原文第一次直接使用 `GraphCypherQAChain`，模型生成了数据库中不存在的 Label、Relationship 和 Property，最后返回空结果。
+
+根因是：**数据库 Schema 是确定的，LLM 对 Schema 的生成是概率的。**
+
+失败模式包括：
 
 - Label 名称猜错；
-- 关系方向猜反；
-- 属性名称不存在；
-- 实体别名没有归一；
-- 查询约束过强导致零召回；
-- 生成危险或超重查询；
-- Schema 升级后旧 Prompt 失效。
+- Relationship 名称不存在；
+- 关系方向错误；
+- Property 不存在；
+- alias 没有解析到实际实体；
+- 查询条件过强导致零召回；
+- Cypher 复杂度失控；
+- Schema 升级后 Prompt 与缓存示例过期。
 
-因此默认检索链不能把自由生成 Cypher 作为第一跳。若需要自然语言图查询，也应该：
+默认检索不能把自由 Cypher 作为第一跳。如果产品确实需要 NL-to-Graph，应采用：
 
-1. 给模型注入经过裁剪的实时 Schema；
-2. 只允许生成受限查询 AST/DSL；
-3. 服务端编译 DSL 到参数化 Cypher；
-4. 强制 LIMIT、depth、timeout、read-only；
-5. 失败时回退到确定性的实体检索 + 邻域扩展，而不是让模型继续猜。
+1. 运行时裁剪并注入只读 Schema；
+2. LLM 生成受限 AST/DSL，而非任意 Cypher；
+3. 服务端验证 AST；
+4. 编译成参数化 Cypher；
+5. 强制 allowlist、LIMIT、max hop、timeout；
+6. Neo4j 账号只给只读权限；
+7. 失败回退到确定性实体查找 + 邻域扩展。
+
+LangChain 当前仍提供 `GraphCypherQAChain` 并强调 Schema/限制与危险请求授权，这进一步说明生产系统必须把权限和查询复杂度约束放在 LLM 之外。
 
 ---
 
-## 6. 原文混合检索的关键思想
+## 8. 原文真正有效的检索：Vector/Full-text 入口 + Graph 扩展
 
-### 6.1 向量检索作为入口
+### 8.1 Vector Search 先找到可解释文本
 
-原文后续为 Document 节点建立向量索引，并建议从向量相似度而不是直接 Cypher 开始。其价值在于：
+原文后续为 Document 节点建立向量索引，从向量相似度而不是自由 Cypher 开始。工程价值在于：
 
-- 用户问题与文档文本之间不需要精确字符串一致；
-- 不依赖 LLM 正确猜图 Schema；
-- 召回的是可以直接解释问题的自然语言文本；
-- 与普通 RAG 兼容，图谱可以渐进增强，而不是一次性切换。
+- 不需要先知道用户问题对应哪个 Label/Relationship；
+- 可以直接召回自然语言证据；
+- 与普通 RAG 兼容；
+- Graph 可以渐进增强，而不是一次性替换全部检索链。
 
-对博客知识库，应进一步扩展为：
+对博客知识库，默认链应更完整：
 
 ```text
 Query
- -> metadata filter(source/time/tag/language/type)
- -> BM25 full-text recall
- -> vector semantic recall
- -> RRF/weighted fusion
+ -> metadata filter
+ -> BM25 recall
+ -> vector recall
+ -> RRF / weighted fusion
  -> reranker
- -> Top-K chunks
- -> （可选）从命中 chunk/entity 做 Graph neighborhood expansion
- -> evidence budgeter
- -> final context
+ -> Top-K textual evidence
 ```
 
-即默认是 **全文 + 向量 + 元数据 + rerank**，图谱只在需要关系推理时加入。
+这条链在 GraphRAG 完全关闭时仍必须可用。
 
-### 6.2 Lucene Fuzzy Entity Search
+### 8.2 Entity Full-text / Fuzzy Search
 
-原文为实体建立全文索引，并对单词加 `~2` 进行模糊匹配，例如把轻微拼写错误也召回。
+原文做法是：
 
-技术意义是将“实体识别”和“实体定位”拆开：
+1. 从问题中抽取实体；
+2. 为实体构造 Lucene fuzzy query；
+3. 匹配 Neo4j Entity；
+4. 读取入边和出边邻域。
 
-1. LLM/NER 从问题中抽实体；
-2. 搜索系统负责在已知实体中做可容错匹配；
-3. 命中实体后再做邻域遍历。
+这本质上把“问题理解”和“数据库定位”拆开，比直接让 LLM 猜 Cypher Schema 稳定得多。
 
-生产系统应在 fuzzy search 前增加归一化：
+生产实现建议再加入：Unicode normalization、alias、acronym、package/repo canonical name、vendor/product/version 归一化，以及短 token 的特殊规则。
 
-- lowercase/Unicode normalization；
-- 技术名词 alias；
-- GitHub repo/package canonical name；
-- vendor/product/version 标准化；
-- acronym mapping；
-- exact match 优先，fuzzy 作为 fallback。
+### 8.3 Text-first Graph Expansion
 
-否则 `~2` 对短技术词可能产生过高误召回。
+更稳妥的 Graph 增强入口不是“先全图找实体”，而是：
 
-### 6.3 Structured + Unstructured Context
+```text
+Top textual chunks
+ -> entity mentions from query/top chunks
+ -> entity resolver
+ -> bounded neighborhood expansion
+ -> graph evidence scoring
+ -> merge with textual evidence
+```
 
-原文将图关系字符串与向量召回文本共同送给 LLM。这种做法的风险是图关系会大量占用 token，却不一定增加回答信息量。
-
-因此要增加 **Evidence Budgeter**：
-
-- 图证据按 query intent 决定是否启用；
-- 每个实体限制最大邻居数和最大 hop；
-- 边按 source support 数、时间、confidence、关系类型权重排序；
-- 去除在 Top-K 文本中已明确表达的重复三元组；
-- 图上下文占总上下文 token 的比例设上限；
-- 通过离线评测判断“加入图”是否真正提高答案质量。
+这样图扩展被已召回文本限制在较小语义空间，能显著减少无关邻域爆炸。
 
 ---
 
-## 7. 成本问题：为什么不应对全部文章默认建图
+## 9. Query Router：不是每个问题都值得走 Graph
 
-原文最有价值的生产经验是 Graph 构建成本。知识图谱通常需要对大量 Chunk 调用较强 LLM，而模型越弱，图越容易碎裂；模型越强，成本越高。
+原文的反思指出最终回答往往主要来自 unstructured vector chunks；原始 node-edge-node 串虽然“看起来有结构”，但未必真正贡献答案。
 
-对 1000 个博客做全历史抓取，文章数量很容易达到几十万甚至数百万。如果每个 Chunk 都进行 LLM Graph Extraction，成本会从“抓取系统”变成“持续的大模型批处理系统”，并且每次正文版本变化都可能触发重建。
+因此生产系统应增加 Query Router。Graph 更适合：
 
-因此建议：
+- 多跳依赖；
+- A 与 B 的关系；
+- 技术/产品/标准之间的依赖、替代、兼容关系；
+- 跨文章关系聚合；
+- 时间/版本关系链。
 
-### 7.1 默认关闭 Graph Projection
+Graph 通常不适合：
 
-所有 Source 默认：
+- 单文档事实定位；
+- 代码片段查找；
+- 一段原文可直接回答的问题；
+- 纯语义相似问题。
+
+查询链建议：
+
+```text
+Query
+ -> BM25 + Vector + Rerank
+ -> intent/features
+ -> Graph Router
+      OFF: textual evidence only
+      ON : entity resolve + bounded graph expansion
+ -> Evidence Budgeter
+ -> final context
+```
+
+Router 需要被评测，不能只用 LLM 主观判断；至少记录 graph activation rate、Graph On/Off 的结果差异和额外成本。
+
+---
+
+## 10. Evidence Budgeter：避免三元组污染上下文
+
+原文最重要的反思之一是：图关系可能占用大量上下文，但对答案帮助有限。
+
+因此图证据不能直接把所有邻居拼成字符串。建议：
+
+- 每实体 Top-N；
+- 最大 hop；
+- 最大 Graph token；
+- relation allowlist；
+- source support 数加权；
+- confidence 加权；
+- freshness/version 加权；
+- 与 Top-K 文本重复证据去重；
+- 优先选择能回答当前 query intent 的关系。
+
+### 10.1 图证据渲染
+
+不要把内部 Node 属性和所有边原样 dump 给 LLM。应生成紧凑、带来源的 Evidence Unit：
+
+```text
+Fact: Library A DEPENDS_ON Library B
+Evidence: document_version=V5, chunk=C17
+Support: 3 active documents
+Confidence: 0.91
+Excerpt: <短原文证据>
+```
+
+这里的 `Excerpt` 很关键：纯三元组往往表达力低，短原文证据能让模型理解关系条件、范围和语境。
+
+---
+
+## 11. Graph Quality Gate
+
+“成功生成图”不能等价于“图可用于检索”。Graph Projection 应先成为 Candidate，再经过质量 Gate 才能 Active。
+
+建议指标：
+
+```text
+schema_violation_rate
+unsupported_edge_rate
+provenance_coverage
+orphan_entity_ratio
+isolated_component_ratio
+relation_type_cardinality
+unresolved_entity_ratio
+ambiguous_resolution_ratio
+entity_alias_merge_rate
+cross_chunk_entity_consistency
+duplicate_fact_ratio
+projection_failure_rate
+```
+
+最低要求：
+
+- 所有 active edge 有来源 chunk；
+- schema_violation 低于阈值；
+- unresolved/ambiguous entity 不得自动污染 active entity；
+- orphan/component 指标不能较 Golden Baseline 突然恶化；
+- Graph Schema/Model 升级必须跑 Golden Corpus Replay；
+- Candidate Projection 通过后才原子切换 active projection。
+
+这与网页正文抽取的 Quality Gate 是同一设计哲学：**成功执行不等于结果正确。**
+
+---
+
+## 12. 成本：GraphRAG 的核心生产约束
+
+原文给出的经验非常直接：高质量图往往需要更强模型；在文档密集、关系密集领域，逐 Chunk LLM Extraction 的成本可能远大于抓取和 Embedding。
+
+对几十万到百万文章，不应默认全量建图。
+
+### 12.1 默认关闭
 
 ```text
 graph_enrichment.enabled = false
 ```
 
-仅对明确需要关系推理的 Source/Collection/Topic 开启。
+只对明确有关系推理价值的 Source/Collection/Topic 开启。
 
-### 7.2 选择性建图
+### 12.2 先做 Cost Preflight
 
-支持三种触发策略：
+在大规模构图前先采样，例如按 Source/Topic 抽 100～1000 个代表性 Document Version，计算：
 
-- **Collection-based**：只为某专题知识库建图；
-- **Query-driven**：查询长期高频且图关系确有价值时，对相关文档异步建图；
-- **Value-score based**：只有高价值、低重复、实体密度高的文档进入图谱。
+```text
+avg_input_tokens_per_chunk
+avg_output_tokens_per_chunk
+entities_per_chunk
+edges_per_chunk
+accepted_edges_per_chunk
+orphan_ratio
+unsupported_edge_rate
+cost_per_1000_docs
+cost_per_1000_accepted_facts
+estimated_full_backfill_cost
+estimated_monthly_incremental_cost
+```
 
-### 7.3 预算治理
+只有质量和预算同时满足阈值，才允许从 `PILOT` 升级到 `SELECTIVE/ON`。
 
-每个 Graph Job 必须估算和记录：
+### 12.3 Circuit Breaker
 
-- input tokens；
-- output tokens；
-- model cost；
-- source/document/version；
-- extraction latency；
-- entity/edge 数量；
-- 每 1000 文档建图成本；
-- 每个“有效新增关系”的成本。
+Graph Worker 应有独立预算和熔断：
 
-Web 管理端允许配置 daily/monthly budget，超过预算自动停止 graph worker，而不能影响抓取和 Canonical Markdown 主链。
+- daily/monthly hard cap；
+- 单 Run cap；
+- 单 Source/Collection cap；
+- 单文档最大 chunk/token；
+- provider 价格变化触发重新估算；
+- Graph 暂停绝不影响抓取、Canonical Markdown、Search/Vector。
+
+### 12.4 增量只处理语义新版本
+
+304、页面模板变化但正文 hash 不变、Projection 重跑，都不应重复触发昂贵 Graph Extraction。只有新的 PASS `Document Version` 或明确 `REPROJECT` 才进入 Graph 队列。
 
 ---
 
-## 8. 对增量同步的关键影响
+## 13. Graph Provenance 与增量失效
 
-GraphRAG 最容易被忽略的问题是 **派生关系如何随文章更新而更新**。
+设文档当前版本从 V4 更新为 V5。若 V4 的边继续作为 active fact，RAG 会混入旧事实。
 
-设文章 `document_id=D`，当前 Canonical Version 为 `V5`。图谱中来自 `V4` 的边不能在 `V5` 生效后永久残留，否则查询会混入过期事实。
-
-推荐数据模型：
+建议数据模型：
 
 ```text
 graph_projection
 - graph_projection_id
 - document_version_id
 - graph_schema_version
-- extractor_version
-- model_version
-- status
+- extractor_release
+- model_release
+- normalizer_release
+- status: CANDIDATE | ACTIVE | RETIRED | REJECTED
 - entity_count
 - edge_count
 - token_cost
+- quality_score
 - created_at
 
 graph_fact
@@ -333,165 +504,106 @@ graph_fact
 - valid_to
 ```
 
-更新时：
+更新流程：
 
 ```text
 V5 accepted
- -> canonical/search/vector projection rebuild
- -> if graph policy enabled: enqueue GRAPH_PROJECT(V5)
- -> V5 graph projection PASS
+ -> search/vector projection rebuild
+ -> if graph policy allows: GRAPH_PROJECT(V5)
+ -> graph quality gate
+ -> candidate PASS
  -> atomically activate V5 graph projection
- -> V4 projection remains auditable but excluded from active retrieval
+ -> exclude V4 projection from active retrieval
 ```
 
-不要在图数据库里无条件 MERGE 后再“猜哪些旧边该删”。关系必须有 provenance，可以按 document_version 精确失效。
-
-对于多个文章共同支持的实体关系，不直接物理删除全局关系，而维护 support edge / provenance count：只有最后一个有效支持消失时，关系才从 active graph 中消失。
+多个文章共同支持同一关系时，不应因为某一文档失效而直接删除全局关系；应维护每条事实的 provenance/support，只有最后一个 active support 消失才从 active evidence 中移除。
 
 ---
 
-## 9. GraphRAG 在最终架构中的正确位置
+## 14. 2026 年生产实现映射
 
-推荐：
+原文示例使用 2025 年的 LangChain + Neo4j 组合，Demo 思路仍有效，但生产方案不应绑定某个 experimental 类或某个 notebook API。
+
+截至本次调研：
+
+- Neo4j 提供第一方 `neo4j-graphrag-python`，把 VectorRetriever、VectorCypherRetriever、HybridRetriever、HybridCypherRetriever、Text2Cypher 等模式作为独立 Retriever 能力；
+- Neo4j 2026.01+ 支持带 filterable properties 的 vector index，并可使用 `SEARCH` 做 in-index filtering；
+- LangChain 当前仍提供 Neo4j VectorStore 与 GraphCypherQAChain 集成；
+- Crawl4AI 当前仍将 CSS/XPath JSON extraction 作为结构化抽取能力，适合被平台 Recipe Adapter 使用。
+
+生产推荐边界：
 
 ```text
-                    Canonical Fact Layer
-Snapshot -> IR -> Document Version -> Canonical Markdown
-                           |
-            +--------------+----------------+
-            |              |                |
-       Full-text        Vector          Graph Projection
-       Projection       Projection      (optional/offline)
-            |              |                |
-            +------- Hybrid Retriever ------+
-                           |
-                       Reranker
-                           |
-                   Evidence Budgeter
-                           |
-                         RAG
+Platform Domain Model
+  -> Graph Projection Adapter
+       -> neo4j-graphrag-python / Neo4j Driver
+       -> optional LangChain adapter
 ```
 
-Graph 数据是 **Projection**，不是 Truth Store，也不是 Markdown 的生成来源。
+不要让平台领域模型直接依赖 `LLMGraphTransformer`、`Neo4jVector` 或 Notebook 中某个 Chain 的类结构。框架可替换，`graph_projection / graph_entity / graph_fact / quality / provenance` 才是稳定业务语义。
 
-这保证：
-
-- 不使用 GraphRAG 也能完整抓取和搜索；
-- GraphRAG 服务宕机不阻断增量同步；
-- 更换 Neo4j/图引擎可从 Canonical Version 重建；
-- 更换模型/Schema 可重建 Graph Projection；
-- 可以按查询 A/B 对比 graph-on 与 graph-off。
+对于 Neo4j 2026.01+ 的 in-index filtering，可在 Graph 专题检索规模扩大后用于 source/time/type 等过滤；但它属于实现优化，不应改变平台对检索过滤语义的抽象。
 
 ---
 
-## 10. Web 管理功能建议
+## 15. 对博客知识库最终方案的具体修改
 
-在现有 Web 管理中增加“关系增强”配置，而不是新增一个独立不可控 AI 流程。
+基于本文和当前实现生态，最终方案应落实：
 
-### Source/Collection 配置
+1. GraphRAG 明确为可选 Projection，不进入 Discovery、Fetch、Canonical IR、Canonical Markdown；
+2. 默认检索仍是 Metadata + BM25 + Vector + Rerank；
+3. 增加 Query Router，只有关系/多跳类问题才触发 Graph；
+4. Graph Retrieval 从文本召回/实体候选出发，再做 bounded neighborhood expansion；
+5. 不默认使用自由 NL-to-Cypher；如需要，使用受限 AST/DSL、实时裁剪 Schema、read-only、LIMIT/hop/timeout；
+6. 使用 Schema-guided Entity/Relationship Extraction；
+7. 增加稳定 Entity Identity、Alias 与 Resolution 流程；fuzzy 只做候选，不直接决定 merge；
+8. Graph Projection 先过 Quality Gate，再 Active；
+9. 所有 active edge 必须有 `source_chunk_id -> document_version -> artifact` provenance；
+10. 增量 Graph 只对新 PASS Document Version 或显式 REPROJECT 执行；
+11. 增加 Evidence Budgeter 和带原文短证据的 Graph Evidence Renderer；
+12. 大规模 Graph Backfill 前必须 Cost Preflight；
+13. Graph Worker 独立 Queue/预算/Circuit Breaker，不得抢占抓取关键资源；
+14. Web 管理增加 Graph policy、Schema、Entity Resolution、Quality Gate、预算、成本预测、Graph On/Off 评测；
+15. Graph 是否扩大覆盖必须由离线评测证明质量净收益，而不是由图是否“漂亮”决定。
 
-- Graph Enrichment：OFF / SELECTIVE / ON；
-- Graph Schema Version；
-- Model/Provider；
-- Entity 白名单；
-- Relationship 白名单；
-- 最大 chunk 数/文章；
-- 每日/月度成本预算；
-- 最大 graph hop；
-- 查询时图证据 token 占比。
+---
 
-### 运行视图
+## 16. 最终判断
 
-- 待建图文档数；
-- Graph projection 成功/失败率；
-- entity/edge 数；
-- orphan entity ratio；
-- duplicate entity merge ratio；
-- 每文档/每千文档成本；
-- graph-on vs graph-off 检索质量。
+GraphRAG 不是博客知识库的“最终赢家”，而是适用于部分查询类型的关系增强能力。
 
-### 调试视图
-
-任意图关系可反查：
+本项目最可靠的默认路径仍然是：
 
 ```text
-relationship
- -> graph_projection
- -> document_version
- -> chunk
- -> canonical markdown span
- -> raw snapshot
+Complete Discovery
+ + Immutable Snapshot
+ + Canonical IR / Markdown
+ + Versioned Incremental Sync
+ + Metadata / BM25 / Vector / Rerank
 ```
 
-这比只展示 Neo4j 图形界面更重要，因为知识库需要可审计。
-
----
-
-## 11. 需要新增的质量指标
-
-GraphRAG 不能只看“图是否成功生成”。至少需要：
-
-### 构图质量
-
-- `orphan_entity_ratio`：孤立实体占比；
-- `relation_type_cardinality`：关系类型是否异常膨胀；
-- `entity_alias_merge_rate`；
-- `unsupported_edge_rate`：无法定位原文证据的边占比；
-- `cross_chunk_entity_consistency`；
-- `projection_failure_rate`。
-
-### 检索质量
-
-对相同评测集做：
-
-- BM25 only；
-- vector only；
-- BM25 + vector；
-- BM25 + vector + rerank；
-- BM25 + vector + rerank + graph。
-
-比较：Recall@K、MRR/nDCG、答案正确率、引用命中率、上下文 token、p95 latency 和 query cost。
-
-只有 graph 版本在目标问题集上带来稳定净收益时才扩大覆盖。
-
----
-
-## 12. 对博客知识库最终方案的具体修改结论
-
-基于本文，应对总体方案做以下优化：
-
-1. **明确 GraphRAG 为可选派生层**，不进入抓取、Canonical IR、Markdown 主链；
-2. **默认检索主链采用 metadata + BM25 + vector + rerank**；
-3. 图检索从“已召回文本/实体”做受限邻域扩展，不默认让 LLM 自由生成 Cypher；
-4. 若提供 NL-to-Graph 查询，使用受限 DSL/AST、实时 Schema、read-only、limit/depth/timeout；
-5. Graph Extraction 使用版本化领域 Schema，而不是通用自由关系生成；
-6. 所有实体和边必须绑定 `document_version_id` 与 `source_chunk_id`，支持精确失效；
-7. Graph Projection 与 Search/Vector 一样可重建，切换版本采用 active projection 指针；
-8. Graph Job 使用独立 Queue/Worker Pool/预算，不阻塞 Backfill/Incremental；
-9. 增加 Evidence Budgeter，限制图三元组对上下文的占用；
-10. Web 管理增加 Graph policy、Schema、预算、质量、版本、回放、A/B 指标；
-11. 对 1000+ 博客默认不开全量建图，只对关系密集、高价值专题选择性开启；
-12. 先把全文/向量/元数据过滤/rerank 做扎实，再以评测数据决定是否扩展 GraphRAG。
-
----
-
-## 13. 最终判断
-
-GraphRAG 不是博客知识库的“最终赢家”，它是一种适用于特定查询类型的增强检索手段。
-
-对于本项目，最可靠的主路径仍然是：
+GraphRAG 的生产定位应是：
 
 ```text
-完整 Discovery
- + 可追溯 Snapshot/Canonical IR/Markdown
- + 稳定增量版本
- + Metadata/BM25/Vector/Rerank
+Optional
++ Query-routed
++ Schema-guided
++ Entity-resolved
++ Provenance-aware
++ Quality-gated
++ Incremental
++ Cost-preflighted
++ Budgeted
++ Evaluated
 ```
 
-GraphRAG 的正确工程化方式是：
+只有关系结构能提供文本召回无法提供的独特信息，并且离线评测证明收益覆盖构图成本、查询延迟、上下文占用和运维复杂度时，才对相应 Source/Collection/Topic 启用 Graph Projection。
 
-```text
-Optional + Schema-guided + Provenance-aware + Incremental + Budgeted + Evaluated
-```
+---
 
-只有当关系结构能提供文本检索无法提供的独特信息，并且离线评测证明质量收益覆盖额外成本、延迟和运维复杂度时，才应对相应专题启用。
+## 17. 参考资料
+
+- 原文：https://medium.com/mitb-for-all/graphrag-for-the-win-c19d580debd7
+- Crawl4AI Documentation：https://docs.crawl4ai.com/
+- LangChain Neo4j Integration：https://docs.langchain.com/oss/python/integrations/providers/neo4j
+- Neo4j GraphRAG for Python：https://neo4j.com/docs/neo4j-graphrag-python/current/
