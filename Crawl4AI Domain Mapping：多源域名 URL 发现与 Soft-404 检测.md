@@ -6,11 +6,12 @@
 
 - 官方文档：`https://docs.crawl4ai.com/core/domain-mapping/`
 - 上游项目：`https://github.com/unclecode/crawl4ai`
+- Robots Exclusion Protocol：`https://www.rfc-editor.org/rfc/rfc9309.html`
 - 重点源码：`crawl4ai/domain_mapper.py`、`crawl4ai/async_configs.py`、`crawl4ai/async_url_seeder.py`、`crawl4ai/async_dispatcher.py`
 - 相关测试：`tests/unit/test_domain_mapper_unit.py`、`tests/integration/test_domain_mapper_e2e.py`、`tests/adversarial/test_domain_mapper_adversarial.py`
 - 版本背景：DomainMapper 在 v0.8.7 加入；当前官方文档已进入 v0.9.x 系列，生产必须 pin 经过验证的 immutable runtime release。
 
-核心结论：**DomainMapper 很适合作为“Source 接入勘探 + Coverage Gap 辅助发现”的运行时组件，但不能直接作为 1000 站博客知识库的 Coverage Truth、URL Identity、持久 Frontier、当前 URL 有效性真相、合规边界或全局限流器。**
+核心结论：**DomainMapper 很适合作为“Source 接入勘探 + Coverage Gap 辅助发现”的运行时组件，但不能直接作为 1000 站博客知识库的 Coverage Truth、URL Identity、持久 Frontier、当前 URL 有效性真相、robots 访问决策、合规边界或全局限流器。**
 
 最值得吸收的能力是：
 
@@ -20,9 +21,9 @@
 4. 将 Crawl4AI 的 MemoryAdaptiveDispatcher 用作 Worker 本地资源保护，而不是业务队列；
 5. 保持 PostgreSQL + Object Storage 为 URL、任务、Coverage、Artifact 和版本的业务真相。
 
-同时必须增加反向约束：DomainMapper 原生能力更接近“域名侦察工具”，会发现证书子域、猜测常见子域、探测通用路径，并主动对发现 host 发 HTTP 请求。博客知识库必须把它收敛到**已批准内容 host、低风险内容路径、robots/access policy、SSRF allowlist 和平台级限流**内。
+同时必须增加反向约束：DomainMapper 原生能力更接近“域名侦察工具”，会发现证书子域、猜测常见子域、探测通用路径，并主动对发现 host 发 HTTP 请求。博客知识库必须把它收敛到**已批准内容 host、平台自有 SafeProbe、RFC 9309 RobotsPolicy、SSRF allowlist 和平台级限流**内。
 
-本次源码级检查还发现几个对生产设计非常关键的边界：
+本次源码级检查发现以下对生产设计非常关键的边界：
 
 - `hits_per_sec` 在 DomainMapper 中实际通过 `asyncio.Semaphore` 实现，限制的是在途并发而不是严格 RPS；
 - `_normalize_and_dedup()` 的去重 key 会对完整规范化 URL 调用 `.lower()`，可能错误合并大小写敏感 path/query；
@@ -30,8 +31,12 @@
 - 当前源码里 Common Crawl 在 DomainMapper 中明确参与 host discovery，但没有看到像 Wayback `_wayback_urls` 那样把 CC URL 集合保存后并入 Phase 2 结果的对称路径；因此不能把 DomainMapper 当 Common Crawl 全历史 URL Provider；
 - Host validation 对候选 host 发 HEAD，只要请求没有抛异常就会返回该 host，HTTP 403/404 等并不会使 host 被判定为不可达；
 - Probe、Soft-404、Feed、Homepage 多处直接以 `https://host` 构造 URL，HTTP-only / 特殊 origin 行为不能只靠 DomainMapper 默认路径处理；
+- **`config.probe_paths` 只会追加到 `DEFAULT_PROBE_PATHS`，不会替换默认 `/api`、`/login`、`/dashboard`、`/graphql`、`/health` 等路径；因此给 DomainMapper 传“安全 probe 路径”并不能消除默认主动探测。**
+- **启用 `source="robots"` 也会进入 Probe 分支：源码条件是 `if "probe" in sources or "robots" in sources`，随后仍从完整 `DEFAULT_PROBE_PATHS` 开始，并把 robots 中的 concrete Allow/Disallow path 继续追加进去。第三方博客不能启用原生 `probe` 或 `robots` source 来做安全接入。**
+- DomainMapper 的 robots 解析只抽取 `Sitemap:`、`Allow:`、`Disallow:` 行，不按 RFC 9309 完整执行 User-Agent group、规则合并、最长匹配等访问判定语义；它不能作为平台 RobotsPolicyEngine；
 - `extract_head=True` 会对大量结果额外做 metadata fetch，适合小规模勘探，不适合作为百万 URL Inventory 的默认动作；
 - `max_urls`、BM25 query、`score_threshold` 都属于选择/排序能力，不能进入全历史 Coverage Truth；
+- `scan()` 先聚合各 host 结果，再做 normalization/head/score/limit，运行时结果本质是一个批量 List；它不是平台持久化流，也没有业务级逐 Observation checkpoint，不能把一次大型 scan 当作可恢复 Backfill 单元；
 - 当前源码定义了 DomainMapper 本地 cache helper，但在本次检查的 `scan()` 主路径中没有看到它被作为业务 checkpoint 使用；无论具体版本是否启用，都不能依赖该 cache 做增量同步或恢复。
 
 ---
@@ -241,7 +246,7 @@ CT observation
 
 不能把证书里出现过的域名自动加入 active crawl scope。
 
-### 3.5 Probe：必须替换默认 Path Set
+### 3.5 Probe：原生 Probe 不能仅靠 `probe_paths` 变安全
 
 默认 `DEFAULT_PROBE_PATHS` 包含：
 
@@ -259,9 +264,33 @@ CT observation
 ...
 ```
 
-这不适合作为第三方技术博客的默认探测面。
+关键实现语义不是“传入 `probe_paths` 后替换默认路径”，而是：
 
-平台应编译自己的 `ContentProbeProfile`，只允许低风险内容路径：
+```text
+probe_paths = DEFAULT_PROBE_PATHS
+probe_paths += config.probe_paths
+```
+
+也就是说，即使平台传入：
+
+```yaml
+probe_paths:
+  - /blog
+  - /posts
+  - /archive
+```
+
+DomainMapper 仍会探测 `/login`、`/dashboard`、`/api`、`/graphql`、`/health` 等默认路径。
+
+因此第三方博客生产环境的正确结论是：
+
+```text
+DomainMapper source 中禁用 probe
++ 平台独立 SafeProbeAdapter
++ SafeProbeAdapter 仅允许内容型 path allowlist
+```
+
+例如：
 
 ```text
 /blog
@@ -276,21 +305,44 @@ CT observation
 /rss
 ```
 
-且 Probe 只能在 `APPROVED_CONTENT` host 上运行。
+只有在维护经过审计的 Crawl4AI fork/patch、且能**替换**默认 probe path 集时，才允许重新启用 DomainMapper 原生 `probe`。
 
-### 3.6 robots：Access Policy，而不是“隐藏 URL 列表”
+### 3.6 robots：必须由平台 RFC 9309 Policy Engine 判定
 
-DomainMapper 会读取 `Disallow:` / `Allow:` 并把 concrete path 加入 probe paths。
+DomainMapper 会读取 `Disallow:` / `Allow:` 并收集 concrete path；更重要的是，当 `source` 包含 `robots` 时，源码会进入同一个 Probe 分支：
 
-对知识库必须改义：
+```text
+if "probe" in sources or "robots" in sources:
+    probe_paths = DEFAULT_PROBE_PATHS
+    ...
+    probe_paths += robots allow/disallow paths
+```
+
+所以 `source="robots"` 并不是“只解析 robots”，而会产生主动 Probe。
+
+此外 `_scan_robots_txt()` 的职责是简单提取行，并没有完整实现 RFC 9309 的访问判定模型。平台 RobotsPolicyEngine 至少要负责：
+
+```text
+User-Agent product-token group matching
+同一 product-token 多组规则合并
+* fallback group
+Allow / Disallow path pattern
+最长匹配规则
+wildcard / end-anchor 等路径匹配
+robots fetch/cache/error policy
+```
+
+因此知识库必须改义：
 
 ```text
 Sitemap:  -> discovery evidence
-Allow:    -> access policy input
-Disallow: -> deny/restriction input
+Allow:    -> RobotsPolicy input
+Disallow: -> RobotsPolicy restriction
 ```
 
-`Disallow` 绝不能变成主动探测入口。
+`Allow/Disallow` 都不能直接变成主动探测入口。
+
+对第三方 Source，DomainMapper safe runtime source 应显式排除 `robots`；Sitemap Provider 可以单独解析 robots 中的 `Sitemap:`，访问权限则由平台自己的 RFC 9309 Policy Engine 计算。
 
 ### 3.7 Feed：Incremental First-class Provider
 
@@ -506,6 +558,22 @@ max_urls = -1
 
 如果需要打分，先持久化 Observation，再把 score 映射为 scheduler priority。
 
+### 5.4 Redirect 后结果唯一性仍要由平台重新判定
+
+DomainMapper 先做 normalize/dedup，随后 `_extract_heads()` 可能通过 `_fetch_head()` 把 `r["url"]` 改成最终 redirect URL。由于这个 URL mutation 发生在初始 dedup 之后，两个原 URL 可能最终汇聚到同一个目标，但结果列表不会因此自动成为平台级唯一身份。
+
+所以平台必须分别保存：
+
+```text
+requested_url
+runtime_final_url
+redirect_chain
+platform_url_identity
+canonical evidence
+```
+
+并在自己的 Identity Resolver 中处理 merge，而不是假设 DomainMapper 返回列表已经完成最终去重。
+
 ---
 
 ## 6. 并发、资源保护与限流
@@ -529,9 +597,9 @@ max_urls = -1
 Global Fair Scheduler
  -> Source/Domain Token Bucket
  -> bounded DomainRecon host slice
- -> bounded probe path set
+ -> bounded platform SafeProbe path set
  -> DomainMapper runtime
- -> persist result-by-result/provider-by-provider
+ -> persist bounded scan result immediately
 ```
 
 ### 6.2 `hits_per_sec` 不是严格 RPS
@@ -569,6 +637,17 @@ Bulk backfill inventory: extract_head=false
 Focused UI search: extract_head=true + query
 Canonical fetch: metadata from Raw Artifact / normal Fetch Plane
 ```
+
+### 6.4 `scan()` 不是业务级流式 checkpoint
+
+`scan()` 主路径会把多 host 任务收集后 `gather()`，汇总为 `all_results`，再统一做 post-processing 并返回 List。即使内部某些 Provider 是异步实现，这个接口本身也不应被视为“每发现一条 URL 就已经 durable”。
+
+因此：
+
+- DomainMapper 只运行小规模、明确预算、可重试的 Recon slice；
+- 大结果的 Sitemap/Common Crawl/Wayback 必须走独立可分页 Provider；
+- 一次 DomainMapper crash 只能重跑当前 bounded recon，不影响 PostgreSQL 已存在的 URL Observation；
+- 不使用 DomainMapper cache/内存 List 代替 Provider cursor 或 persistent frontier。
 
 ---
 
@@ -640,8 +719,8 @@ DomainMapper 只通过平台 `DomainReconAdapter` 调用，Adapter 负责：
 ```text
 validate_approved_scope()
 resolve_canonical_origin()
-build_safe_sources()
-build_safe_probe_paths()
+compile_explicit_runtime_sources()
+reject_domainmapper_probe_and_robots_for_third_party()
 build_runtime_config()
 run_bounded_scan()
 expand_source_attribution()
@@ -651,11 +730,24 @@ ignore_runtime_valid_as_business_truth()
 translate_errors/timeouts()
 ```
 
+Safe content path probe 不放在 DomainMapper 内，而由独立 `SafeProbeAdapter` 完成：
+
+```text
+RobotsPolicyEngine allow?
+ -> approved exact host?
+ -> content path allowlist?
+ -> SSRF/redirect validation
+ -> global token bucket
+ -> HEAD/GET probe
+ -> persist Observation
+```
+
 ### 8.2 推荐 runtime profile
 
-全历史/结构勘探默认：
+第三方 approved exact-host 的 DomainMapper 安全勘探默认：
 
 ```yaml
+source: sitemap+feed+homepage
 include_subdomains: false
 extract_head: false
 query: null
@@ -664,7 +756,19 @@ max_urls: -1
 soft_404_detection: true
 ```
 
-但 `soft_404_detection` 只作 runtime advisory，最终判定仍由平台 `host_validity_profile` 完成。
+明确规则：
+
+```text
+不要依赖 DomainMapper 默认 source=sitemap+cc+crt+probe
+不要启用 source=probe
+不要启用 source=robots
+```
+
+原因是默认 source 会主动做 CT/子域与 Probe；`probe_paths` 不能替换默认路径；`robots` source 也会触发默认 Probe。
+
+如果只需要 Sitemap，使用独立 Sitemap Provider；如果只需要 robots policy，使用平台 RobotsPolicyEngine；如果要探测内容路径，使用平台 SafeProbeAdapter。
+
+`soft_404_detection` 只作 runtime advisory，最终判定仍由平台 `host_validity_profile` 完成。
 
 `filter_nonsense_urls` 按 Source 内容类型编译：
 
@@ -726,13 +830,35 @@ Wayback、Sitemap、Feed、Homepage 结果统一走平台 Validity Gate。
 ### 8.7 Worker 执行层
 
 ```text
-平台 bounded slice
- -> DomainMapper / arun_many
+平台 bounded recon slice
+ -> DomainMapper
+ -> bounded result persist
+
+平台 Fetch slice
+ -> arun_many
  -> Worker local semaphore / MemoryAdaptiveDispatcher
  -> result-by-result durable commit
 ```
 
-不把百万 URL 一次交给 `asyncio.gather()` 或 `arun_many()`。
+不把百万 URL 一次交给 `DomainMapper.scan()`、`asyncio.gather()` 或 `arun_many()`。
+
+### 8.8 RobotsPolicyEngine
+
+平台应独立实现/采用 RFC 9309 兼容的 robots 解析器，输出版本化访问决策：
+
+```text
+robots_policy_release
+user_agent_product_token
+robots_fetched_at
+robots_etag/last_modified
+matched_group
+matched_rule
+allow/deny
+reason
+expires_at
+```
+
+DomainMapper 的 `_scan_robots_txt()` 只可作为 Sitemap discovery 辅助理解，不可成为最终访问许可来源。
 
 ---
 
@@ -747,10 +873,10 @@ Crawl4AI v0.8.7 发布记录包含 Docker API 的多项安全加固，后续 v0.
 3. Web 用户不能透传任意 Domain、URL、CrawlerRunConfig、JS hook；
 4. 所有目标先做 approved scope + SSRF destination validation；
 5. 禁止 loopback、RFC1918、link-local、云 metadata、`file://` 等未授权目的地；
-6. Redirect 每一跳都重新校验目的地和 approved scope；
-7. `robots.txt Disallow` 只作约束，不变成 Probe 候选；
+6. DNS resolution 后验证最终 IP，redirect 每一跳重新解析并校验目的地和 approved scope，防止重定向/解析变化突破边界；
+7. `robots.txt` 访问决策由平台 RFC 9309 Policy Engine 处理，`Disallow`/`Allow` 不转为 Probe；
 8. CT/DNS/Wayback 发现的 host 未批准前不做主动正文抓取；
-9. Probe path 使用内容型 allowlist，不允许管理/登录/调试/健康检查类默认路径；
+9. 第三方 Source 禁用 DomainMapper 原生 `probe` 和 `robots` source；内容路径探测由 SafeProbeAdapter allowlist 执行；
 10. Browser、下载、execute-js、webhook 等高风险能力按 Recipe allowlist 最小化启用。
 
 ---
@@ -765,18 +891,24 @@ Crawl4AI v0.8.7 发布记录包含 Docker API 的多项安全加固，后续 v0.
 3. Wayback result status=valid 不绕过平台 Validity Gate
 4. Common Crawl 独立 Provider 能产生 URL-level Observation
 5. 未批准 CT 子域不会触发 active HTTP probe
-6. robots Disallow 不进入 Probe
-7. Soft-404 动态 request-id 仍能被模板相似度识别
-8. 合法页面同 title 不因 title 相同直接判 Soft-404
-9. Sitemap Soft-404 批次保留全部 Observation
-10. HTTP-only origin 不因 DomainMapper HTTPS 默认路径静默丢失
-11. PDF-heavy Source 不被 blanket nonsense filter 丢掉内容文档
-12. extract_head=false 时不把 runtime status 当当前有效性
-13. max_urls / score_threshold 只允许 focused job，不进入 Backfill Profile
-14. hits_per_sec 不作为严格 RPS 验收指标
-15. 大量 host/probe path 时外层 Slice 能限制并发
-16. source_timeout 产生 PARTIAL/TIMED_OUT，而不是 COMPLETE
-17. runtime release 升级后 use_browser_for_homepage 等关键配置做行为回归
+6. 第三方 Safe Recon 的 runtime source 显式排除 probe/robots
+7. 配置 probe_paths=[/blog] 时验证上游仍会追加默认 /login 等路径，并由 Adapter 阻止这种配置进入生产
+8. source=robots 会触发默认 Probe，Adapter 必须拒绝
+9. RobotsPolicyEngine 正确处理 User-Agent group、组规则合并、* fallback 和最长匹配
+10. robots Disallow/Allow 不进入主动 Probe
+11. Soft-404 动态 request-id 仍能被模板相似度识别
+12. 合法页面同 title 不因 title 相同直接判 Soft-404
+13. Sitemap Soft-404 批次保留全部 Observation
+14. HTTP-only origin 不因 DomainMapper HTTPS 默认路径静默丢失
+15. PDF-heavy Source 不被 blanket nonsense filter 丢掉内容文档
+16. extract_head=false 时不把 runtime status 当当前有效性
+17. max_urls / score_threshold 只允许 focused job，不进入 Backfill Profile
+18. hits_per_sec 不作为严格 RPS 验收指标
+19. 大量 host/probe path 时外层 Slice 能限制并发
+20. source_timeout 产生 PARTIAL/TIMED_OUT，而不是 COMPLETE
+21. DomainMapper bounded scan crash 后可安全整 slice 重试，业务 URL Observation 不依赖 runtime cache
+22. redirect 后多个 URL 汇聚到同一 final URL 时由平台 Identity Resolver 合并
+23. runtime release 升级后 use_browser_for_homepage 等关键配置做行为回归
 ```
 
 ---
@@ -787,23 +919,25 @@ DomainMapper 在最终架构中放两个位置最合适：
 
 ```text
 A. Source Onboarding Recon
-   exact-host Sitemap / Feed / Homepage / Safe Probe / Soft-404 baseline
+   approved exact-host Sitemap / Feed / Homepage / Soft-404 advisory
    metadata-only host candidate 由独立 Adapter 先完成
+   内容型路径 Probe 由平台 SafeProbeAdapter 完成
+   robots 访问决策由平台 RFC 9309 RobotsPolicyEngine 完成
 
 B. Coverage Gap Recon
-   在 approved scope 内补站点结构盲区
+   在 approved exact-host scope 内补站点结构盲区
    不能替代独立 Common Crawl / Wayback / Sitemap / Feed Provider
 ```
 
 生产主链保持：
 
 ```text
-Provider / DomainRecon Runtime
+Provider / Safe DomainRecon Runtime
  -> Raw Discovery Evidence
  -> PostgreSQL URL Observation
  -> Platform URL Normalization / Identity
  -> Approved Scope
- -> URL Validity Gate
+ -> RobotsPolicy / URL Validity Gate
  -> Persistent Frontier / Admission
  -> HTTP First / Browser Slow Path
  -> Immutable Artifact
@@ -815,4 +949,4 @@ Provider / DomainRecon Runtime
 
 本次调研对技术方案的核心增强可以概括为：
 
-> **把 Domain Mapping 定位为受控 Recon，而不是 Coverage Truth；把 Soft-404 变成版本化的主机有效性模型；把上游 dedup、status、score、limit、timeout、cache、rate 参数全部降级为运行时提示；URL Identity、当前有效性、跨 Worker 限流、Coverage 和恢复全部由平台持久化模型负责。特别需要防止完整 URL lower-case 去重、Wayback “valid” 误解、Common Crawl URL-level 覆盖假设以及未批准子域的主动探测。**
+> **把 Domain Mapping 定位为受控 Recon，而不是 Coverage Truth；把 Soft-404 变成版本化的主机有效性模型；把上游 dedup、status、score、limit、timeout、cache、rate 参数全部降级为运行时提示；URL Identity、当前有效性、robots policy、跨 Worker 限流、Coverage 和恢复全部由平台持久化模型负责。尤其不能把 `probe_paths` 当成默认 Probe 的替换项，也不能把 `source=robots` 当成只读 robots：当前实现都会保留/触发默认主动 Probe，因此第三方站点必须由平台 SafeProbeAdapter 与 RFC 9309 RobotsPolicyEngine 接管这两类能力。**
