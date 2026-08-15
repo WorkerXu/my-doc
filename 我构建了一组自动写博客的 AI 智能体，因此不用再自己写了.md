@@ -1,415 +1,708 @@
 # 我构建了一组自动写博客的 AI 智能体，因此不用再自己写了
 
-## 1. 调研对象
+## 1. 调研对象与结论
 
-- 原文：I Built a Crew of AI Agents That Write Blogs So I Don’t Have To
+- 原文：I Built a Crew of AI Agents That Write Blogs So I Don’t Have To (Here’s How You Can Too)
 - 地址：https://dev.to/kuldeep_paul/i-built-a-crew-of-ai-agents-that-write-blogs-so-i-dont-have-to-heres-how-you-can-too-2i84
-- 相关代码仓库：https://github.com/dskuldeep/blog-writing-agent.git
-- 主要技术：CrewAI、Tavily Search、Crawl4AI、Gemini、Maxim AI
+- 代码仓库：https://github.com/dskuldeep/blog-writing-agent.git
+- 主要技术：CrewAI、Tavily Search、Crawl4AI、Gemini、Maxim AI、Python asyncio
 
-本文的直接目标是自动生产博客，但真正值得复用到“1000+ 技术博客全量历史抓取 + 增量同步 + Markdown 知识库 + Web 管理”场景的，不是让大模型参与每篇文章的正文生成，而是它体现出的 **阶段化工作流、工具封装、质量审查、修订回路与全链路可观测性**。
+原项目的直接目标是“让一组 AI Agent 自动研究、写作、审查、修订并导出博客”。它不是面向百万级第三方文档采集设计的生产爬虫，因此不能原样套到“1000+ 技术博客全历史抓取 + 增量同步 + Markdown 知识库 + Web 管理”场景。
 
-## 2. 原项目实现结构
+真正值得吸收的是以下工程思想：
 
-原项目把博客生产拆成多个职责独立的 Agent：
+1. **复杂任务分阶段**：Research、Outline、Writer、Critique、Revision、Export 职责分离；
+2. **工具通过统一接口暴露给编排层**：搜索、抓取、保存都封装为 Tool；
+3. **候选结果与质量审查分离**：先生成，再 Critique，再 Revision；
+4. **全过程可观测**：对 LLM、Tool Call、Workflow Event 建立 Trace；
+5. **多模型/多角色可以按职责路由**：编排层与执行层不必绑定单一模型。
 
-1. Research Agent：搜索资料并抓取网页；
-2. Outline Agent：基于研究结果生成文章结构；
-3. Writer Agent：生成初稿；
-4. Critique Agent：检查初稿质量；
-5. Revision Agent：根据审查结果修订；
-6. Export Agent：保存最终文件。
+但从代码细节看，Demo 也暴露出一些生产化风险：每 URL 创建 Crawl4AI crawler、一次性 `asyncio.gather`、notebook 中使用 `nest_asyncio`、工具失败以普通字符串返回、自由文本在 Agent 间传递、Agent `memory` 可能形成隐式状态、FileSaver 接受任意本地路径、Trace 可能直接记录较大工具输入输出、Notebook 依赖交互式运行环境。这些问题正好说明知识库平台需要 **确定性数据面 + 受治理控制面 Agent**，而不是把多 Agent 直接放进热路径。
 
-任务按顺序执行，前一个阶段的结果成为后一个阶段的输入。CrewAI 负责 Agent、Task 和执行顺序的编排，Gemini 作为统一 LLM，Tavily 负责搜索，Crawl4AI 负责网页抓取，Maxim AI 负责 Trace、Tool Call 和 Event 级观测。
+---
 
-这种结构的关键不是 Agent 数量，而是把复杂工作拆成可观察的阶段，并显式区分“产生候选结果”和“检查候选结果”。这与生产级爬虫系统的 Fetch、Extract、Quality、Repair、Publish 分层高度一致。
+## 2. 原项目的执行拓扑
 
-## 3. 搜索工具实现原理
+文章定义了 6 个 Agent：
 
-文章把 Tavily 封装成 CrewAI 的 Tool。输入包含：
+1. **Research Agent**：使用 Tavily Search 和 Crawl4AI 搜索并读取资料；
+2. **Outline Agent**：根据研究材料规划文章结构；
+3. **Writer Agent**：生成 Markdown 初稿；
+4. **Critique Agent**：检查准确性、可读性和完整性；
+5. **Revision Agent**：根据 Critique 结果修改；
+6. **Export Agent**：通过 FileSaverTool 保存最终文件。
 
-- query；
-- max_results；
-- search_depth。
+任务拓扑本质上是顺序流水线：
 
-工具内部执行搜索，再把结果收敛为 title、content、url 等必要字段，同时为一次 Tool Call 建立追踪记录。
+```text
+Topic
+ -> Research
+ -> Outline
+ -> Write
+ -> Critique
+ -> Revise
+ -> Export
+```
 
-对博客知识库平台的启示是：**外部能力必须通过统一 Adapter/Tool 边界接入，业务层不能依赖供应商返回结构。**
+CrewAI 负责 Agent/Task 编排；Gemini 在示例中同时承担主要 LLM、manager/planning/function-calling 等角色；Tavily 负责互联网搜索；Crawl4AI 负责网页抓取；Maxim AI 负责 Trace/Event/Tool Call 观测。
 
-但对于已经明确的 1000 个目标站点，通用搜索引擎不应成为历史 URL Discovery 主路径。更可靠、成本更低的优先级应是：
+这个结构最有价值的部分不是“必须有 6 个 Agent”，而是 **阶段之间存在清晰的职责边界**。对于知识库平台，可映射为：
+
+```text
+Discovery
+ -> Fetch
+ -> Extract Candidate
+ -> Quality Critique
+ -> Bounded Repair
+ -> Canonicalize
+ -> Version
+ -> Render/Export
+```
+
+这使重试、回放、成本统计、质量诊断和发布控制都能按阶段进行。
+
+---
+
+## 3. Tavily Search Tool：Adapter 与结构化输入
+
+Notebook 自定义 `TavilySearchTool`，通过 Pydantic 输入模型约束：
+
+- `query`；
+- `max_results`；
+- `search_depth`。
+
+工具内部调用 Tavily，再将供应商返回结果收敛为 title、content、url 等字段。
+
+### 3.1 技术原理
+
+这是典型的 **Adapter Pattern + Tool Contract**：
+
+```text
+Agent
+ -> Tool Schema
+ -> Provider Adapter
+ -> External API
+ -> Normalized Result
+```
+
+业务编排不应该直接依赖 Tavily 的原始 JSON。对知识库平台同样如此：CMS API、Sitemap、RSS、Crawl4AI、Playwright、搜索引擎、互联网归档都应该先适配成平台自己的稳定协议。
+
+推荐统一返回：
+
+```json
+{
+  "status": "OK | RETRYABLE_ERROR | PERMANENT_ERROR | DEGRADED",
+  "evidence_refs": ["..."],
+  "output_ref": "object://...",
+  "metrics": {"latency_ms": 123, "bytes": 456},
+  "error": {"code": null, "retryable": false}
+}
+```
+
+而不是让 Worker 或 Agent 直接解释供应商自由格式。
+
+### 3.2 对历史抓取的适用边界
+
+对于已经明确的 1000 个目标站点，通用搜索引擎不应成为历史 URL Discovery 主路径。推荐顺序：
 
 ```text
 CMS/API
  -> Sitemap/Sitemap Index
  -> RSS/Atom
- -> Archive/Category/Pagination
- -> 站内有限 Deep Crawl
- -> 搜索引擎/互联网归档补洞
+ -> Archive/Category/Tag/Pagination
+ -> Bounded Deep Crawl
+ -> Search/Common Crawl/Web Archive 作为补洞
 ```
 
-搜索适合 Source Onboarding、缺口补洞或异常诊断，而不是已知站点每次增量同步都调用。
+搜索更适合：
 
-## 4. Crawl4AI 工具实现原理
+- 新 Source Probe；
+- Coverage Gap 补洞；
+- 站点迁移/域名变化诊断；
+- 控制面 Agent 搜索公开文档帮助生成 Candidate Recipe。
 
-项目中的 WebCrawlerTool 使用 `AsyncWebCrawler`，为每个 URL 创建异步任务，再用 `asyncio.gather` 并发等待结果。单 URL 抓取结果最终被整理成：
+---
+
+## 4. Crawl4AI Tool：异步 I/O 的实现与问题
+
+Notebook 的 `WebCrawlerTool` 使用 `AsyncWebCrawler`。`_run` 中先为 URL 列表构造协程，再通过 `asyncio.gather` 等待所有抓取结束；单 URL 返回 Markdown、图片、URL 和 title。
+
+### 4.1 为什么 asyncio 有效
+
+网页抓取主要等待：
+
+- DNS；
+- TCP/TLS；
+- 服务端响应；
+- 下载；
+- Browser 网络请求。
+
+这些属于 I/O-bound，异步事件循环可以在一个线程里调度大量等待中的任务，避免“一请求一线程”的成本。
+
+### 4.2 Demo 代码的生产风险：每 URL 一个 crawler
+
+代码在 `crawl_url` 内部执行：
 
 ```text
-content: Markdown
-images: 图片 URL
-url: 原 URL
-title: 页面标题
+async with AsyncWebCrawler(...) as crawler:
+    await crawler.arun(...)
 ```
 
-这是一个典型的 I/O 并发模型：网页抓取时间主要消耗在 DNS、TLS、服务器响应和下载等待上，因此用 asyncio 能用较少线程管理大量并发连接。
+而 `process_urls` 又会并发调用多个 `crawl_url`。因此一个 batch 中可能同时创建多个 crawler/browser 生命周期。对于几十个 URL 的 Demo 可接受，但在大规模系统中会带来：
 
-但是从“演示代码”升级到 1000 站生产系统必须增加以下约束：
+- Chromium/Browser 初始化开销；
+- 内存与文件描述符快速放大；
+- Browser context/session 无法复用；
+- Cookie、DNS、连接池收益丢失；
+- 单 Worker 资源峰值不可控。
 
-- 全局并发上限；
-- per-host 并发与 QPS；
-- robots/policy；
-- 429/5xx/timeout 分类重试；
-- 有界 batch，不能对超大 URL 集一次性 `gather`；
-- backpressure；
-- task lease、checkpoint、幂等键；
-- HTTP 与 Browser Worker Pool 隔离；
-- Source 级公平调度，避免大站回填饿死其他站点增量任务。
-
-因此生产实现应是：Scheduler 持续投递有限批次任务，Worker 从 Queue 消费；而不是把数十万 URL 一次性构造成同一进程中的协程数组。
-
-## 5. 事件循环实现上的风险
-
-文章为了把异步 Crawl4AI 包装成同步 Agent Tool，采用了 notebook/交互环境常见的 `nest_asyncio` 与同步入口调用异步协程的方式。
-
-这种方式适合 Demo，但不适合作为长期爬虫 Worker 的基础执行模型。生产服务应该让异步 Worker 自己拥有事件循环：
+生产设计应改为：
 
 ```text
-scheduler -> queue -> async http/browser worker -> result store
+Browser Worker Process
+ -> Worker-scoped crawler/browser pool
+ -> N 个受控 Browser Context
+ -> bounded task queue
+ -> per-host/global semaphore
 ```
 
-原因包括：
+即 **复用昂贵运行时，限制并发上下文**，而不是每个 URL 自建完整 crawler。
 
-- 嵌套事件循环增加运行时行为复杂度；
-- 阻塞式 Agent 调用会削弱异步吞吐；
-- Worker 的 timeout、cancel、lease renewal 不容易统一治理；
-- Browser 与 HTTP 的资源模型不同，应独立控制。
+### 4.3 不应对海量 URL 一次性 gather
 
-因此 Crawl4AI 应作为 Fetch Adapter，而不是让 CrewAI Agent 成为抓取运行时。
+一次性对数万/数十万 URL 构造 `asyncio.gather` 会造成：
 
-## 6. Markdown 与图片处理上的问题
+- 大量协程对象和参数同时驻留内存；
+- 没有自然 backpressure；
+- 失败批次尾延迟严重；
+- 无法实现跨 Source 公平；
+- 不方便 checkpoint、lease、取消和精细重试。
 
-原项目直接使用 Crawl4AI 生成的 Markdown，并为了提取图片再次对 Markdown/HTML 做转换和解析。这在内容生成型应用中可接受，但对于可追溯知识库存在两个问题。
+生产系统应使用：
 
-第一，第三方库生成的 Markdown 本身已经包含抽取和格式化策略，一旦库升级，同一个原始页面可能得到不同输出。如果直接把它视为最终事实，就难以判断变化来自网站还是 Renderer。
+```text
+Scheduler
+ -> Queue
+ -> bounded prefetch
+ -> Worker semaphore
+ -> per-domain token bucket
+ -> result/outbox
+```
 
-第二，从 Markdown 再转换回 HTML 查找图片是一个有损往返。生产系统更合理的方式是直接保存原始 DOM/Crawl Result 的媒体元数据，对资源 URL 做绝对化和规范化，再决定只保留原链接还是下载到对象存储。
+并让 Backfill、Incremental、Browser、Repair 使用不同 Queue Class。
 
-因此建议坚持：
+---
+
+## 5. `nest_asyncio` 与 Notebook 事件循环
+
+Notebook 为了在已经运行事件循环的交互环境中调用异步代码，使用了 `nest_asyncio.apply()`。
+
+这属于 Notebook 兼容技巧，不适合作为服务端 Worker 的运行模型。生产服务应让异步 Worker 自己拥有事件循环，并保持同步/异步边界清晰：
+
+```text
+Queue Consumer
+ -> async fetch loop
+ -> timeout/cancel
+ -> lease renewal
+ -> result commit
+```
+
+原因：
+
+- 嵌套事件循环行为更难推理；
+- timeout/cancel 传播容易复杂化；
+- Agent 的同步调用不应决定爬虫 Worker 生命周期；
+- Browser 与 HTTP 资源模型不同，应隔离部署。
+
+因此 Crawl4AI 在知识库方案中应定位为 **Browser/Fetch Adapter**，不能让 CrewAI Agent 成为大规模抓取运行时。
+
+---
+
+## 6. Notebook 的可复现性问题
+
+仓库只有一个已执行过的 Notebook。代码中可见对 `Markdown.markdown(...)` 的调用，但在公开 Notebook 的导入区没有看到对应的 `Markdown` 导入。这类情况在交互式 Notebook 中很常见：当前 Kernel 可能保留了之前执行过、后来被删除的变量或导入。
+
+这说明生产系统不能接受“在我的 Notebook 里能跑”作为发布标准。推荐：
+
+1. 所有依赖锁版本；
+2. Runtime Image 使用 digest；
+3. CI 在空环境/冷启动中运行集成测试；
+4. Golden Corpus Replay 必须从全新 Worker 启动；
+5. Source Release 同时记录 crawler、browser、extractor、renderer、schema 和 model release；
+6. 禁止依赖 Kernel 隐式状态。
+
+这对长期知识库尤其重要，因为半年后需要能够复现“为什么当时生成了这个 Markdown”。
+
+---
+
+## 7. 工具错误不能作为普通文本返回
+
+Tavily Tool 的示例在异常时返回类似“An error occurred...”的字符串；Crawler Tool 也将失败放进普通字典/文本字段。
+
+对 Agent Demo 来说方便，但生产系统存在问题：LLM 可能把错误字符串当成正常研究材料继续推理。
+
+推荐使用 **Typed Failure Contract**：
+
+```text
+OK
+RETRYABLE_NETWORK_ERROR
+RATE_LIMITED
+ACCESS_DENIED
+TIMEOUT
+INVALID_INPUT
+PERMANENT_NOT_FOUND
+POLICY_BLOCKED
+INTERNAL_ERROR
+```
+
+每个错误带：
+
+- retryable；
+- retry_after；
+- source/provider；
+- trace_id；
+- diagnostic_ref；
+- user_visible_message。
+
+Workflow Engine 根据状态决定 Retry/DLQ/Quarantine，而不是让 LLM 从字符串猜失败语义。
+
+---
+
+## 8. Markdown 与图片处理：不能把派生格式当事实
+
+原项目直接使用 Crawl4AI Markdown，并把 Markdown 再转成 HTML 后用 BeautifulSoup 找图片。
+
+对于内容生成 Demo 可以接受，但对可追溯知识库不理想。
+
+### 8.1 Markdown 不是原始事实
+
+Crawler 版本、抽取策略、过滤规则变化，都可能让同一 HTML 生成不同 Markdown。如果直接把 Markdown 当事实，就无法判断变化到底来自源站还是 Renderer。
+
+推荐主链：
 
 ```text
 Immutable Raw Artifact
- -> 多 Extractor Candidate
- -> Canonical IR
+ -> Extraction Candidate
  -> Quality Gate
- -> Version
+ -> Canonical IR
+ -> Document Version
  -> Markdown Renderer
 ```
 
-Crawl4AI Markdown 只能作为 Candidate 或诊断数据，最终 Markdown 从版本化 Canonical IR 确定性生成。
+Crawl4AI Markdown 只作为 Candidate/诊断产物。
 
-## 7. 多 Agent 流水线映射到知识库平台
+### 8.2 图片不应走 Markdown -> HTML 往返
 
-可以把原文章的 6 个 Agent 抽象为以下生产阶段：
+图片、链接、媒体应直接来自：
 
-| 原项目阶段 | 知识库平台映射 | 是否允许 LLM 在热路径参与 |
-|---|---|---|
-| Research | Discovery + Fetch | 否，确定性 Provider/Fetcher 为主 |
-| Outline | Parse Plan / Source Profile | 仅 Probe/规则生成可选 |
-| Writer | Extract + Normalize | 否，确定性抽取与 IR 构建 |
-| Critique | Quality Gate | 主体是规则/统计，可选异常诊断 |
-| Revision | Repair / Alternate Extractor | 规则和替代 Extractor 为主 |
-| Export | Version + Markdown + Projection | 否，确定性 Renderer |
+- 原始 DOM；
+- Crawl4AI media metadata；
+- HTML attribute；
+- Structured Metadata。
 
-最重要的改造是：**不能把“Writer/Revision”理解成让 LLM 改写抓到的第三方文章。** 知识库要求保真，Canonical 内容必须来自源页面事实。LLM 可以提出 selector、识别异常类型、总结诊断原因，但不能默默重写正文后再当源文存储。
+处理：
 
-## 8. Critique -> Revision 模式值得直接吸收
+- relative -> absolute URL；
+- canonical asset URL；
+- 保存 alt/title；
+- 可选下载对象存储；
+- sha256 去重；
+- 记录 source artifact。
 
-原项目有 Critique Agent 和 Revision Agent，这提示知识库方案应把质量审查与自动修复做成独立状态机，而不是“一次抽取成功就入库”。
+这样避免派生格式往返造成信息损失。
 
-建议状态：
+---
+
+## 9. Critique -> Revision：最值得迁移的核心思想
+
+原项目不是 Writer 输出后直接保存，而是经过 Critique，再交给 Revision。这对应生产知识库里的：
+
+```text
+Extract Candidate
+ -> Quality Gate
+ -> PASS
+    or
+ -> FAIL_RECOVERABLE
+ -> Bounded Repair
+ -> Quality Gate
+```
+
+推荐状态机：
 
 ```text
 FETCHED
  -> EXTRACTED
  -> QUALITY_CHECK
-    -> PASS -> VERSIONED -> RENDERED
-    -> FAIL_RECOVERABLE -> REPAIR_PENDING
-         -> ALTERNATE_EXTRACTOR
-         -> DOM_REPAIR
-         -> BROWSER_REFETCH（有恢复证据时）
-         -> QUALITY_CHECK
-    -> FAIL_UNKNOWN -> QUARANTINE
+      -> PASS/WARN -> CANONICALIZE
+      -> FAIL_RECOVERABLE -> REPAIR_PENDING
+           -> ALTERNATE_EXTRACTOR
+           -> DETERMINISTIC_RECIPE
+           -> DOM_REPAIR
+           -> BROWSER_REFETCH（只有历史收益证据时）
+           -> QUALITY_CHECK
+      -> FAIL_UNKNOWN -> QUARANTINE
+      -> NON_CONTENT -> REJECT
 ```
 
-Quality Gate 至少检查：
+### 9.1 Quality Gate 指标
 
-- title 是否存在；
-- 正文长度和段落数量；
+至少包括：
+
+- title/author/date/canonical；
+- 最小正文长度；
+- paragraph/heading 数；
 - link density；
-- boilerplate 比例；
-- 登录墙、WAF、错误页特征；
-- heading、code、table、list 结构保留；
-- language；
-- 与其他 Candidate 的一致性；
-- 与历史版本相比是否出现异常截断；
-- 页面类型与抽取结果是否冲突。
+- boilerplate；
+- code/table/list 保留；
+- error/login/WAF/CAPTCHA 指纹；
+- Candidate Agreement；
+- 与历史版本的异常截断/结构突变；
+- Page Type 与正文特征是否冲突。
 
-这样才能把“抓到了 HTTP 200”与“得到可用知识文档”区分开。
+### 9.2 Revision 必须有限
 
-## 9. Repair 不应是无限 Agent 循环
+不能把原文的“Agent 继续修订直到满意”照搬到爬虫热路径。Repair 必须是有限状态机，并配置：
 
-文章里的修订过程可以由 Agent 根据 Critique 结果继续生成内容，但爬虫系统不能无界循环修复，否则会造成不可控成本和任务长尾。
+- `max_steps`；
+- `max_wall_time`；
+- `browser_budget`；
+- `max_cost`；
+- Source circuit breaker。
 
-应把 Repair 编译成有限状态机：
+未恢复到质量阈值就进入 QUARANTINE，不得让 LLM 改写第三方正文后冒充源文。
+
+---
+
+## 10. Agent Memory：不应成为业务状态
+
+示例部分 Agent 开启 `memory=True`。对于研究/写作 Demo，Memory 可以让 Agent 记住前文；但生产控制面若把关键事实留在 Agent 隐式记忆中，会产生：
+
+- 无法审计；
+- 无法确定性重放；
+- 升级模型后结果难比较；
+- Context Window 截断可能静默丢信息；
+- 多实例之间状态难共享。
+
+知识库平台应采用 **Typed Artifact Handoff**：
 
 ```text
-Generic Extractor
- -> Deterministic Recipe
- -> DOM Repair + Generic
- -> Browser Fetch + same Extraction Portfolio
- -> Quarantine
+Agent Step A
+ -> typed output JSON / object storage
+ -> schema validation
+ -> Agent Step B consumes refs
 ```
 
-每一个升级步骤都要记录：
+Agent memory 只允许作为临时推理上下文，不是 Source/Profile/Release/Coverage/Artifact 的真相存储。
 
-- trigger reason；
-- before/after quality score；
-- latency；
-- resource cost；
-- 是否恢复为 PASS。
+推荐控制面对象：
 
-如果某 Source 的 Browser 或高成本 Repair 长期低收益，应触发 Source-scoped circuit breaker，而不是无限尝试。
+```text
+agent_run
+agent_step
+agent_tool_call
+agent_evidence
+candidate_release
+```
 
-## 10. Maxim AI 可观测性对平台的启示
+其中输入输出尽量保存对象引用和 schema，而不是把所有网页原文塞进上下文。
 
-原项目不仅记录总执行结果，还把 Trace、Tool Call、Event 分层。对于爬虫平台，这一点非常重要。
+---
 
-建议用 OpenTelemetry 形成统一层级：
+## 11. Context Window 与研究材料外置
+
+Research Task 的 expected output 倾向于保留较多“raw content”。如果将多个完整网页直接串进 Agent 上下文，会出现：
+
+- Token 成本快速增加；
+- 早期材料被截断；
+- 重复页面挤占上下文；
+- 难以追踪具体结论来自哪个页面；
+- Prompt Injection 面扩大。
+
+生产控制面应采用 **Evidence Store + Reference Passing**：
+
+```text
+Fetch Sample
+ -> immutable evidence artifact
+ -> deterministic metadata/summary
+ -> evidence_id
+ -> Agent receives bounded excerpts + evidence refs
+```
+
+Agent 输出的每条建议带 `evidence_refs`。真正配置发布时，Validator/Replay 直接读取证据 Artifact，而不是依赖 Agent 对原文的记忆。
+
+---
+
+## 12. Maxim Trace：应升级为平台级 Provenance
+
+原项目用 Maxim 记录 LLM/Tool/Event Trace。这个思想非常适合知识库平台，但应扩展成统一 OpenTelemetry Trace。
+
+推荐层级：
 
 ```text
 sync_run_id
  -> source_id
- -> discovery_provider_run
+ -> provider_run
  -> url_observation
  -> classification
- -> route_decision
- -> fetch_task
+ -> route
+ -> fetch
  -> artifact
  -> extraction_attempt
  -> quality_result
- -> repair/fallback
+ -> repair
  -> document_version
  -> markdown_projection
 ```
 
-并在每个 span/事件上携带：
+控制面 Agent 额外记录：
 
-- source_release_id；
-- task_id；
-- url_id；
+```text
+agent_run_id
+ -> agent_step_id
+ -> model_call
+ -> tool_call
+ -> evidence_ref
+ -> candidate_release
+```
+
+每个 span 至少带：
+
+- source_id/source_release_id；
+- run_id/task_id/url_id；
 - artifact_id；
-- extractor_release；
-- quality score；
-- retry reason；
-- cost；
+- model_release；
+- tool_schema_release；
+- token/cost；
+- latency；
+- status/error code；
 - trace_id。
 
-这样 Web 管理台才能回答：为什么某篇文章没有入库、为什么用了 Browser、哪一个 Extractor 失败、修复是否有效、某次版本变化来自网站还是 Renderer 升级。
+### 12.1 Trace 不能无限记录原文
 
-Maxim 本身并非必须依赖。生产方案使用 OpenTelemetry + Prometheus/Grafana + 结构化日志，更容易保持供应商中立。
+Demo 里 Tool Trace 很容易把 query、output 等直接作为参数写入日志。生产环境应：
 
-## 11. 工具调用追踪应扩展为 Artifact Provenance
+- Secret redaction；
+- Cookie/Auth header 禁止进入 Trace；
+- 大响应只存 object key + hash + size；
+- Prompt/Response 设置大小上限；
+- 对长期日志配置采样与保留周期；
+- PII/版权内容按来源策略处理。
 
-文章的 Tool Call Trace 解决“Agent 调了什么工具”。知识库还需要进一步回答“结果来自哪个不可变事实”。
+Observability 不能反过来成为第二套未经治理的正文存储。
 
-建议每次抓取先生成 Artifact：
+---
 
-```text
-artifact
-- url_id
-- fetch_kind
-- status_code
-- content_type
-- etag
-- last_modified
-- fetched_at
-- sha256
-- object_key
-- runtime_release
-```
+## 13. FileSaverTool 暴露任意路径：生产环境必须去能力化
 
-Extractor 只引用 Artifact ID，Document Version 再引用最终采用的 Artifact 与 Extraction Attempt。这样即使后续升级清洗器，也可以对旧 Artifact 离线 Replay，无须重新访问源站。
+示例 FileSaverTool 接收 `save_folder` 和 `file_name` 并写本地文件。这适合个人 Notebook，但如果由 Agent 决定路径，在服务端属于高风险能力：
 
-## 12. 原项目按 URL 返回结果的局限
+- path traversal；
+- 覆盖非目标文件；
+- 写入临时容器不可持久化；
+- 多 Worker 并发冲突；
+- 无版本、无 hash、无审计。
 
-Demo 最终按 URL 聚合抓取结果。但生产系统不能只用 URL 作为事实主键，因为 URL 可能发生：
-
-- query 参数变化；
-- canonical 变化；
-- 301/308 迁移；
-- 同 URL 内容更新；
-- 同内容多个 URL；
-- 路径重构后重发布。
-
-建议拆分：
+知识库平台不应给 Agent 任意文件系统写权限。正确做法是能力受限的 Adapter：
 
 ```text
-source_id + normalized_url -> url_identity
-url_identity + fetch time -> artifact
-stable document identity -> document
-document + semantic_hash -> document_version
+SaveCandidateRelease(source_id, object_ref)
+SaveDiagnostic(run_id, object_ref)
 ```
 
-同时保存 canonical/redirect 关系，而不是简单覆盖 URL。
+底层固定写入对象存储命名空间，并由 API 层校验 source/run/tenant 权限。Canonical Markdown 的写入更应由确定性 Renderer/Projection Worker 完成，而不是由 LLM Tool 保存。
 
-## 13. 对增量同步的具体优化
+---
 
-从文章的阶段化工具模型可以进一步把增量同步拆成独立阶段，而不是整站重复执行抓取：
+## 14. 多模型能力：应转化为 Model Routing 与 Release
+
+文章提到 CrewAI 可以为 chat、manager、planning、function calling 使用不同模型，示例为了简单全部使用同一个 Gemini 模型。
+
+生产控制面可以利用角色差异，但必须版本化：
 
 ```text
-Discovery Diff
- -> Candidate URL Inventory
- -> Known/New 判定
- -> Conditional Fetch
- -> Extract
- -> Quality
- -> Semantic Diff
- -> Version/Projection
+agent_release
+- workflow_version
+- prompt_release
+- tool_schema_release
+- planner_model_release
+- critic_model_release
+- function_call_model_release
+- max_steps
+- max_tool_calls
+- max_tokens
+- max_cost
 ```
 
-建议为每个 Discovery Provider 保存 cursor/watermark/exhaustion evidence。已知 URL 复检时优先使用：
+建议：
 
-- ETag / If-None-Match；
-- Last-Modified / If-Modified-Since；
-- Sitemap lastmod；
-- RSS updated；
-- CMS revision/update time。
+- 低成本模型：简单归纳、标签、样本初筛；
+- 强模型：少量复杂 Probe/Quarantine 根因分析；
+- Critic 可以与 Planner 使用不同模型，减少同源偏差；
+- 任何 Agent 输出只是 Candidate，不直接改 ACTIVE Source Release。
 
-HTTP 304 只更新检查时间，不创建正文版本；正文 `semantic_hash` 不变也不应重复向量化。
+必须能比较模型/Prompt 升级前后的 Golden Replay 与 Candidate Acceptance Rate。
 
-删除不能因为一次 Sitemap 缺失就立即删除，应进入：
+---
+
+## 15. 控制面 Agent 应采用“研究—计划—批评—修订—发布候选”工作流
+
+原项目的多 Agent 思路适合放在低频控制面，建议映射为：
 
 ```text
-ACTIVE -> SUSPECT_MISSING -> 多证据复检 -> REMOVED
+Evidence Collector
+ -> Profile Planner
+ -> Rule/Recipe Generator
+ -> Critic
+ -> Reviser
+ -> Candidate Release Assembler
 ```
 
-## 14. Source Profile 应成为扩展性的核心
+### 15.1 Evidence Collector
 
-原项目通过 Tool 封装让 Agent 可以替换搜索和爬虫工具。对应到 1000 站平台，更重要的是把站点差异做成数据配置，而不是代码分支。
+只调用受限工具：
 
-Source Profile 至少包含：
+- `ProbeRobots`；
+- `ProbeSitemap`；
+- `ProbeFeed`；
+- `FetchSample`；
+- `InspectDOM`；
+- `InspectStructuredMetadata`；
+- `SearchGapEvidence`。
 
-```yaml
-scope:
-  allowed_hosts: []
-  include: []
-  exclude: []
+输出证据 ID，不保存业务真相。
 
-discovery:
-  providers: [sitemap, rss, archive]
+### 15.2 Profile Planner
 
-fetch:
-  http_first: true
-  browser_fallback: true
-  concurrency_per_host: 2
-  rate_limit: ...
+根据证据提出：
 
-routing:
-  article_patterns: []
-  index_patterns: []
+- Discovery Provider；
+- Page Type pattern；
+- HTTP/Browser route；
+- Extractor portfolio；
+- Quality threshold；
+- Repair sequence。
 
-extraction:
-  portfolio: [structured, trafilatura, deterministic]
-  recipe: ...
+### 15.3 Critic
 
-quality:
-  thresholds: ...
+检查：
 
-incremental:
-  freshness_class: WARM
-  verify_known_urls: true
-```
+- 是否过拟合几个样本；
+- 是否遗漏 Index/Tag/Author；
+- 是否引入 Browser 过多；
+- selector 是否脆弱；
+- Coverage 是否有证据；
+- 是否违反 robots/egress policy；
+- 是否可能将非正文写入 Canonical。
 
-新增网站先 Probe，再生成 Candidate Profile；人工确认后发布 Source Release。站点模板改变必须产生新 Release，通过 Golden Replay/Canary 后切换。
+### 15.4 Reviser
 
-## 15. Agent 最适合放在控制面，而不是数据面
+只修改 Candidate 配置，不修改生产 ACTIVE。
 
-原文证明了 Agent 很适合组织“研究—审查—修订”这类低吞吐、高语义任务。但用户目标是百万级文档的长期同步，数据面必须优先确定性、廉价和可重放。
+### 15.5 Candidate Release Assembler
 
-推荐边界：
-
-### 数据面
-
-完全确定性：
-
-- URL Discovery；
-- HTTP Fetch；
-- Browser Recipe；
-- HTML/PDF 抽取；
-- Quality Rule；
-- IR；
-- Version；
-- Markdown；
-- Index/Embedding 任务。
-
-### 控制面 Agent
-
-低频使用：
-
-- 新 Source Probe 结果归纳；
-- 根据失败样本建议 CSS/XPath/URL Pattern；
-- QUARANTINE 聚类与根因分析；
-- 对 Drift 生成 Candidate Recipe；
-- 帮管理员解释某次失败链路；
-- 对 Canary Diff 做语义辅助审查。
-
-Agent 的建议不能直接修改 ACTIVE 配置，必须经过 Candidate Release -> Replay -> Canary -> Approval。
-
-## 16. Web 管理功能应增加“阶段回放”能力
-
-受原项目多 Agent 过程可观察性的启发，Web 后台不能只有“成功/失败列表”，而应按阶段展示一个 URL/Document 的完整执行链：
+生成版本化 Source Release，进入：
 
 ```text
-发现
- -> 分类
- -> 路由
- -> Fetch
- -> Extract Candidate A/B/C
- -> Quality
- -> Repair/Fallback
+Static Validation
+ -> Golden Replay
+ -> Live Sample
+ -> CANARY
+ -> Metrics Compare
+ -> Human Approval
+ -> ACTIVE
+```
+
+这保留了原项目 Critique/Revision 的优点，同时把 LLM 不确定性限制在可审计、可回滚的控制面。
+
+---
+
+## 16. Control-plane Agent 也必须有预算和有限状态
+
+虽然 Agent 不在热路径，仍需要：
+
+- `max_steps`；
+- `max_tool_calls`；
+- `max_wall_time`；
+- `max_tokens`；
+- `max_cost`；
+- per-provider RPM；
+- Tool allowlist；
+- source-scoped egress；
+- circuit breaker。
+
+达到预算后状态应是 `DEGRADED_NEEDS_REVIEW`，不能让 Agent 无限“反思—搜索—重试”。
+
+任务失败也不应阻塞 HTTP/Incremental 数据面。
+
+---
+
+## 17. 从 Demo 到 1000 站平台的完整映射
+
+| 原项目 | 知识库平台 | 生产约束 |
+|---|---|---|
+| Tavily Search | Gap Search / Probe Adapter | 不是主 Discovery |
+| Crawl4AI Tool | Browser Fetch / Dynamic Discovery Adapter | 独立池、受限并发、可替换 |
+| Agent Memory | Typed Agent Artifact | 不作为业务真相 |
+| Research Agent | Evidence Collector | 低频控制面 |
+| Outline Agent | Profile Planner | 只生成 Candidate |
+| Writer Agent | Rule/Recipe Generator | 不改写正文 |
+| Critique Agent | Agent Critic + Deterministic Validators | Critic 不能最终批准 |
+| Revision Agent | Candidate Config Reviser | 有限次数 |
+| Export Agent | Candidate Release Assembler | 不允许任意文件写 |
+| Maxim Trace | OpenTelemetry + Agent Trace | 大内容外置、Secret redaction |
+| Crawl4AI Markdown | Extraction Candidate | 不作为 Canonical |
+| Blog export | Canonical IR -> Renderer -> Markdown Projection | 确定性、可重建 |
+
+---
+
+## 18. 对现有技术方案的具体优化项
+
+基于原文与 Notebook 的实现细节，主方案应补充以下能力：
+
+1. **Browser Worker 复用 crawler/browser/context 池**，禁止每 URL 无界创建昂贵运行时；
+2. **所有并发必须 bounded**，不对全量 URL 一次性 gather；
+3. **Agent Tool 使用 Typed Result/Typed Error**，错误不能作为普通研究文本；
+4. **Agent 只传递版本化 Artifact/Evidence 引用**，Memory 不作为业务状态；
+5. **控制面采用 Evidence -> Plan -> Critique -> Revise -> Candidate Release**；
+6. **Agent Workflow 加 max_steps/tool_calls/tokens/cost/wall-time 预算**；
+7. **Agent/Prompt/Tool Schema/Model 全部 Release 化**；
+8. **Trace 大内容外置，日志做 Secret/PII redaction 和大小限制**；
+9. **禁止 Agent 任意文件系统写入、任意 JS/Shell/Code Execution**；
+10. **Notebook/运行时必须通过冷启动可复现测试**；
+11. **Canonical Markdown 继续坚持 Raw Artifact -> Candidate -> Quality -> IR -> Renderer**；
+12. **Critique/Revision 只用于配置候选和有限 Repair，不能改写第三方源正文。**
+
+---
+
+## 19. 最终判断
+
+这篇文章最重要的启发不是“用 CrewAI 搭 6 个 Agent”，而是：**将复杂流程拆成角色清晰、可观察、可审查、可修订的阶段**。
+
+对于 1000+ 技术博客知识库，正确吸收方式是：
+
+```text
+高吞吐数据面：
+Authoritative Discovery
+ -> Classification/Route
+ -> HTTP First
+ -> Immutable Artifact
+ -> Extraction Portfolio
+ -> Deterministic Quality
+ -> Bounded Repair
  -> Canonical IR
  -> Version
  -> Markdown
- -> Search/Vector Projection
+
+低频控制面：
+Evidence Collection
+ -> Agent Planning
+ -> Agent Critique
+ -> Candidate Revision
+ -> Static Validation
+ -> Golden Replay
+ -> Canary
+ -> Human Approval
+ -> Active Source Release
 ```
 
-建议支持：
-
-- Raw HTML / Browser DOM / Candidate / IR / Markdown Diff；
-- 一键 Replay 某一个阶段；
-- 用 Candidate Source Release 做只读试跑；
-- 查看 Repair 前后 quality delta；
-- 查看同一文档历史 Version Diff；
-- 查看 DLQ/QUARANTINE 根因和批量修复建议；
-- Source 级 Pipeline Trace 和成本瀑布图。
-
-## 17. 最终结论
-
-这篇文章不能直接作为 1000 站博客知识库的爬虫架构，因为它以 LLM Agent 为中心、运行规模较小、输出目标是生成内容，而不是长期保存第三方源事实。
-
-但它有三点非常值得吸收：
-
-1. **分阶段流水线**：每个阶段职责单一、输入输出明确，天然适合重试、回放和观测；
-2. **Critique -> Revision**：对应 Quality Gate -> Repair/Fallback，使正文质量成为显式流程，而非抓取后的附带检查；
-3. **Trace/Tool Observability**：应升级为整个平台的 Artifact Provenance 与阶段 Trace。
-
-因此技术方案应继续坚持 HTTP First、Authoritative Discovery、Immutable Artifact、Extraction Portfolio、Canonical IR 和 Incremental Versioning，同时强化 **Quality-Repair 状态机、阶段级 Trace/Replay、控制面 Agent 与数据面确定性隔离**。这样既能利用 Agent 的语义能力，又不会让其成本、延迟和不确定性成为 1000+ 站点规模化同步的瓶颈。
+这样既继承多 Agent 的阶段化、Critique/Revision 和 Observability 优点，又避免 Demo 中的 Browser 生命周期、无界并发、隐式 Memory、自由文本错误、任意文件写、Notebook 状态以及 LLM 不确定性在百万级数据面放大。
