@@ -8,19 +8,32 @@
 
 ## 1. 结论
 
-Crawl4AI 的 Adaptive Crawling 本质上不是“把网站抓全”的爬虫，而是一个 **query-driven information foraging（查询驱动的信息觅食）** 层：它持续估计当前知识集合对某个查询是否“已经足够”，对待抓链接计算预期信息增益，然后在置信度达到阈值、收益趋于饱和、达到页数上限或没有候选时提前停止。
+Crawl4AI 的 Adaptive Crawling 本质上是一个 **query-driven information foraging（查询驱动的信息觅食）** 运行时：它维护当前知识集合，对候选链接估计相关性/新颖性/语义缺口收益，并在“专题信息已经足够”、边际收益下降、达到页数或深度预算、候选耗尽等条件下提前停止。
 
-这和博客知识库的核心目标“1000+ 站点全历史回填 + 持续增量同步”存在语义冲突。官方文档也明确指出 Adaptive Crawling 不适合 Full Site Archiving 和 Real-time Monitoring。因此它不能替代 Sitemap/RSS/CMS/Archive/Common Crawl/Wayback/Persistent Frontier，也不能作为 Coverage Truth 或 Backfill Complete 的判据。
+它与本项目“1000+ 技术博客全历史回填 + 持续增量同步”的核心语义不同。官方文档也明确把 **Full Site Archiving** 和 **Real-time Monitoring** 列为不推荐场景。因此：
 
-但它非常适合作为一个 **Focused Gap / Expensive Slow-path Optimizer**：当全量 Inventory 已经建立后，对需要 Browser、动态渲染、深层导航、专题补洞或用户专题知识包的候选进行排序，用有限预算优先抓“最可能补信息缺口”的页面。这样可以在不丢 URL 的前提下降低 Browser 和 Deep Crawl 成本。
+```text
+Adaptive confidence != Historical Coverage
+Adaptive stopped     != Backfill Complete
+Adaptive pending     != Platform URL Inventory
+```
 
-最终建议：在现有方案中新增 `adaptive_focused_gap` Provider/Job 类型，默认使用 statistical strategy，embedding strategy 作为可选增强。Adaptive 的分数只决定“先抓谁”，不能决定“永远不抓谁”。
+最合适的身份不是 Coverage Provider，而是：
+
+```text
+Focused Information-Gain Scheduler
++ Expensive Slow-path Optimizer
+```
+
+即：先由 CMS/API、Sitemap、RSS、Archive、Common Crawl、Wayback、Safe Recon、Deep Crawl 等建立持久 URL Inventory，再让 Adaptive 能力对 Browser、Deep Crawl、Repair、专题知识包等昂贵候选决定“先抓谁”。低分、未选择、preview 失败的 URL 仍留在 Persistent Frontier，不能被永久删除。
+
+进一步阅读当前源码后，生产方案还应增加一个更强约束：**不要直接把 `AdaptiveCrawler.digest()` 当平台调度器。** 当前实现存在批次结果关联、严格预算、恢复状态完整性、并发复用等问题。生产默认应由平台拥有 Frontier、Admission、请求关联、重试和预算；Crawl4AI Adaptive 只作为评分/实验运行时，或使用经过补丁和 Golden Test 的固定 release。
 
 ---
 
 ## 2. 核心对象与状态模型
 
-源码的核心状态是 `CrawlState`，主要包含：
+`CrawlState` 主要维护：
 
 ```text
 crawled_urls
@@ -41,38 +54,26 @@ semantic_gaps
 embedding_model
 ```
 
-它说明 AdaptiveCrawler 不是无状态的单页抽取器，而是维护一个不断增长的“当前知识集合 + 未抓候选 + 统计/向量状态”。
+这说明 AdaptiveCrawler 是有状态运行时，而不是单页抽取器。
 
-`CrawlState.save()` 会把：
+`CrawlState.save()` 会把 crawled URLs、运行时 Markdown、pending links、词频、embedding、expanded queries 等序列化为 JSON；`load()` 可以恢复这些字段。
 
-- crawled URL；
-- 知识库中的 Markdown；
-- pending links；
-- term frequency/document frequency；
-- new term history；
-- embedding 数组；
-- expanded queries；
-- semantic gaps；
+但它不能作为平台业务恢复真相，原因包括：
 
-序列化到 JSON；`load()` 可以恢复。
+1. 状态包含 Markdown、pending links、embedding，体积随任务增长；
+2. 没有平台级 Lease、Fencing Token、Transactional Outbox；
+3. `pending_links/crawled_urls` 只是 AdaptiveCrawler 局部视图；
+4. runtime/source profile/traversal/model 变化后状态可能不兼容；
+5. embedding 模式的关键运行状态并未完整持久化，见第 7 节。
 
-### 对本项目的意义
-
-这个状态可以作为 **runtime resume hint**，但不能成为业务恢复真相：
-
-1. 状态中包含运行时 Markdown、pending links 和 embedding，体积会随任务变大；
-2. 它没有平台级 lease/fencing/outbox 语义；
-3. crawler 版本、Source Profile、Traversal Policy、Embedding Model 变化后，旧状态可能不可兼容；
-4. `pending_links` 和 `crawled_urls` 代表 AdaptiveCrawler 自己的局部视图，不等于平台完整 URL Inventory。
-
-因此应继续沿用：
+因此保持：
 
 ```text
 PostgreSQL Persistent Frontier = 业务真相
-S3 runtime checkpoint          = AdaptiveCrawler 恢复优化
+S3 Runtime Checkpoint          = 可丢弃的恢复优化
 ```
 
-Checkpoint 必须附：
+Checkpoint Envelope 至少包含：
 
 ```text
 source_id
@@ -82,6 +83,8 @@ strategy
 crawler_release
 source_profile_release
 traversal_policy_release
+adaptive_policy_release
+query_expansion_release
 embedding_release
 schema_version
 state_object_key
@@ -89,17 +92,15 @@ state_sha256
 captured_at
 ```
 
-任一 release 不兼容时，丢弃 runtime checkpoint，从 PostgreSQL Frontier 重建 focused slice。
+任何关键 release/query hash 不匹配时，不能原样 resume，应从 PostgreSQL Frontier 重建 focused slice。
 
 ---
 
 ## 3. Statistical Strategy 技术原理
 
-StatisticalStrategy 不依赖 LLM 和 embedding，适合作为生产默认策略。
-
 ### 3.1 Coverage
 
-源码先对 query 和文档做简单 tokenization，然后针对每个 query term 计算：
+当前源码先对 query 与 Markdown 做简单 tokenization，然后对每个 query term 计算：
 
 ```text
 doc_coverage = document_frequency / total_documents
@@ -108,57 +109,58 @@ term_score   = doc_coverage * (1 + 0.5 * freq_signal)
 coverage     = sqrt(avg(term_score))
 ```
 
-最后 clamp 到 0~1。
+最终 clamp 到 0~1。
 
-这不是“网页覆盖率”，而是 **query term 在当前知识集合中的文本覆盖程度**。例如 query 是 `postgres redis scheduler`，大量页面覆盖这几个词会提高 coverage；但这不能证明某博客历史 URL 已全部发现。
+它表达的是 **query terms 在当前知识集合中的文本覆盖程度**，不是站点 URL 覆盖率。
 
 ### 3.2 Consistency
 
-源码对 knowledge base 两两取词集合并计算 Jaccard：
+当前源码不是事实矛盾检测，而是对知识库文档两两计算词集合 Jaccard：
 
 ```text
 J(A,B) = |A ∩ B| / |A ∪ B|
-consistency = pairwise Jaccard 的平均值
+consistency = pairwise Jaccard 平均值
 ```
 
-这实际上更接近“内容主题重叠/相似度”，并不是真正的事实一致性检测。两个页面使用相同术语但结论相反，仍可能得到较高分。
-
-因此在本项目里只能把它解释为：
+因此它应被解释为：
 
 ```text
-topical_coherence
+topical_overlap / topical_coherence
 ```
 
-不能解释成“事实可靠性”。
+不能解释为事实一致性或来源可信度。
+
+高级文档对 consistency 的描述比当前实现更强，涉及“关键陈述/矛盾”的概念，但当前源码实际是 term overlap。生产设计必须以 **pinned source behavior + Golden Test** 为准，而不是只按文档语义命名。
 
 ### 3.3 Saturation
 
-源码记录每个新页面引入的 unique term 数量：
+源码记录每个新页面带来的新 unique terms 数量：
 
 ```text
 new_terms_history = [page1_new_terms, page2_new_terms, ...]
-```
-
-然后用：
-
-```text
 saturation = 1 - recent_rate / initial_rate
 ```
 
-估计边际收益是否下降。
+它表达边际新增词汇是否下降。
 
-它能很好地表达“继续抓类似页面新增信息越来越少”，但也有明显局限：
+局限：
 
-- 以第一个页面为基准，首个页面异常会影响后续尺度；
-- 新术语数量不等于有价值信息；
-- 模板、代码、导航噪声会制造新词；
-- 多语言站点、中文分词、代码符号都会影响 token 统计。
+- 首个页面异常会改变尺度；
+- 模板/导航/代码噪声会制造“新词”；
+- 新词数量不等于有价值信息；
+- 多语言和技术术语对 tokenizer 非常敏感。
 
-所以进入平台前应基于 Canonical/clean text 或轻量 cleaned text 计算，而不是直接信任未清洗 Markdown。
+### 3.4 总置信度存在配置/行为偏差
 
-### 3.4 总置信度
+`AdaptiveConfig` 定义并校验：
 
-当前源码：
+```text
+coverage_weight
+consistency_weight
+saturation_weight
+```
+
+但当前 `StatisticalStrategy.calculate_confidence()` 实际直接写死：
 
 ```text
 confidence = 0.4 * coverage
@@ -166,15 +168,48 @@ confidence = 0.4 * coverage
            + 0.3 * saturation
 ```
 
-一个值得注意的实现细节是：`AdaptiveConfig` 虽然定义并校验 `coverage_weight / consistency_weight / saturation_weight`，但当前 `StatisticalStrategy.calculate_confidence()` 直接硬编码了 0.4/0.3/0.3，没有读取 config。
+所以调配置不代表行为会变化。每次 runtime 升级都必须验证配置字段是否真的进入执行路径。
 
-因此本项目不能假设调整 config 权重一定生效。Crawler release 升级时必须用 Golden Behavior Test 验证“配置字段 -> 实际运行行为”。
+### 3.5 默认 tokenizer 对技术博客并不理想
+
+当前 tokenizer 大致是：
+
+```text
+去标点 -> split whitespace -> 丢弃长度 <= 2 的 token
+```
+
+对技术知识库会产生明显偏差，例如：
+
+```text
+Go
+R
+C
+C++
+C#
+JS
+AI
+DB
+S3
+```
+
+可能被丢弃或被标点清洗破坏；中文没有空格时也不会得到理想词粒度。
+
+因此生产默认不应把内置 statistical score 直接作为最终专题排序。建议实现 `platform_statistical_v1`：
+
+- Unicode/CJK-aware analyzer；
+- 保留 C++、C#、.NET、Go、R、JS、AI、DB、S3、K8s 等技术 lexeme；
+- 对 title/heading/anchor/body 分字段；
+- 使用平台 clean text 或 Canonical IR；
+- 权重配置真正参与计算；
+- score 只影响 priority。
+
+内置 StatisticalStrategy 保留为 baseline/对照组。
 
 ---
 
-## 4. 链接排序原理
+## 4. 链接排序技术原理与文档漂移
 
-StatisticalStrategy 的意图是：
+当前源码的 StatisticalStrategy 实际是加权和：
 
 ```text
 score = relevance_weight * relevance
@@ -182,7 +217,7 @@ score = relevance_weight * relevance
       + authority_weight * authority
 ```
 
-默认权重为：
+默认：
 
 ```text
 relevance 0.5
@@ -190,69 +225,61 @@ novelty   0.3
 authority 0.2
 ```
 
+而高级文档使用“Expected Gain”概念描述时更接近乘积式相关性 × 新颖性 × 权威度。两者不是同一公式，因此平台不能依赖文档公式复现当前 runtime 排名。
+
 ### 4.1 Relevance
 
-`_calculate_relevance()` 优先使用 `link.contextual_score`。该值可以由 Crawl4AI 的 Link Preview / score_links 路径产生；如果没有 contextual score，则退化为 query terms 与 link preview terms 的覆盖比例。
+`_calculate_relevance()` 优先使用 `link.contextual_score`；有 Link Preview/score_links 时它可能来自 runtime 的上下文评分。如果没有，则退化为 query terms 与链接预览文本的简单覆盖比例。
 
-所以“BM25 relevance”并不是所有情况下都直接在这个函数里计算；没有 contextual score 时只是简单 term overlap。
+因此函数注释里的“BM25 relevance”也不能理解成该函数始终执行完整 BM25。
 
 ### 4.2 Novelty
 
-源码从 link text/title/head metadata 提取词集合：
+当前实现大致为：
 
 ```text
 novelty = |link_terms - existing_terms| / |link_terms|
 ```
 
-它估计的是“这个链接的预览文本中有多少词当前知识库还没见过”。
+它只用 link text/title/head metadata 预测新颖性。标题普通不代表正文不新颖，因此只能用来排序，不能永久过滤。
 
-这适合做候选优先级，但不能用于永久过滤：一个标题很普通的历史文章，其正文可能完全不同；反之一个标题包含很多新词，也可能是标签页或导航页。
+### 4.3 Authority 当前实际上是常数
 
-### 4.3 Authority 的实现偏差
-
-源码存在 `_calculate_authority()`，会根据 `/docs/`、`/api/`、`/guide/`、PDF 等 URL 特征加权，但当前 `rank_links()` 中实际上写的是：
+源码中有 `_calculate_authority()`，但当前 `rank_links()` 实际执行：
 
 ```text
 authority = 1.0
 # authority = self._calculate_authority(link)
 ```
 
-也就是说当前 release 下 authority 对所有候选基本是常数，只提供统一偏置，不能按 URL 结构真正区分权威度。
+所以 authority 并没有按 URL 结构区分候选，只给所有候选相同偏置。
 
-这再次说明：平台必须把第三方 runtime score 当 advisory，不应把文档描述直接等同于当前版本实际行为。
+结论：**第三方 runtime score 必须被视为 advisory。** 平台存 component score、runtime release 和行为测试结果，不能把“文档写了某算法”直接升级为业务语义。
 
 ---
 
-## 5. 停止条件
+## 5. 停止条件与严格预算问题
 
-StatisticalStrategy 的 `should_stop()` 会在以下任一条件满足时停止：
+StatisticalStrategy `should_stop()` 会在以下条件之一满足时停止：
 
 ```text
 confidence >= confidence_threshold
-pages >= max_pages
+len(crawled_urls) >= max_pages
 pending_links 为空
 saturation >= saturation_threshold
 ```
 
-主 `digest()` 循环还会在：
+主 `digest()` 还会因：
 
 ```text
 ranked_links 为空
-最高 link score < min_gain_threshold
+ranked_links[0].score < min_gain_threshold
 达到 max_depth
 ```
 
-时停止。
+停止。
 
-这对专题研究是合理的，但对“全历史归档”危险，因为：
-
-- `max_pages` 是预算，不是完整性边界；
-- `saturation` 只代表术语边际收益下降；
-- `min_gain_threshold` 会让低分历史 URL 永远不进入这次 Adaptive run；
-- `max_depth` 无法覆盖所有归档结构；
-- `pending_links` 仅是 AdaptiveCrawler 当前观察到的链接集合。
-
-因此平台必须把 Adaptive stopped reason 保存为：
+这些都只能映射为 Focused Stop Reason：
 
 ```text
 FOCUSED_SUFFICIENT
@@ -262,86 +289,196 @@ FOCUSED_MAX_DEPTH
 FOCUSED_LOW_GAIN
 FOCUSED_NO_LINKS
 FOCUSED_IRRELEVANT
+FOCUSED_CANCELLED
 ```
 
-这些原因都不能映射成 `BACKFILL_COMPLETE`。
+不能映射成 `BACKFILL_COMPLETE`。
+
+### 5.1 `max_pages` 不是严格请求上限
+
+当前循环在发批次前检查 `len(crawled_urls) >= max_pages`，然后仍可一次选择 `top_k_links` 个 URL。
+
+例如：
+
+```text
+已抓 19
+max_pages = 20
+top_k_links = 3
+```
+
+下一批仍可能发 3 个请求，使实际尝试/成功页数超过 20。
+
+因此生产预算必须由平台 Admission 单独控制：
+
+```text
+remaining = budget_pages - attempted_or_admitted
+batch_size = min(top_k, remaining)
+```
+
+并分别记录：
+
+```text
+admitted_count
+attempted_count
+success_count
+preview_request_count
+embedding_call_count
+```
+
+`max_pages` 只能当 runtime hint，不能当硬配额。
 
 ---
 
 ## 6. Embedding Strategy 技术原理
 
-Embedding strategy 用语义空间而不是纯关键词判断“知识是否覆盖 query”。
-
 ### 6.1 Query Expansion
 
-`map_query_semantic_space()` 会先让 chat completion 模型生成 query variations，再把 query 分为训练集和 held-out validation 集。
+`map_query_semantic_space()` 先调用 chat completion 生成 query variations，再随机拆成 training 与 held-out validation queries，最后对 training queries 生成 embedding。
 
-这意味着 embedding strategy 实际包含两类模型调用：
+因此 embedding strategy 实际依赖两类模型能力：
 
 ```text
-query expansion: chat completion
+query expansion: chat model
 semantic vector: embedding model
 ```
 
-如果未明确配置 query model，当前实现存在向默认 provider 回退的行为。因此生产环境不能把 embedding strategy 直接暴露为“无依赖”能力，必须显式配置模型、凭据、预算和 release。
+如果 query model 未显式配置，会走兼容回退，最终还可能落到硬编码默认 provider。生产必须显式配置 provider、model、credential、base_url、budget 和 release。
 
-### 6.2 Query Space Coverage
+### 6.2 Query Expansion 存在输出 schema 脆弱点
 
-当前实现对 query embeddings 与 knowledge-base embeddings 做 L2 normalization，然后计算 cosine similarity：
+当前 prompt 文本要求“返回 JSON 字符串数组”，但后续代码按：
 
 ```text
-best_similarity(q) = max(q · d_i)
-coverage_score      = mean(best_similarity)
+variations['queries']
 ```
 
-如果配置 `coverage_tau`，则可以变成“best similarity 超过阈值的 query variations 占比”。
+读取对象字段。注释中的 mock 数据也是 `{"queries": [...]}`。
 
-这比关键词策略更能覆盖同义词、概念变体和不同表述，但仍然是 **query semantic coverage**，不是 URL inventory coverage。
+也就是说 prompt 契约与消费代码存在不一致风险。如果模型严格返回 JSON array，代码会失败。
 
-### 6.3 Gap Detection
-
-对每个 query embedding 找到距离最近的知识文档：
+生产不能依赖自由格式模型输出，应使用：
 
 ```text
-gap_distance(q) = min cosine_distance(q, d_i)
+明确 JSON Schema
++ validator
++ bounded repair
++ raw response artifact
++ variation_set_hash
 ```
 
-距离大的 query variation 被视为当前知识缺口。
+### 6.3 Query Space Coverage
 
-候选链接也做 embedding，然后估计它能把这些 gap 拉近多少：
+实现对 query embeddings 与 KB embeddings 做 L2 normalization/cosine distance，衡量每个 query variation 距离已有知识最近点有多远。
+
+其本质仍是：
 
 ```text
-improvement = old_gap_distance - candidate_distance
+query semantic coverage
 ```
 
-同时如果候选链接 embedding 与现有 KB 高度相似，会加 overlap penalty。
+不是 URL inventory coverage。
 
-这就是 Adaptive Crawling 最值得借鉴的部分：**把昂贵抓取预算分配给预计最能填补当前知识缺口的候选。**
+### 6.4 Gap-driven Link Selection
 
-### 6.4 Convergence + Validation
+对 query semantic gaps，候选链接也生成 embedding。如果候选能把某个 gap 的距离拉近，就得到正向 improvement；如果候选与现有 KB 过于相似，则施加 overlap penalty。
 
-Embedding strategy 记录 confidence history，计算平均 improvement。当平均提升低于相对阈值时，不会立刻停止，而是用 held-out validation queries 验证。
-
-如果 validation score 达到阈值，则标记 `converged_validated` 并停止；如果 validation 很低，则继续抓取。
-
-这比单纯“分数达到阈值就停”更稳健，可以减少训练 query 过拟合。
-
-### 6.5 Irrelevant Query Fast Stop
-
-当 confidence 低于 `embedding_min_confidence_threshold` 且已经抓过页面时，会停止并标记：
+这是该模块最值得复用的思想：
 
 ```text
-below_minimum_relevance_threshold
+昂贵抓取预算 -> 优先投给预计最能填 semantic gap 的候选
+```
+
+### 6.5 正文 embedding 只取前 5000 字符
+
+当前 `EmbeddingStrategy.update_state()` 对新正文使用类似：
+
+```text
+content[:5000]
+```
+
+再做 embedding。
+
+长技术文章中，核心主题、代码或结论可能位于后半段，因此这会产生系统性偏差。生产 `platform_embedding_v1` 应基于 Canonical IR 做 chunk/pooling：
+
+```text
+title + headings
++ representative chunks
++ optional max/mean pooling
+```
+
+不要用“正文前 5000 字符”作为长期语义真相。
+
+### 6.6 Convergence + Validation
+
+Embedding strategy 维护 confidence history；平均提升低于相对阈值时，使用 held-out queries 做 validation。validation 足够高才停止，否则继续抓。
+
+这个设计比单一阈值更合理，但当前恢复实现并没有持久化完整 validation 状态，见第 7 节。
+
+### 6.7 Irrelevant Query Fast Stop
+
+当 confidence 低于 `embedding_min_confidence_threshold` 且已经抓过页面时，会设置：
+
+```text
+stopped_reason = below_minimum_relevance_threshold
 is_irrelevant = true
 ```
 
-这个机制非常适合 Web Admin 的专题抓取：用户输入一个与站点完全无关的专题时，可以快速停止，避免浪费 Browser/Embedding 成本。
+适合 Web Admin 专题抓取快速拒绝明显不相关 query，节约 Browser/Embedding 成本。
 
 ---
 
-## 7. Link Preview 的网络语义
+## 7. Native Resume 在 Embedding 模式下并非完整语义恢复
 
-`AdaptiveCrawler._crawl_with_preview()` 会构造 `LinkPreviewConfig`，当前源码包含类似：
+这是生产集成中非常重要的一点。
+
+`CrawlState.save()` 会保存 query embeddings、KB embeddings、expanded queries 等，但当前运行时还有一些状态存在于动态属性或 Strategy 实例上，例如：
+
+```text
+state.confidence_history       # 运行时动态添加，save() 未保存
+strategy._validation_queries   # held-out queries，未保存到 CrawlState
+strategy._validation_passed    # Strategy 实例字段，未保存
+strategy caches                # 非业务状态
+```
+
+`validate_coverage()` 在没有 `_validation_queries` 时会退化为已有 confidence；因此 resumed embedding run 的 validation 语义可能和原运行不同。
+
+另外 `digest(resume_from=...)` 会把 `state.query` 更新为调用时 query，却不会自动重建与新 query 匹配的 query embeddings。若没有平台级 `query_hash` 检查，就可能出现“新 query + 旧 query embeddings”的错误恢复。
+
+因此：
+
+```text
+Native state file != deterministic embedding checkpoint
+```
+
+生产规则：
+
+1. query_hash 必须匹配；
+2. 保存完整 generated variation set；
+3. 保存 train/validation split；
+4. 保存 expansion raw artifact/hash；
+5. 保存 confidence history 与 validation state，或明确重建；
+6. model/prompt/analyzer/runtime release 任一变化就拒绝 resume；
+7. 在未补齐这些语义前，embedding native resume 默认关闭。
+
+### 7.1 Query split 还存在非确定性
+
+源码对生成的 variations 使用 `random.shuffle()`，未看到固定 seed。因此同一 variation set 的 train/validation split也可能不同。
+
+平台要实现可 Replay：
+
+```text
+保存实际 train_queries
+保存实际 validation_queries
+保存 split_seed（若使用）
+```
+
+不要只保存“n_query_variations=10”。
+
+---
+
+## 8. Link Preview 的网络语义
+
+当前 `_crawl_with_preview()` 使用类似：
 
 ```text
 include_internal = true
@@ -353,114 +490,240 @@ max_links = 50
 score_links = true
 ```
 
-并且抓取结果中还会过滤掉没有 `head_data` 的 internal links。
+并会过滤掉没有 `head_data` 的 internal links。
 
-这带来两个生产级问题：
+### 8.1 Preview 会放大网络请求
 
-### 7.1 Preview 本身会扩大请求量
-
-一次正文抓取可能伴随多个 link-preview metadata 请求。因此不能只对主 URL 做限流，必须把 Preview 请求也纳入：
+一次正文抓取可能伴随多个 preview metadata 请求。因此网络治理必须覆盖 preview，不仅覆盖主 URL：
 
 ```text
-approved scope
-robots policy
-SSRF validation
-per-domain token bucket
-audit
-request budget
+Approved Scope
+ -> RobotsPolicy
+ -> SSRF Validation
+ -> per-domain Token Bucket
+ -> bounded preview concurrency
+ -> request budget
+ -> Audit
 ```
 
-### 7.2 `head_data` 过滤会造成候选偏差
+如果无法确保 Crawl4AI 内部 preview 的每个网络请求都经过平台 Access Policy，就不应在生产主链直接打开 native preview；改为平台先生成受控 preview artifact，再交给 scorer。
 
-没有成功得到 head metadata 的链接可能被 Adaptive runtime 丢掉。这在 Focused Job 可以接受，但绝不能让它影响平台全量 URL Inventory。
+### 8.2 `head_data` 过滤会造成候选偏差
 
-正确顺序仍应是：
+preview 失败、HEAD metadata 缺失或被策略限制的链接可能从 Adaptive runtime 候选中消失。
+
+正确顺序必须是：
 
 ```text
 Raw Link Observation
- -> durable URL Inventory
- -> Adaptive preview/score
- -> priority/admission for focused slice
+ -> Durable URL Inventory
+ -> Scope/Robots/SSRF
+ -> Preview/Score
+ -> Focused priority
 ```
 
 而不是：
 
 ```text
-Adaptive runtime filter
+Adaptive filter
  -> 只保存幸存 URL
 ```
 
 ---
 
-## 8. 与 1000+ 博客知识库的正确集成方式
+## 9. 当前 `digest()` 的批次结果关联风险
 
-新增一个独立能力：
+源码中的 `_crawl_batch()` 使用 `asyncio.gather()` 发起一批请求，然后把异常/失败结果过滤掉，只返回成功结果列表。
 
-```text
-adaptive_focused_gap
-```
-
-它不属于权威历史 Provider，而属于 Gap/Optimization Plane。
-
-### 8.1 输入
+主 `digest()` 随后大致按：
 
 ```text
-source_id
-approved seed URL
-query / topic_profile
-candidate frontier subset
-budget_pages
-max_depth
-strategy
-runtime_release
-embedding_release(optional)
+for result, (link, score) in zip(new_results, to_crawl):
+    ...
 ```
 
-候选 URL 必须已经经过：
+关联结果和请求。
+
+这会产生一个严重的 positional correlation 风险。例如：
 
 ```text
-URL Observation
- -> Platform Normalization
- -> Approved Scope
- -> Robots Policy
- -> URL Validity/Admission policy
+to_crawl    = [A, B, C]
+实际结果     = [A成功, B失败, C成功]
+_crawl_batch = [A结果, C结果]
+zip 后       = A结果->A, C结果->B
 ```
 
-### 8.2 输出
+此时 runtime 可能把 B 错标为 crawled，C 的新链接也可能被错误归因。
 
-平台保存：
+对 Persistent Frontier 来说这是不可接受的。
+
+### 9.1 生产修复策略
+
+优先级从高到低：
+
+1. **平台不直接使用 native `digest()` 做业务调度**，由平台逐 URL/批次关联 `attempt_id + url_id`；
+2. 若要使用 `digest()`，维护 vendor patch，使 batch outcome 保留一一对应位置或返回 `{requested_url, result, error}`；
+3. 在补丁未验证前，生产将 `top_k_links=1` 作为保守规避；
+4. Golden Test 必须包含“批次中间项失败”的关联测试。
+
+平台最终写 Frontier/Artifact 时必须按稳定 request identity 关联，绝不能按“过滤后的数组位置”关联。
+
+---
+
+## 10. AdaptiveCrawler 实例不能跨 Run 并发复用
+
+`AdaptiveCrawler` 把状态保存在实例字段：
 
 ```text
-adaptive_run
-adaptive_metric_snapshot
-adaptive_candidate_score
-adaptive_runtime_checkpoint
+self.state
+self.strategy
+strategy caches
+strategy._validation_passed
+strategy._validation_queries
 ```
 
-建议字段：
+`digest()` 每次都会重置或覆盖 `self.state`；EmbeddingStrategy 还持有跨调用实例状态。
+
+因此同一个 AdaptiveCrawler 实例如果并发执行多个 `digest()`，不同 Run 会互相覆盖状态。即使串行复用，也可能受到 `_validation_passed` 等字段残留影响。
+
+生产规则：
+
+```text
+1 AdaptiveCrawler instance = 1 Focused Run lifecycle
+```
+
+不要做全局 singleton；Worker 可以复用底层 HTTP/Browser 资源池，但 Adaptive run state/strategy 必须隔离。
+
+---
+
+## 11. Persistent Frontier 与 Runtime pending_links 的边界
+
+`pending_links` 是 list，runtime 没有平台数据库级唯一约束、Lease、Retry Budget、Fairness 或跨进程恢复语义。深层抓取时重复链接还可能增加评分开销。
+
+平台继续使用：
+
+```text
+UNIQUE(discovery_run_id, url_id)
+```
+
+保证 Frontier 去重，并保存：
+
+```text
+parent_url_id
+depth
+priority
+score
+state
+lease_owner
+lease_until
+fencing_token
+attempt_count
+reason_code
+```
+
+Adaptive 只生成/更新 score 与 focused admission，不拥有 URL 生命周期。
+
+---
+
+## 12. 推荐的生产集成架构
+
+### 12.1 默认：Platform-owned Focused Scheduler
+
+```text
+Persistent URL Inventory
+        |
+        v
+Candidate Slice Builder
+        |
+        +--> Platform Preview (scope/robots/SSRF/rate limited)
+        |
+        v
+Focused Scorer
+  - platform_statistical_v1
+  - platform_embedding_v1(optional)
+  - crawl4ai_baseline(optional)
+        |
+        v
+Strict Budget Admission
+        |
+        v
+Persistent Frontier priority update
+        |
+        v
+HTTP / Browser / Repair Worker
+        |
+        v
+Canonical IR / focused metric update
+```
+
+核心优势：
+
+- 所有 URL 先 durable；
+- 所有网络访问经过同一 Access Policy；
+- 严格预算由平台控制；
+- 请求结果按 `attempt_id/url_id` 关联；
+- Retry/DLQ/Fair Scheduler 不依赖 runtime；
+- Adaptive scorer 可替换、A/B、回放。
+
+### 12.2 Crawl4AI AdaptiveCrawler 的角色
+
+保留为：
+
+- 行为 baseline；
+- 小规模专题实验；
+- 已打补丁的 bounded runtime；
+- 算法参考实现；
+- Offline Replay 对照。
+
+不作为：
+
+- Persistent Frontier；
+- Coverage Truth；
+- 全局 Scheduler；
+- Robots/SSRF Access Engine；
+- 业务 Checkpoint 真相。
+
+---
+
+## 13. 数据模型增量
+
+建议：
 
 ```text
 adaptive_run
 - id
 - source_id
+- discovery_run_id
 - query_hash
 - strategy
-- state
+- runtime_mode              # PLATFORM_SCORER/CRAWL4AI_NATIVE
 - budget_pages
-- crawler_release
-- traversal_policy_release
-- embedding_release
+- budget_preview_requests
+- state
+- stop_reason
+- runtime_release_id
+- adaptive_policy_release_id
+- analyzer_release_id
+- query_expansion_release_id
+- embedding_release_id
+- admitted_count
+- attempted_count
+- successful_count
+- preview_request_count
 - started_at
 - finished_at
-- stop_reason
 
 adaptive_candidate_score
 - adaptive_run_id
 - url_id
+- preview_artifact_id
 - relevance
 - novelty
+- authority
+- semantic_gap_gain
 - expected_gain
 - rank
+- scorer_release_id
 - scored_at
 
 adaptive_metric_snapshot
@@ -473,215 +736,182 @@ adaptive_metric_snapshot
 - validation_confidence
 - avg_improvement
 - captured_at
+
+adaptive_query_set
+- adaptive_run_id
+- raw_expansion_object_key
+- expansion_hash
+- train_queries_object_key
+- validation_queries_object_key
+- split_seed
+- captured_at
 ```
 
-字段命名必须故意使用 `focused_*` 或 `topical_*`，避免和平台 `coverage_snapshot` 混淆。
-
-### 8.3 调度语义
-
-推荐：
-
-```text
-Inventory/Frontier Truth
- -> 找出 Browser/Deep/Repair 等昂贵候选
- -> Adaptive score
- -> 高 expected_gain 先调度
- -> 低分候选保留为 READY/DEFERRED，不删除
-```
-
-也就是：
-
-```text
-Adaptive score = when
-not whether
-```
-
-### 8.4 适用场景
-
-1. **Browser 慢路径预算**：同一站有大量 JS 页面时，优先抓最可能补知识缺口的候选；
-2. **Deep Crawl Gap Scan**：权威 Provider 已跑完，但仍有大量深层候选时，优先探索高信息增益区域；
-3. **专题知识包**：用户需要“某站关于 PostgreSQL 性能优化的全部高相关内容”时，生成 focused collection；
-4. **RAG 冷启动**：在全历史 backfill 尚未完成时，先得到能回答某专题的高价值子集；
-5. **修复队列优先级**：抽取失败/Browser fallback 候选中，先修复对热点查询最有价值的文档。
-
-### 8.5 不适用场景
-
-1. 全历史 Backfill 完成判定；
-2. RSS/CMS/Sitemap 增量同步；
-3. Tombstone/删除检测；
-4. URL Identity；
-5. robots/access decision；
-6. Soft-404 Truth；
-7. Canonical Markdown 生成；
-8. Source Approved Scope 扩张。
+命名必须使用 `focused_* / topical_*`，避免和历史 `coverage_snapshot` 混淆。
 
 ---
 
-## 9. 对现有技术方案的具体优化
+## 14. Web Admin 能力
 
-### 9.1 Provider 增加
-
-在 Provider 类型中增加：
+Focused Crawl 页面展示：
 
 ```text
-adaptive_focused_gap
-```
-
-其优先级低于权威 Provider，只从已经观察到的 URL/受控 Deep Crawl slice 中选候选。
-
-### 9.2 Traversal Policy 增加 focused 模式
-
-```yaml
-adaptive_focused:
-  enabled: false
-  strategy: statistical
-  max_pages_per_run: 30
-  max_depth: 3
-  top_k_links: 3
-  min_gain_threshold: 0.1
-  confidence_threshold: 0.7
-  allow_embedding: false
-  persist_runtime_state: true
-```
-
-生产默认 `allow_embedding=false`，需要专题语义能力时单独发布 release。
-
-### 9.3 Web Admin 增加 Focused Crawl 页面
-
-展示：
-
-```text
-query
-strategy
+query/topic profile
+strategy/runtime mode
 focused confidence
-coverage/consistency/saturation
-validation score
-expected gain 排名
-pages crawled
-budget remaining
+topical coverage/consistency/saturation
+validation confidence
+candidate expected gain/rank
+admitted/attempted/successful
+page/preview/model budget remaining
 stop reason
-runtime checkpoint
+checkpoint compatibility
+runtime/model/analyzer release
+cost
 ```
 
-UI 必须显示警告：
+必须固定显示：
 
 ```text
-Focused Sufficiency ≠ Historical Coverage
+Focused Sufficiency != Historical Coverage
 ```
 
-### 9.4 Metrics 增加
+还应支持：
+
+- Compare：platform scorer vs Crawl4AI baseline；
+- 查看某 URL 为什么被排到当前 rank；
+- 查看 preview artifact 与 score components；
+- 手工强制提升/降低优先级，但不删除 Observation；
+- 查看 runtime checkpoint 为什么可/不可恢复。
+
+---
+
+## 15. Metrics
 
 ```text
-adaptive_run_total{strategy,status}
-adaptive_pages_crawled_total{source,strategy}
+adaptive_run_total{strategy,runtime_mode,status}
 adaptive_stop_total{reason}
-adaptive_focused_confidence{source}
-adaptive_expected_gain{source}
-adaptive_validation_confidence{source}
+adaptive_candidate_total{decision}
+adaptive_pages_admitted_total{source}
+adaptive_pages_attempted_total{source}
+adaptive_pages_success_total{source}
 adaptive_preview_requests_total{source,status}
 adaptive_embedding_calls_total{provider,model}
+adaptive_focused_confidence{source}
+adaptive_validation_confidence{source}
+adaptive_budget_overshoot_total{type}
+adaptive_result_correlation_error_total
+adaptive_checkpoint_reject_total{reason}
 adaptive_cost_total{source,strategy}
+adaptive_browser_saved_total{source}
 ```
 
-### 9.5 Release 增加
-
-```text
-adaptive_policy_release
-adaptive_runtime_release
-query_expansion_release
-embedding_release
-```
-
-特别是 Crawl4AI AdaptiveCrawler 当前源码存在“配置字段与实际行为可能不一致”的情况，升级必须做行为级 Golden Replay。
+尤其要同时记录 admitted/attempted/success，避免把“成功抓了多少页”误当成“花了多少网络预算”。
 
 ---
 
-## 10. Golden Test / 验收测试
+## 16. Golden Test / 验收测试
 
-新增测试至少包括：
-
-### 10.1 Truth Boundary
+### 16.1 Truth Boundary
 
 ```text
-Adaptive 达到 confidence threshold
-=> 不得把 Source Backfill 标记 COMPLETE
+Adaptive 达 confidence threshold
+=> Source Backfill 状态不得改变
+
+Adaptive 因 saturation/max_pages/low_gain 停止
+=> 未选 URL 仍在 Persistent Frontier
+
+preview/head_data 失败
+=> Raw Observation 不丢
 ```
 
-```text
-Adaptive 因 saturation 停止
-=> 低分 URL 仍在 Persistent Frontier
-```
+### 16.2 Current Runtime Behavior
 
-```text
-Adaptive 因 max_pages 停止
-=> stop_reason=FOCUSED_MAX_PAGES，不丢 Observation
-```
-
-### 10.2 Runtime Behavior
-
-验证当前 crawler release 下：
+每个固定 Crawl4AI release 验证：
 
 - Statistical confidence 是否仍硬编码 0.4/0.3/0.3；
-- authority 是否仍为固定 1.0；
-- Link Preview 是否产生额外 metadata 请求；
-- 无 `head_data` 的链接是否被 runtime 过滤；
-- `min_gain_threshold` 实际何时生效；
-- `top_k_links` 是否真正限制每轮 fan-out；
-- resume state 在 release 变化时是否拒绝复用。
+- authority 是否仍固定 1.0；
+- docs 描述的 expected gain 与源码真实公式是否一致；
+- Link Preview 实际产生哪些请求；
+- 无 `head_data` 是否被过滤；
+- `min_gain_threshold` 在何处生效；
+- `top_k_links` 是否限制每轮 fan-out；
+- `max_pages` 是否会因批次 overshoot；
+- batch 中间项失败是否导致 result/link 错配；
+- 同一实例并发 digest 是否被禁止；
+- runtime state 字段是否变化。
 
-### 10.3 Embedding
+### 16.3 Statistical Analyzer
 
-- query expansion 失败时不影响平台业务 Frontier；
-- embedding provider 429/timeout 有 bounded retry；
-- 模型切换后旧 checkpoint 不直接 resume；
-- irrelevant query 能快速停止；
-- convergence 但 validation 低时继续运行；
-- candidate overlap 只降低 priority，不删除 URL。
+- Go/R/C/C++/C#/JS/AI/DB/S3/K8s 等技术 query 不被错误丢词；
+- 中文 query 有稳定切词；
+- template/navigation 不主导 saturation；
+- config weights 确实改变 score；
+- score 变化不删除 URL。
 
-### 10.4 Safety
+### 16.4 Embedding
 
-- Link Preview 不能访问未 approved host；
-- redirect 每跳做 SSRF/scope 校验；
+- query expansion 返回 array/object 两种异常输入时由 schema validator 正确处理；
+- query expansion/provider 429/timeout 有 bounded retry；
+- raw variation set 和 train/validation split 可 replay；
+- resumed run query hash 不一致必须拒绝；
+- validation queries 未恢复时不得伪装成 validated；
+- model/prompt release 变化拒绝旧 checkpoint；
+- 长文后半段主题能通过 chunk/pooling 被表示；
+- irrelevant query 可快速停止；
+- convergence 但 held-out validation 低时继续；
+- overlap penalty 只降 priority，不删除候选。
+
+### 16.5 Budget / Correlation
+
+```text
+19/20 pages + top_k=3
+=> 平台最多再 admission 1 个
+```
+
+```text
+[A成功, B失败, C成功]
+=> A/C 的 Artifact、Frontier、Observation 必须与各自 url_id 正确关联
+```
+
+### 16.6 Safety
+
+- Preview 不访问未 approved host；
+- DNS/redirect 每跳做 SSRF/scope 校验；
 - Preview 请求进入全局 per-domain token bucket；
-- external links 即使被发现也只保存 Observation/Candidate，不自动主动抓取。
+- external links 只保存 Observation/Candidate，未经批准不主动访问。
 
 ---
 
-## 11. 最终建议
+## 17. 对最终博客知识库方案的优化结论
 
-Adaptive Crawling 值得加入，但必须改变它在系统中的“身份”：
-
-```text
-不是：全历史爬虫 / Coverage Truth
-而是：Focused Information-Gain Scheduler
-```
-
-平台仍以：
+本次调研对现有方案的主要增量不是“再加一个爬虫”，而是把 Adaptive Crawling 的边界收得更清楚：
 
 ```text
+全历史正确性：
 CMS/API + Sitemap + RSS + Archive
 + Common Crawl + Wayback
 + Safe Recon + Deep Crawl Gap
 + Persistent URL Inventory
+
+高成本专题效率：
+Platform-owned Focused Scheduler
++ Statistical/Embedding scorer
++ Strict Budget Admission
++ Browser/Repair priority
 ```
 
-建立历史完整性。
+同时新增以下生产约束：
 
-Adaptive Crawling 只在已经有业务真相边界之后，对高成本候选做：
+1. 平台不直接把 `AdaptiveCrawler.digest()` 当业务 Scheduler；
+2. 修复/规避 batch 成功结果过滤后再 positional zip 的 URL 错配风险；
+3. 平台硬控 page/preview/model budget，不能相信 `max_pages` 是严格上限；
+4. 一个 AdaptiveCrawler 实例只服务一个 Run，不并发/跨 Run 复用；
+5. embedding native checkpoint 在补齐 validation/query split 语义前不能作为确定性恢复；
+6. query expansion 使用严格 schema，并保存实际 variation/train/validation 集；
+7. 技术博客默认使用 platform analyzer，不直接依赖长度 >2 的简单 tokenizer；
+8. 长文 embedding 基于 Canonical IR chunk/pooling，而不是只取正文前 5000 字符；
+9. docs/source 行为漂移由 pinned release + Golden Behavior Test 管控；
+10. Adaptive 的所有 score、confidence、saturation 都只决定 **when**，不决定 **whether**。
 
-```text
-query-aware relevance
-+ novelty
-+ semantic gap
-+ saturation
-+ validation
-```
-
-排序和预算控制。
-
-这样可以同时得到两种能力：
-
-1. **Archive Correctness**：不因“信息足够”而漏历史文章；
-2. **Focused Efficiency**：在 Browser/Deep Crawl/RAG 专题任务中，用更少页面更快获得高价值知识。
-
-这也是本次调研对最终技术方案最有价值的增量。
+最终建议：**保留 Crawl4AI Adaptive Crawling 作为非常有价值的信息增益算法参考和可选 runtime，但生产主链采用 Platform-owned Focused Scheduler。** 这样既能获得 Browser/Deep Crawl/RAG 专题任务的成本收益，又不会牺牲 1000+ 博客全历史知识库最关键的 Coverage、可恢复性、可解释性和数据身份正确性。
