@@ -6,547 +6,1084 @@
 - 原文标题：Build AI Agents that Scrape the Web and Generate Dashboards with Crawl4AI
 - 作者：Raphael Schols
 - 原文地址：https://medium.com/data-science-collective/build-ai-agents-that-scrape-the-web-and-generate-dashboards-with-crawl4ai-1f9e5229e428
-- 主题：Crawl4AI + AI Agent + 新闻情绪分析 + Streamlit 数据看板
+- 原文 Friend Link：https://medium.com/data-science-collective/build-ai-agents-that-scrape-the-web-and-generate-dashboards-with-crawl4ai-1f9e5229e428?sk=b73d17629ce3d452ac02268b511c8408
+- 配套项目：https://github.com/raphaelschols/sentiment-agents-dashboard
+- 主题：Crawl4AI + LangGraph/LangChain ReAct Agent + VADER 情绪分析 + Plotly/WordCloud + Streamlit 自动看板
 
-原文公开摘要明确描述的目标是：用 Python、Crawl4AI 与 Streamlit 构建一个由 AI Agent 驱动的情绪分析 Dashboard，持续抓取新闻站点并把抓取结果转化为可视化分析。Medium 正文当前存在访问限制，因此本调研不虚构文章未公开的具体函数、Prompt 或目录结构；实现细节部分基于原文已确认的系统目标、Crawl4AI 官方接口语义以及 Streamlit 官方执行模型进行工程化推导。
+本次调研已通过原文给出的 Friend Link 阅读完整正文，并进一步检查配套 GitHub 项目当前 `master` 分支的 Agent、Prompt、Tool 与 `main.py` 实现。因此下面区分三类信息：
 
-## 2. 原文模式的核心价值
+1. 原文明确给出的架构和代码；
+2. GitHub 当前代码实际实现；
+3. 面向 1000+ 技术博客生产知识库的工程结论。
 
-这类项目真正值得复用的不是“做一个情绪图表”，而是下面这条数据产品链路：
+这一区分很重要，因为原文展示的调度示例与 GitHub 当前 `main.py` 已不完全一致，文章中的教程级设计也不能直接等价为生产级知识库架构。
 
-```text
-Web Sources
-  -> Crawl
-  -> Clean Content
-  -> AI Analysis
-  -> Structured Facts / Scores
-  -> Aggregation
-  -> Dashboard
-  -> Scheduled Refresh
-```
+---
 
-它说明爬虫不应只把 Markdown 写进磁盘。对于长期知识库，抓取后的内容还可以继续派生出主题、情绪、实体、摘要、异常、趋势等分析结果，并在 Web 管理端形成运营视图。
+## 2. 原文到底构建了什么
 
-但教程级实现和 1000+ 技术博客的生产系统有本质区别：教程可以把抓取、LLM 分析、DataFrame 与 Streamlit 页面写在一个 Python 进程里；生产平台必须拆分“事实同步”“AI 派生”“分析聚合”“可视化读模型”和“控制命令”。
-
-## 3. Crawl4AI 抓取层的技术原理
-
-Crawl4AI 官方接口以 `AsyncWebCrawler` 为核心。Browser 生命周期与单次抓取参数分离：
+原文目标不是通用历史博客知识库，而是一个“自持续”的新闻情绪分析数据产品：
 
 ```text
-BrowserConfig
-    |
-    v
-AsyncWebCrawler
-    |
-    +-- CrawlerRunConfig(url A)
-    +-- CrawlerRunConfig(url B)
-    +-- CrawlerRunConfig(url C)
+CNN / Fox
+   -> 抓首页和栏目链接
+   -> 抽取新闻 headline
+   -> VADER sentiment
+   -> JSON
+   -> Sankey / Bar / WordCloud
+   -> Streamlit app.py
+   -> Refiner Agent 测试和改写 app.py
 ```
 
-这比“每个 URL 新建浏览器”更适合持续任务，因为 Browser/Context 的启动成本可以摊薄，连接、资源和并发更容易治理。
-
-对于多 URL，官方 `arun_many()` 支持批量和 streaming 两种模式，并可由 `MemoryAdaptiveDispatcher` 或 `SemaphoreDispatcher` 控制 Worker 内部并发。生产系统应把它理解为“单 Worker 执行器”，而不是全局调度器：
+原文使用三类 ReAct Agent：
 
 ```text
-平台 Scheduler / Durable Task
-       |
-       v
-Worker lease N tasks
-       |
-       v
-Crawl4AI arun_many(stream=True)
-       |
-       +--> URL A result -> persist -> ack A
-       +--> URL B result -> persist -> ack B
-       +--> URL C failed -> retry C
+Data Agent
+  -> Crawl4AI 抓链接和页面
+  -> LLM 从 Markdown 抽 headline + category
+  -> VADER 计算 sentiment
+
+Visualization Agent
+  -> 读取 sentiment JSON
+  -> 生成 Plotly/WordCloud artifact
+  -> 生成 Streamlit app.py
+
+Refinement Agent
+  -> 读取 app.py
+  -> LLM 改写代码
+  -> 启动 Streamlit 测试
+  -> 失败则继续修复
 ```
 
-这样一个 URL 失败不会导致整个批次回滚，也不会因为 Worker 退出而丢失平台级任务状态。
+原文的关键价值不是“CNN/Fox 情绪”本身，而是演示了：
 
-## 4. Markdown 不是 AI 分析输入的唯一真相
+- 抓取结果可以继续进入 AI 派生分析；
+- Agent 可以由受限 Tool 组成多阶段流水线；
+- 数据、可视化、代码修复可拆成不同职责；
+- 派生结果可以进一步形成数据产品，而不仅是把 Markdown 写到磁盘。
 
-Crawl4AI 可以生成 raw Markdown，也可以通过 Pruning/BM25 等过滤器生成更“聚焦”的 fit Markdown。对于文章中的新闻情绪分析场景，fit Markdown 很适合降低 LLM token 成本；但对于知识库，必须保留下面的层次：
+但它与目标知识库的根本差异也很明显：它抓的是当前首页/栏目 headline，不证明历史完整性；它使用本地 JSON/PNG/app.py 作为 Agent 间状态；它没有 durable task、URL identity、Snapshot、Document Version、Coverage、增量游标、分布式 Worker、Web 管理控制面等生产能力。
+
+---
+
+## 3. 项目目录与职责分解
+
+原文给出的项目结构和 GitHub 当前目录基本一致：
 
 ```text
-Immutable Snapshot
-   -> Canonical IR
-      -> Canonical Markdown
-      -> Filtered/Fit Markdown
-      -> AI Analysis Input
+sentiment-agents-dashboard/
+├── main.py
+├── requirements.txt
+├── _agents/
+│   ├── data_agent.py
+│   ├── viz_agent.py
+│   └── refine_agent.py
+├── _llm/
+│   ├── openai_llm.py
+│   └── claud_llm.py
+├── _system_instructions/
+│   ├── data_prompt.py
+│   ├── viz_prompt.py
+│   └── refine_prompt.py
+└── _tools/
+    ├── data_tools.py
+    ├── viz_tools.py
+    └── refine_tools.py
 ```
 
-原因是情绪分析的输入过滤规则可能变化。如果把过滤后的内容直接当成最终知识正文，未来无法判断“模型判断变化”究竟来自模型升级、Prompt 升级、Filter 升级，还是文章真的变化。
-
-因此 AI 分析必须记录：
+依赖包括：
 
 ```text
-analysis_input_manifest
-- document_version_id
-- input_projection_id
-- input_hash
-- filter_release_id
-- model_release_id
-- prompt_release_id
-- schema_release_id
-- analysis_window
-- created_at
+langchain-openai
+langgraph
+langchain
+crawl4ai
+streamlit
+vaderSentiment
+plotly
+wordcloud
+langchain-anthropic
 ```
 
-## 5. AI Agent 的正确边界
+Crawl4AI 需要额外执行：
 
-原文把 Agent 用来把网页内容转化成情绪分析和 Dashboard。生产化时，不应让 Agent 变成“拥有无限抓取权限、可任意改变数据库状态”的超级进程。
+```bash
+crawl4ai-setup
+crawl4ai-doctor   # 可选健康检查
+```
 
-推荐分成两个平面：
+原文使用 GPT-4o-mini 处理 Data/Viz Agent，Refiner Agent 使用 Claude。GitHub 当前代码也体现为：
 
 ```text
-Control/Data Plane
-Source -> Discovery -> Fetch -> Snapshot -> Version
-
-Insight Plane
-Document Version -> Analysis Task -> LLM/Model -> Derived Artifact
+Data Agent -> init_openai_llm()
+Viz Agent  -> init_openai_llm()
+Refiner    -> init_claude_llm()
 ```
 
-Agent 只消费已经被平台接受的 `Document Version` 或冻结的 Manifest。它可以：
+---
 
-- 做 sentiment / stance / topic / entity；
-- 对异常 Source 生成解释建议；
-- 根据已有指标生成运营摘要；
-- 生成图表说明或自然语言日报。
+## 4. ReAct Agent 的实现原理
 
-它不应该：
+三个 Agent 都使用 LangGraph `create_react_agent`。核心执行模型是：
 
-- 直接决定历史 Coverage 是否 COMPLETE；
-- 绕过 Scheduler 自行无限访问站点；
-- 覆盖 Canonical Markdown；
-- 因模型失败把 Source Sync 标记失败；
-- 直接执行暂停、删除、批量重抓等高风险管理操作。
+```text
+System Prompt
+   -> LLM 决定下一步
+   -> Tool Call
+   -> Tool Result
+   -> LLM 观察结果
+   -> 再决定下一步
+   -> 达成目标或达到 recursion_limit
+```
 
-高风险动作必须转换成强类型 Command，走 RBAC、幂等和 Audit。
-
-## 6. 情绪分析如何建模才可重放
-
-教程里最容易出现的实现是：
+Data Agent 当前代码的关键结构是：
 
 ```python
-sentiment = llm(article_text)
+memory = MemorySaver()
+agent = create_react_agent(
+    model=model_openai,
+    tools=DATA_TOOLS,
+    checkpointer=memory,
+    version="v2",
+)
+
+config = {
+    "configurable": {"thread_id": "agent_thread_1"},
+    "recursion_limit": 60,
+}
 ```
 
-生产系统不能只保存最终的 `positive/negative`。至少需要：
+Viz Agent 基本相同，并且也使用固定的 `agent_thread_1`；Refiner 使用 `refiner_viz_1`。
+
+### 4.1 `MemorySaver` 的真实边界
+
+这里的 `MemorySaver` 是进程内 Checkpointer，适合教程和单机 Agent 循环，但不能当成生产 durable state：
+
+- 进程退出后不能作为平台任务事实；
+- 多 Worker 之间不能自然共享；
+- 固定 thread id 容易把不同运行混入同一逻辑会话；
+- 无法替代 Run/Task lease、checkpoint、fencing、retry；
+- Agent trace 与业务事实没有稳定 lineage。
+
+对于知识库，应把 Agent Run 视为可重放的派生任务，而不是把 LangGraph memory 当业务数据库。
+
+### 4.2 多 Agent 的正确价值
+
+原文把职责拆成 Data/Viz/Refine，这是合理的“缩小工具面和 Prompt 面”的做法。职责越小：
+
+- Tool 权限越容易收敛；
+- Prompt 越短；
+- 错误更容易定位；
+- Agent 可以独立替换模型；
+- 失败可局部重放。
+
+生产系统可以借鉴“职责拆分”，但不应把基础抓取事实交给自主 Agent 决定。Coverage、URL identity、Fetch、Snapshot、Document Version 等必须由确定性控制面负责。
+
+---
+
+## 5. Data Agent 的 Prompt 约束
+
+原文 Data Agent Prompt 明确要求按 outlet 顺序处理：
 
 ```text
-ai_analysis_record
+CNN
+  1. scrape_links(homepage_url)
+  2. 选择 Politics / World / Business / Sports / Entertainment
+  3. extract_headlines(pages)
+  4. sentiment_analysis(headlines, outlet)
+
+Fox
+  同样流程
+```
+
+并要求：
+
+- 首页 `scrape_links()` 只调用一次；
+- 只处理 homepage + section URL；
+- 一个 outlet 完成后再处理下一个；
+- headline 保持原文；
+- sentiment 输入超过 100 条时分批。
+
+这说明原文已经意识到 Agent 必须有 guardrail，而不是只给一句“去抓新闻”。不过这些 guardrail 仍是自然语言 Prompt 约束，不是强类型平台约束。
+
+生产知识库中，下面这些不能只靠 Prompt 保证：
+
+```text
+allowed domain
+URL scope
+robots policy
+最大请求数
+最大 Browser 秒数
+最大页面大小
+最大递归深度
+最大 Agent step
+预算
+超时
+幂等键
+删除/暂停/重跑权限
+```
+
+它们必须在 Tool/API 层硬执行。
+
+---
+
+## 6. `scrape_links()` 的代码级分析
+
+项目当前 `_tools/data_tools.py`：
+
+```python
+@tool
+def scrape_links(url: str) -> list[str]:
+    async def _scrape():
+        async with AsyncWebCrawler() as crawler:
+            result = await crawler.arun(url=url)
+        return result.links
+
+    return asyncio.run(_scrape())
+```
+
+### 6.1 工作原理
+
+`AsyncWebCrawler` 启动 Crawl4AI 抓取上下文，对 URL 执行 `arun()`，最终从 CrawlResult 中读取 links。
+
+它把异步函数包在同步 LangChain Tool 中，因此使用 `asyncio.run()` 建立临时 event loop。
+
+### 6.2 教程可用，生产不合适的地方
+
+每次 Tool Call 都：
+
+```text
+创建 AsyncWebCrawler
+ -> 启动/初始化浏览器相关资源
+ -> 抓一个 URL
+ -> 关闭 crawler
+```
+
+这会丢失 Browser 生命周期复用优势。对于 1000 个站点、百万 URL，正确模型应是：
+
+```text
+Worker process
+  -> 长生命周期 AsyncWebCrawler / Browser Pool
+  -> lease 一批任务
+  -> arun_many(..., stream=True)
+  -> 每 URL persist + ack
+```
+
+而不是每 URL 新建浏览器。
+
+另外，`asyncio.run()` 适合作为同步脚本桥接，但如果 Tool 被放进已有 event loop 的异步服务，会产生运行模型冲突。生产 Worker 应从入口开始就是 async，避免“每个 URL 启一个 event loop”。
+
+### 6.3 `result.links` 不是 Coverage
+
+抓到首页 links 只代表“这次渲染里看到了这些链接”。它不能证明：
+
+- 站点历史文章总量；
+- Archive 是否翻完；
+- Sitemap 是否 exhausted；
+- Feed 是否仅保留最近 N 条；
+- JS load-more 是否还有下一页；
+- 文章迁移/删除历史。
+
+因此该方法只适合 Discovery Surface，不能当 FULL_BACKFILL 完成证据。
+
+---
+
+## 7. `extract_headlines()` 的代码级分析
+
+当前实现的主要流程：
+
+```text
+for url in urls:
+  asyncio.run(_scrape(url))
+  -> 新建 AsyncWebCrawler
+  -> result.markdown
+  -> 拼入 Prompt
+  -> OpenAI LLM 提取 headline/category
+  -> json.loads
+  -> 失败则逐行 fallback
+```
+
+LLM Prompt 要求输出：
+
+```json
+[
+  {"headline": "...", "category": "Politics"}
+]
+```
+
+最后仅按 `headline` 字符串做本地 exact dedup。
+
+### 7.1 优点
+
+- 利用 Crawl4AI Markdown 降低原始 HTML 噪声；
+- LLM 可处理不同新闻站点 DOM，不依赖固定 CSS selector；
+- category 推断不需要为每站写规则；
+- 对 PoC 很快。
+
+### 7.2 主要问题
+
+#### 串行抓取
+
+`for url in urls` 逐个执行，完全没有利用 Crawl4AI 的多 URL 并发能力。
+
+#### 每 URL 重建 crawler
+
+Browser/Context 启停成本会线性累积。
+
+#### 全 Markdown 直接进入 LLM
+
+没有稳定的：
+
+```text
+input snapshot id
+input hash
+filter release
+prompt release
+schema release
+model release
+```
+
+后续无法解释同一页面为什么提取结果变化。
+
+#### JSON 解析不是结构化输出
+
+代码用：
+
+```python
+json.loads(resp.content)
+```
+
+失败时降级成“响应每一行都是一个 headline”。这会把解释文字、Markdown fence、错误提示等都污染成假 headline。
+
+生产系统应使用强 Schema structured output，并对每条记录执行字段校验、长度限制、枚举校验和 evidence 绑定。
+
+#### 去重过弱
+
+只按 headline exact string dedup，无法处理：
+
+- 标题轻微改写；
+- 同一文章不同 URL；
+- UTM/query alias；
+- syndication/转载；
+- canonical URL；
+- 同一文章的新版本。
+
+知识库必须区分 URL Alias、Document Identity、Document Version。
+
+---
+
+## 8. VADER 情绪分析的实现
+
+项目使用 `vaderSentiment`：
+
+```python
+scores = analyzer.polarity_scores(text)
+label = (
+    "positive" if scores["compound"] >= 0.05
+    else "negative" if scores["compound"] <= -0.05
+    else "neutral"
+)
+```
+
+然后写入：
+
+```text
+output/data/cnn_sentiment.json
+output/data/fox_sentiment.json
+```
+
+每条结果只有：
+
+```text
+headline
+category
+sentiment
+label
+```
+
+### 8.1 优点
+
+VADER 是确定性、低成本、无远程模型依赖的情绪打分器，作为英文 headline Demo 很合适。
+
+### 8.2 对生产知识库的限制
+
+缺失至少：
+
+```text
+document_version_id
+source_id
+source_url
+published_at
+language
+analyzer_release_id
+threshold_release_id
+input_hash
+created_at
+```
+
+而且技术博客多语言、长正文、代码与术语很多，VADER 不应被视为通用语义分析器。
+
+如果保留 sentiment/topic/entity 等功能，应放入 `AI/Analysis Plane`，与 canonical 内容同步解耦，并记录 Analysis Manifest 和 Release。
+
+---
+
+## 9. Visualization Agent 的实现
+
+`viz_tools.py` 从本地 JSON 读取数据，然后生成三类 artifact：
+
+### 9.1 Sankey
+
+按 VADER compound score 分桶：
+
+```text
+[-1, -0.05] -> Negative
+(-0.05, 0.05) -> Neutral
+[0.05, 1] -> Positive
+```
+
+然后聚合：
+
+```text
+sentiment_bucket x category -> count
+```
+
+输出 Plotly JSON。
+
+### 9.2 Word Cloud
+
+把所有 headline 拼成文本，使用 `WordCloud` 生成 PNG。
+
+### 9.3 Comparison Bar Chart
+
+分别统计 CNN/Fox 三个情绪桶计数，生成 stacked bar Plotly JSON。
+
+### 9.4 Agent 生成 `app.py`
+
+Visualization Agent Prompt 要求最终写出 Streamlit `app.py`，Tool：
+
+```python
+@tool("save_dashboard_app")
+def save_dashboard_app(code: str, filename: str = "app.py"):
+    with open(filename, "w", encoding="utf-8") as f:
+        f.write(code)
+```
+
+这里已经从“生成数据”跨到了“生成可执行程序”。这在 Demo 中很有趣，但也是整个项目最大的生产安全边界。
+
+---
+
+## 10. Refinement Agent 的实现与安全风险
+
+Refiner Agent 使用 Claude，Tool 包括：
+
+```text
+load_dashboard_app
+save_dashboard_app
+test_improve_streamlit_code
+```
+
+其中测试 Tool 会：
+
+```python
+subprocess.run(
+    [
+        "streamlit", "run", filename,
+        "--server.headless", "true",
+        "--server.port", "8501",
+    ],
+    timeout=10,
+)
+```
+
+### 10.1 原理
+
+形成一个代码修复闭环：
+
+```text
+读取 app.py
+ -> LLM 分析和改写
+ -> 保存 app.py
+ -> 启动 Streamlit
+ -> 收集 stdout/stderr/return code
+ -> LLM 根据错误继续修复
+```
+
+这其实是一个简化的“代码生成 Agent + 执行反馈”系统。
+
+### 10.2 严重边界：LLM 生成代码被宿主机直接执行
+
+`app.py` 是模型生成的 Python，随后被 `streamlit run` 直接执行。若生产系统照搬，会把：
+
+```text
+模型输出
+ -> Python 任意代码执行
+ -> 当前 Worker 的文件系统/网络/环境变量权限
+```
+
+直接连起来。
+
+如果未来真的需要自动生成 Dashboard 代码，至少必须：
+
+```text
+Agent 只生成候选 artifact
+ -> 静态检查/允许依赖检查
+ -> 隔离 sandbox/container/microVM
+ -> 只读基础镜像
+ -> 临时工作目录
+ -> 无生产数据库凭据
+ -> 无 Docker socket
+ -> 禁止云 metadata endpoint
+ -> 出网 deny-by-default
+ -> CPU/Memory/PID/File/Wall-clock quota
+ -> 健康检查/截图/测试
+ -> 人工或策略审核
+ -> 形成 immutable release
+ -> 原子发布
+```
+
+更推荐的设计是不生成任意 Python，而是让 Agent 生成声明式 Dashboard Spec：
+
+```text
+metric_id
+query_id
+scope
+chart_type
+dimensions
+filters
+freshness_policy
+layout
+```
+
+由可信前端 Renderer 渲染。这样 Agent 只能组合白名单图表和数据查询，不拥有代码执行权。
+
+### 10.3 当前测试方法还有误判问题
+
+Streamlit server 正常启动后本来就是长生命周期进程。用 `subprocess.run(..., timeout=10)` 等待“进程自然退出”，健康服务很可能因为仍在运行而触发 `TimeoutExpired`。
+
+因此：
+
+```text
+超时 != 应用错误
+```
+
+更可靠的验证应是：
+
+```text
+spawn process
+ -> wait for port / health endpoint
+ -> 发 HTTP 请求
+ -> 校验 status/body
+ -> 可选 screenshot
+ -> terminate process
+ -> 收集日志
+```
+
+而不是把“10 秒没有退出”当失败。
+
+### 10.4 文件路径没有安全收口
+
+`save_dashboard_app(code, filename)` / `load_dashboard_app(filename)` 接受 filename，教程里默认 `app.py`，但生产 Tool 必须强制 workspace 根目录和路径白名单，防止 path traversal 或覆盖非预期文件。
+
+---
+
+## 11. 当前 GitHub 项目存在的可运行性问题
+
+项目当前 `master` 的 `main.py` 是：
+
+```python
+from agents.data_agent import run_data_agent
+from agents.viz_agent import run_viz_agent
+from agents.refiner_agent import run_refiner_agent
+```
+
+但仓库实际目录/文件是：
+
+```text
+_agents/data_agent.py
+_agents/viz_agent.py
+_agents/refine_agent.py
+```
+
+因此当前代码至少存在明显的 import path/name 不一致：
+
+```text
+agents        vs _agents
+refiner_agent vs refine_agent
+```
+
+按仓库当前形态，`main.py` 不能直接按这些 import 成功运行，除非仓库外还有未提交的路径适配。
+
+这也是一个重要工程结论：文章给出的 conceptual pipeline 不能等同于“仓库当前分支已经生产可运行”。调研应分别验证文章、仓库代码和部署路径。
+
+---
+
+## 12. 原文调度示例与 GitHub 当前代码不一致
+
+原文正文展示的 `main.py` 还包含：
+
+```text
+schedule.every().day.at("09:00").do(job)
+while True:
+    schedule.run_pending()
+    time.sleep(60)
+```
+
+但 GitHub 当前 `main.py` 只有同步执行：
+
+```text
+Data -> Visualization -> Refinement
+```
+
+没有文章中的 daily scheduler loop。
+
+即使使用原文 scheduler，也只适合单进程 Demo：
+
+- 进程重启后调度状态丢失；
+- 不处理 missed run/catch-up；
+- 没有 lease/fencing；
+- 无分布式并发控制；
+- 无任务幂等；
+- 无 durable retry；
+- 无按 Source 独立 schedule；
+- 无 backlog/backpressure。
+
+1000+ Source 应由数据库持久化的 Schedule Policy 生成 durable Run/Task，并通过 Outbox + Queue 分发。
+
+---
+
+## 13. 本地文件作为 Agent 间状态的局限
+
+当前流水线依赖：
+
+```text
+output/data/*.json
+output/*.json
+output/*.png
+app.py
+```
+
+这在单机 Demo 中简单，但分布式部署会出现：
+
+- Agent 不在同一节点时看不到文件；
+- 容器重启后文件可能消失；
+- 不能稳定追踪 artifact 来自哪次运行；
+- 同名文件被新运行覆盖；
+- 无 hash/manifest/release；
+- 并发运行存在互相覆盖；
+- 无对象生命周期策略。
+
+生产知识库应改成：
+
+```text
+PostgreSQL -> metadata/state/hash/ref
+Object Storage -> JSON/PNG/Markdown/raw output/debug artifact
+```
+
+所有派生 artifact 绑定 Run / Document Version / Release / input hash。
+
+---
+
+## 14. `model_openai` 在模块 import 时初始化的问题
+
+`_tools/data_tools.py` 当前存在：
+
+```python
+model_openai = init_openai_llm()
+```
+
+这意味着 import Tool 模块时就可能：
+
+- 检查 API Key；
+- 触发 `getpass`；
+- 初始化模型客户端。
+
+对于 Web Worker、测试、任务发现、CLI import 都会造成不必要的副作用。
+
+生产代码更适合：
+
+```text
+Dependency Injection / App Lifecycle
+ -> 创建长生命周期 Model Client
+ -> 注入 Agent/Tool Runtime
+```
+
+避免 import-time secret interaction 与重复 client 创建。
+
+---
+
+## 15. “自适应网页变化”的真实含义
+
+原文强调 Agent/Crawl4AI 能降低传统 selector 对 DOM 变化的敏感性，这个方向成立，但不能把它理解成“Agent 就能自动保证抓取正确”。
+
+如果页面结构发生变化，LLM 可能仍然输出看似合理、实际错误的数据。生产系统需要显式质量信号：
+
+```text
+required field missing
+selector zero-match
+content length drift
+headline count drift
+DOM shape drift
+boilerplate ratio
+language drift
+published_at confidence
+historical yield drift
+```
+
+Agent 最适合做：
+
+```text
+异常解释
+Profile/Recipe/Schema 候选生成
+修复建议
+fixture 生成
+```
+
+而不是无审计地修改生产抓取逻辑并继续写入真相层。
+
+---
+
+## 16. 为什么“首页 + 栏目”不适合全量历史知识库
+
+原文 Data Agent 只要求：
+
+```text
+homepage
++ Politics/World/Business/Sports/Entertainment section
+```
+
+这只能获取当前或近期页面可见内容。对于“1000 个技术博客全量历史文章”，历史 URL 发现必须把 Coverage 当一等公民：
+
+```text
+CMS API
+ -> Sitemap / Sitemap Index
+ -> RSS/Atom/JSON Feed
+ -> Archive year/month
+ -> Category/Tag/Author
+ -> Docs TOC
+ -> Common Crawl URL Index
+ -> Discovery Surface
+ -> Browser dynamic surface
+ -> Deep crawl / Site search gap filling
+```
+
+并保存 Provider cursor、exhaustion reason、known gap 和 evidence。
+
+因此本项目的 Agent Discovery 可以作为 gap discovery 或 Profile Probe 的启发，但不能作为历史 Coverage 主算法。
+
+---
+
+## 17. 对 1000+ 技术博客方案可复用的部分
+
+### 17.1 多角色 Agent，而不是万能 Agent
+
+可保留：
+
+```text
+Analysis Agent
+Ops Explanation Agent
+Profile/Recipe Suggestion Agent
+Dashboard Description Agent
+```
+
+每个 Agent 只有最小 Tool 集。
+
+### 17.2 Tool 是权限边界
+
+原文使用 LangChain `@tool` 把普通 Python 函数转为 Agent 可调用能力。生产平台应进一步把 Tool 变成强类型 API：
+
+```text
+read_document_version
+query_ops_metrics
+request_analysis
+propose_profile_patch
+propose_command
+```
+
+禁止 Agent 获得：
+
+```text
+arbitrary SQL
+shell
+任意文件写入
+无限公网抓取
+直接任务状态写入
+直接删除
+```
+
+### 17.3 AI 分析是 Projection
+
+情绪、主题、实体、摘要与图表都适合做 Document Version 的派生物，而不是 canonical truth。
+
+### 17.4 Dashboard 消费稳定 Read Model
+
+原文把抓取、分析、图表和 UI 串成一条本地链路。生产化后应改成：
+
+```text
+Source Sync
+ -> Truth
+ -> Analysis Projection
+ -> Analytics Read Model
+ -> Dashboard API
+ -> UI
+```
+
+UI 刷新不能触发重新 Crawl/LLM。
+
+---
+
+## 18. 不应直接复用的部分
+
+以下模式不应进入知识库生产主链路：
+
+1. `while True + schedule` 作为唯一 Scheduler；
+2. 每 URL 创建一个 `AsyncWebCrawler`；
+3. 每 URL 使用 `asyncio.run()`；
+4. 逐 URL 串行抓取；
+5. LLM 直接解析自由文本 JSON，无 Schema 校验；
+6. 本地 JSON/PNG/app.py 作为分布式事实；
+7. Agent memory 作为 durable task state；
+8. exact headline string 作为唯一去重；
+9. 首页/栏目 links 作为历史 Coverage；
+10. Agent 直接生成并在宿主机执行 Python；
+11. 通过长生命周期服务进程是否“10 秒内退出”判断健康；
+12. 固定 thread id 跨运行复用；
+13. import module 时初始化 LLM/读取 secret；
+14. Dashboard 每次运行随机重生成而没有 Release/Promotion。
+
+---
+
+## 19. 与当前《博客知识库技术方案》的逐项对照
+
+当前主方案已经采用了比原文 Demo 更适合生产的设计：
+
+| 原文/项目模式 | 当前主方案 | 结论 |
+|---|---|---|
+| 首页/栏目发现 | CMS/Sitemap/Feed/Archive/Common Crawl + Coverage Evidence | 当前方案更完整 |
+| Agent 决定抓取流程 | Config/Profile/Provider/Recipe + durable Task | 当前方案更可控 |
+| 每次临时 crawler | Worker + Crawl4AI `arun_many(stream=True)`/Dispatcher | 当前方案更适合规模化 |
+| 本地 JSON | PostgreSQL + Object Storage | 当前方案更可靠 |
+| LLM headline extraction | Snapshot -> Extraction Candidate -> IR/Quality | 当前方案可重放 |
+| VADER 结果直接写 JSON | Analysis Manifest + Analysis Release + Record | 当前方案可审计 |
+| `schedule + while True` | PostgreSQL durable state + Outbox + Redis Streams | 当前方案可恢复 |
+| Streamlit 直接承载生成 UI | React/Vue 生产管理台；Streamlit 仅 PoC | 当前方案更稳健 |
+| 图表直接读本地文件 | Ops Analytics Read Model + Dashboard API | 当前方案更可扩展 |
+| Agent 直接操作 Tool | Agent Least Privilege + Typed Command | 当前方案更安全 |
+| UI 趋势无 Coverage/Watermark 契约 | watermark/coverage/release 显式展示 | 当前方案更可解释 |
+
+因此，这篇文章值得保留的生产思想，当前主方案已经覆盖：
+
+- 抓取后的 AI 派生能力；
+- Agent 职责拆分；
+- Tool/API 权限边界；
+- Dashboard Read Model；
+- AI 与 Source Sync 解耦；
+- Streamlit 只用于 PoC；
+- durable scheduler 替代本地循环；
+- Crawl4AI 只作为 Worker 执行器而非平台级 Scheduler。
+
+---
+
+## 20. 关于“自动生成 Dashboard”的方案判断
+
+本次读取完整原文和仓库后，新增发现的最大差异是：原文不仅生成图表，还让 Agent 生成、改写并执行 Streamlit Python 代码。
+
+对于目标知识库，不建议把这个能力直接加入生产主方案，原因是：
+
+1. 用户核心需求是稳定的 Web 管理，不是每天随机重写管理台；
+2. 生产管理台需要稳定 RBAC、Command、Audit、数据契约；
+3. LLM 生成 Python 后直接执行会扩大攻击面；
+4. Dashboard 的随机变化会破坏可测试性和运维一致性；
+5. 当前主方案的 `Dashboard View Release` 已经能支持版本化布局/指标绑定，不需要任意代码执行。
+
+如果未来需要“Agent 辅助生成看板”，推荐只作为可选实验能力：
+
+```text
+自然语言需求
+ -> Agent 生成 Dashboard Spec Draft
+ -> JSON Schema 校验
+ -> metric/query allowlist
+ -> permission/scope 校验
+ -> preview
+ -> human/policy approval
+ -> Dashboard View Release
+ -> trusted renderer
+```
+
+只有确实需要自定义 Python 插件时，才进入隔离 Sandbox 的 Generated Artifact Pipeline。
+
+这不是当前 1000 博客知识库的必需能力，因此不应为了复刻教程而扩大主方案复杂度。
+
+---
+
+## 21. 生产化 Agent 运行记录建议
+
+如果未来扩大 Agent 使用范围，建议额外记录：
+
+```text
+agent_run
 - id
-- document_version_id
-- analysis_type             # SENTIMENT / TOPIC / ENTITY / SUMMARY
-- analysis_release_id
-- input_manifest_id
-- output_schema_version
-- label
-- score
-- confidence
-- rationale_ref             # 可选，受隐私/成本策略限制
-- raw_output_ref            # 可选
-- token_usage
-- latency_ms
+- workflow_release_id
+- model_release_id
+- prompt_release_id
+- toolset_release_id
+- input_manifest_hash
+- max_steps
+- token_budget
+- cost_budget
+- deadline
+- trace_object_ref
+- output_artifact_ref
+- output_hash
 - state
 - created_at
 ```
 
-`analysis_release_id` 固定：
+每次 Tool Call：
 
 ```text
-model + model_revision
-prompt template
-system policy
-output schema
-sampling parameters
-normalization rule
-post-processing rule
+agent_tool_call
+- agent_run_id
+- sequence
+- tool_name
+- tool_release_id
+- arguments_hash
+- idempotency_key nullable
+- started_at
+- finished_at
+- outcome_code
+- result_ref
 ```
 
-这样模型从 A 升级到 B 时，可以在相同 `Document Version` 上离线重放，比较 label drift，而不必重新抓网页。
+这样才能回答：
 
-## 7. 多篇新闻/博客的聚合不能直接平均
+- Agent 为什么做了这个动作；
+- 哪个模型/Prompt/Tool Schema 做出的决定；
+- 是否超过预算；
+- 哪一步失败；
+- 同一输入能否重放；
+- 新 Agent Workflow 是否真的优于旧版本。
 
-Dashboard 通常会画“正面/负面趋势”。如果直接对所有文章 score 求平均，会产生严重偏差：
+这属于未来 Agent 平台增强，不应阻塞当前 Source Sync 主链路。
 
-- 同一事件被 20 家站点转载，会被重复放大；
-- 高频发布 Source 会压过低频但高质量 Source；
-- 一篇长文可能和一条短讯权重相同；
-- 模型置信度不同；
-- 新旧模型输出不可直接混合；
-- 某天抓取失败会被误解成情绪下降。
+---
 
-推荐聚合键至少带：
+## 22. 更适合本知识库的落地形态
+
+把文章中的 Data/Viz/Refine 思想改造成：
 
 ```text
-analysis_release_id
-source_id / source_group
-published_time_bucket
-language
-dedup_cluster_id
-analysis_type
+Deterministic Data Plane
+Source
+ -> Coverage Providers
+ -> Normalize / Resolve / Probe
+ -> Fetch
+ -> Snapshot
+ -> Extraction / IR
+ -> Document Version
+ -> Markdown
+
+Derived Insight Plane
+Document Version
+ -> Analysis Manifest
+ -> Topic / Entity / Summary / Sentiment
+ -> Analytics Read Model
+
+Controlled Agent Plane
+Read-only Document/Ops Tools
+ -> Explain anomaly
+ -> Propose Profile/Recipe/Schema patch
+ -> Propose Dashboard Spec
+ -> Propose typed Command
+
+Web Plane
+Stable React/Vue Admin
+ -> Read Model
+ -> Typed Command API
+ -> Audit
 ```
 
-聚合前先做 Document Identity / near-duplicate 聚类，再决定 `per_document`、`per_source`、`per_event_cluster` 哪一种权重。
+这一形态保留原文“Agent 把数据转成产品”的价值，同时避免让 Agent 成为爬虫真相、调度真相或任意代码执行入口。
 
-Dashboard 必须展示数据新鲜度和 Coverage，避免把“今天只抓到 20% 数据”显示成真实业务趋势。
+---
 
-## 8. Streamlit 执行模型对架构的影响
+## 23. 性能与容量层面的工程结论
 
-Streamlit 官方文档说明，交互会导致脚本重新从上到下执行；`st.cache_data`、`st.cache_resource` 和 `st.session_state` 用于减少重复计算和保存 UI 会话状态。
+假设 1000 Source、百万 Document：
 
-这意味着一个教程可以写：
+### 抓取层
+
+- Worker 长生命周期 Browser/Crawler；
+- HTTP first，Browser fallback；
+- `arun_many(stream=True)` 只作为 Worker 内执行；
+- per-domain rate limit；
+- 每 URL 结果独立 persist/ack；
+- Browser 与 HTTP Worker 独立资源池。
+
+### AI 层
+
+- 不对未变化 Document 重复分析；
+- Analysis 按 Version + Release + input hash 幂等；
+- AI backlog 不阻塞 Source Sync；
+- 低优先级 Summary/Insight 可在高负载时延后。
+
+### Dashboard 层
+
+- 不实时 JOIN 全部高增长事实表；
+- 使用增量聚合 Read Model；
+- 图表读取 API，不读取 Worker 本地文件；
+- 显示 watermark / coverage / release；
+- SSE/WebSocket 只做 invalidation。
+
+### Agent 层
+
+- 限 max steps/token/cost/deadline；
+- Agent 不直接操作数据库；
+- Tool 需要 RBAC/Scope/Policy；
+- 高风险 Command 人工或策略审批；
+- 生成代码默认不执行。
+
+---
+
+## 24. 对项目中“自持续”概念的重新定义
+
+教程中的 self-sustaining 更接近：
 
 ```text
-button -> crawl -> analyze -> dataframe -> chart
+定时运行
+ + Agent 自动选择 Tool
+ + 自动生成图表
+ + 自动修代码
 ```
 
-但生产上不能让每次页面刷新都触发：
-
-- Crawl4AI 重新抓取；
-- Browser 重新启动；
-- LLM 再分析全部文章；
-- 全量 Embedding；
-- 全量数据库扫描。
-
-正确模式：
+生产知识库的 self-sustaining 应定义为：
 
 ```text
-Backend Workers
-  -> durable facts / projections
-  -> dashboard read model
-  -> Web API
-  -> Streamlit/React/Vue render only
+调度状态可持久化
+任务失败可恢复
+Source 可独立重试
+历史 Coverage 可证明
+增量游标不丢失
+Extractor/Model 可离线重放
+结构漂移可被检测
+AI backlog 不阻塞事实同步
+Dashboard 能解释水位与覆盖率
+配置和 Release 可回滚
 ```
 
-Streamlit 可以作为 PoC、研究看板、内部实验工具；主生产管理台更适合 React/Vue + FastAPI，并让后端负责状态、权限、长任务和事件流。
+“自主性”不是生产可靠性的替代品。真正减少维护成本的核心是：稳定事实模型、声明式 Profile/Recipe、证据链、Replay、Release、自动漂移检测和可恢复任务系统。
 
-## 9. “自持续”系统不应依赖 UI 常驻循环
+---
 
-所谓 self-sustaining，应由 Scheduler 和持久状态实现，而不是：
+## 25. 最终结论
 
-```python
-while True:
-    scrape()
-    analyze()
-    sleep(3600)
-```
+这篇文章和项目非常适合说明三个思想：
 
-推荐：
+1. Crawl4AI 的 Markdown/links 能成为 Agent Tool 的网页输入层；
+2. 多 Agent 拆分 Data / Visualization / Refinement 可以降低单 Agent 的职责复杂度；
+3. 抓取数据可以继续形成 AI 派生分析和可视化产品。
 
-```text
-Schedule Policy
- -> create INCREMENTAL Run
- -> Discovery/Change Signal
- -> Fetch changed documents
- -> emit DocumentVersionCreated
- -> enqueue Analysis Task
- -> update Analytics Read Model
- -> Web receives refresh event
-```
+但它本质仍是教程级、单机、当前新闻 Dashboard Demo，不是 1000 个技术博客的全历史同步框架。配套仓库当前还存在 `main.py` import 路径/文件名不一致、本地文件状态、每 URL 新建 crawler、串行抓取、弱结构化解析、进程内 MemorySaver、宿主机执行 LLM 生成代码等明显生产化差距。
 
-关键点：
+对现有《博客知识库技术方案》的判断是：**当前主方案已经吸收了这篇文章中值得生产化的能力，并且在 Coverage、durable task、Snapshot/Version、AI Release、Dashboard Read Model、Agent 最小权限、Streamlit 定位等方面更严格。** 本次没有必要为了复刻教程，把“Agent 自动生成并直接执行 Streamlit Python”加入生产主链路；相反，应把它明确视为可选实验能力，并在未来需要时采用声明式 Dashboard Spec 或隔离 Sandbox。
 
-- 调度策略可版本化；
-- Worker 随时可以重启；
-- 每一步有 idempotency key；
-- 重试不会重复产生分析记录；
-- AI backlog 不阻塞抓取；
-- UI 是否在线不影响后台同步。
-
-## 10. Dashboard 应该消费 Read Model，而不是直接扫事实表
-
-1000+ Source、百万 Document 后，如果每次打开首页都实时 JOIN URL Observation、Fetch Attempt、Document Version、Embedding、Audit，会把管理 UI 变成数据库压力源。
-
-推荐增加运营读模型：
-
-```text
-ops_metric_point
-- metric_release_id
-- metric_name
-- time_bucket
-- source_id nullable
-- dimensions_json
-- value
-- numerator nullable
-- denominator nullable
-- watermark
-- computed_at
-```
-
-和 Source 快照：
-
-```text
-source_ops_snapshot
-- source_id
-- coverage_state
-- last_success_at
-- last_new_document_at
-- freshness_lag_seconds
-- queue_backlog
-- fetch_success_rate
-- accepted_rate
-- browser_fallback_rate
-- quality_reject_rate
-- changed_rate
-- current_blocker
-- data_watermark
-- computed_at
-```
-
-Dashboard 首页查聚合 Read Model；点击 Source/Run 后再 drill-down 到事实表。
-
-## 11. Dashboard 的数据新鲜度必须显式表达
-
-每个图表至少显示：
-
-```text
-window_start
-window_end
-data_watermark
-computed_at
-coverage_ratio
-release_scope
-```
-
-否则会出现“图表最后更新时间 10:00，但实际只处理到 08:30”的假实时问题。
-
-对于近实时运营，推荐：
-
-```text
-Transactional Outbox
- -> event consumer
- -> aggregate update
- -> SSE/WebSocket notification
- -> UI refetch affected query
-```
-
-SSE/WebSocket 只负责“告诉前端有变化”，最终数据仍从 API/Read Model 读取，避免把 websocket 消息本身当状态真相。
-
-## 12. 指标基数治理
-
-Prometheus 不适合把 `url_id`、`document_id`、`task_id` 等百万级身份作为 label，否则会导致高基数爆炸。
-
-推荐：
-
-- Prometheus：低基数运行指标，按 service、stage、route、outcome、source_group 等聚合；
-- PostgreSQL/ClickHouse 类分析读模型：按 Source、Run、Release、URL drill-down；
-- Object Storage：大体积 debug artifact；
-- OpenTelemetry Trace：抽样追踪单次链路。
-
-这对 1000 个站点尤为重要。
-
-## 13. 推荐的 Web 运营看板
-
-### 13.1 Fleet Overview
-
-- Source 总数 / active / paused / blocked；
-- FULL_BACKFILL completion / known gap；
-- freshness SLA；
-- queue backlog；
-- changed documents；
-- accepted / rejected；
-- Browser fallback；
-- AI analysis backlog；
-- Index lag。
-
-### 13.2 Source Health
-
-- Provider yield；
-- Feed/Sitemap/Archive 的 unique/overlap；
-- 新 URL 率；
-- 304/unchanged 比例；
-- 429/5xx/timeout；
-- Browser fallback；
-- DOM drift / selector zero-match；
-- 最近成功和 blocker。
-
-### 13.3 Quality
-
-- Markdown 长度/结构质量；
-- code/table preservation；
-- boilerplate ratio；
-- duplicate cluster；
-- low-quality quarantine；
-- Extractor/Schema Release 对比。
-
-### 13.4 Cost & Capacity
-
-- requests / bytes；
-- Browser seconds；
-- object storage growth；
-- embedding tokens；
-- LLM tokens；
-- cost per accepted/changed document；
-- Worker saturation。
-
-### 13.5 AI Insight
-
-- sentiment/topic/entity 趋势；
-- model/prompt release；
-- confidence distribution；
-- analysis coverage；
-- failure/backlog；
-- release-to-release drift。
-
-AI Insight 必须明确标注为 Derived Projection，不能和 Source Truth 混为一谈。
-
-## 14. 管理操作与图表必须分离
-
-图表是 Observation；“重抓”“暂停”“重新分析”“切换 Release”是 Command。
-
-推荐：
-
-```text
-Dashboard click
- -> POST typed command
- -> idempotency key
- -> RBAC / policy check
- -> transaction + Audit + Outbox
- -> async execution
- -> command status
- -> dashboard refresh
-```
-
-不能让前端直接更新 `task.state`、`source.status` 或 Redis key。
-
-## 15. Agent 生成 Dashboard 的安全边界
-
-如果未来允许 Agent 自动生成分析卡片或图表，应限制其能力：
-
-1. Agent 只调用只读 Analytics API；
-2. SQL 必须走受限 query service 或预定义 semantic layer；
-3. 限制最大扫描窗口、行数、CPU/时间；
-4. 禁止读取 Secret、raw credential、任意内部表；
-5. 输出保存 `dashboard_artifact_release + query_manifest`；
-6. 高风险管理动作仍需显式 Command API；
-7. Agent 生成的结论展示数据窗口、样本量、Release 和引用。
-
-“自然语言生成图表”可以是能力层，但不能替代管理台的信息架构和权限模型。
-
-## 16. 失败模型
-
-至少区分：
-
-```text
-CRAWL_FAILED
-CONTENT_EMPTY
-CONTENT_QUALITY_LOW
-ANALYSIS_INPUT_NOT_READY
-ANALYSIS_TIMEOUT
-ANALYSIS_MODEL_ERROR
-ANALYSIS_SCHEMA_INVALID
-ANALYSIS_LOW_CONFIDENCE
-AGGREGATION_STALE
-DASHBOARD_READ_MODEL_LAG
-DASHBOARD_QUERY_TIMEOUT
-COMMAND_REJECTED
-COMMAND_CONFLICT
-```
-
-`ANALYSIS_*` 失败不得反向把已经 READY 的 Canonical Document 标记为失败。
-
-## 17. 幂等与身份设计
-
-分析任务：
-
-```text
-analysis_task_key = hash(
-  document_version_id
-  + analysis_release_id
-  + input_manifest_hash
-)
-```
-
-聚合任务：
-
-```text
-aggregate_key = hash(
-  metric_release_id
-  + time_bucket
-  + dimension_set
-  + input_watermark
-)
-```
-
-这样重试不会生成重复分析结果，Dashboard 也能知道某个时间桶对应哪批输入。
-
-## 18. 对 1000+ 技术博客方案的直接优化
-
-本次调研建议把以下能力正式纳入 `博客知识库技术方案.md`：
-
-1. 新增 **Insight/Analytics Plane**：LLM sentiment/topic/summary 等是可重建派生物，与 Source Sync 解耦；
-2. 新增 **Ops Analytics Read Model**：Dashboard 默认读聚合快照，不实时扫描高增长事实表；
-3. 新增 **Metric/Dashboard Release**：指标公式、维度、窗口、聚合和 Dashboard schema 版本化；
-4. 新增 **Watermark/Freshness**：所有趋势图显示处理水位、数据窗口和 Coverage；
-5. 新增 **Dashboard Event Refresh**：Outbox 事件驱动聚合，SSE/WebSocket 仅做失效通知；
-6. 新增 **AI Analysis Manifest**：固定 Document Version、输入 Projection、Model/Prompt/Schema Release；
-7. 新增 **AI Coverage/Backlog**：AI 派生失败不阻塞抓取，但在 Web 中可观察；
-8. 增加 **Prometheus 高基数约束**：URL/Document/Task 级明细进入数据库/分析读模型，不进入 metrics label；
-9. 明确 **Dashboard Observation 与 Command 分离**：操作统一通过强类型、幂等、RBAC、Audit API；
-10. 明确 **Streamlit 定位**：PoC/实验可以使用，生产管理台不在页面 rerun 中直接执行 Crawl/LLM 长任务。
-
-## 19. 推荐测试
-
-### 19.1 抓取/分析解耦
-
-让 LLM 服务完全不可用，验证 Source Sync、Snapshot、Version、Markdown 仍可正常完成。
-
-### 19.2 Analysis Replay
-
-同一 Document Version：
-
-- Analysis Release A；
-- Analysis Release B；
-- Filter Release A/B；
-
-必须生成独立且可比较的结果，不重新访问源站。
-
-### 19.3 Dashboard Watermark
-
-人为让 aggregate worker 落后，UI 必须明确显示旧 watermark，不能展示为“实时”。
-
-### 19.4 Dashboard Consistency
-
-随机抽取 Source/Run，把 Read Model 聚合值与事实表离线重算对比。
-
-### 19.5 高基数测试
-
-模拟百万 URL，确认 Prometheus label cardinality 不随 URL 数线性增长。
-
-### 19.6 UI 重跑测试
-
-重复刷新 Streamlit/React 页面不能产生新 Crawl、LLM Task 或重复 Command。
-
-### 19.7 Command Audit
-
-从 Dashboard 触发 retry/pause/reprocess，必须具备 requester、idempotency key、RBAC decision、command state、Audit Log。
-
-## 20. 结论
-
-该文章最有价值的启示，是把“网页抓取”继续向“数据产品”延伸：内容被采集后，可以经过 AI 分析形成持续更新的运营/业务看板。
-
-对于本项目，不能直接照搬“Crawl4AI + Agent + Streamlit 一体化脚本”，而应保留其产品闭环，同时把工程边界升级为：
-
-```text
-Durable Crawl Truth
-    -> Versioned Content Projection
-    -> Versioned AI Insight
-    -> Incremental Analytics Read Model
-    -> Web Dashboard
-    -> Audited Command API
-```
-
-这使系统既能满足 1000+ 博客的全量历史回灌和增量同步，也能逐步增加情绪、主题、趋势、质量、成本和异常诊断等智能运营能力，而不会让 LLM 或 Dashboard 变成抓取事实链路的新单点故障。
-
-## 21. 参考资料
-
-- 原文：https://medium.com/data-science-collective/build-ai-agents-that-scrape-the-web-and-generate-dashboards-with-crawl4ai-1f9e5229e428
-- Crawl4AI AsyncWebCrawler：https://docs.crawl4ai.com/api/async-webcrawler/
-- Crawl4AI arun_many：https://docs.crawl4ai.com/api/arun_many/
-- Crawl4AI Multi-URL Crawling：https://docs.crawl4ai.com/advanced/multi-url-crawling/
-- Crawl4AI Markdown Generation：https://docs.crawl4ai.com/core/markdown-generation/
-- Streamlit Session State：https://docs.streamlit.io/develop/api-reference/caching-and-state/st.session_state
-- Streamlit Caching：https://docs.streamlit.io/develop/concepts/architecture/caching
+因此主方案保持当前生产架构是合理的；本次调研的新增价值主要是把原文完整实现、配套仓库代码和自动代码执行风险验证清楚，并明确 Agent 在知识库中的正确边界。
