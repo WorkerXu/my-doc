@@ -1,106 +1,147 @@
 # Crawl4AI Self-Hosting：异步任务队列、实时监控与浏览器池
 
-## 1. 调研对象
+## 1. 调研对象与版本边界
 
-- 官方文档：https://docs.crawl4ai.com/core/self-hosting/
+- 官方 Self-Hosting 文档：https://docs.crawl4ai.com/core/self-hosting/
 - 官方仓库：https://github.com/unclecode/crawl4ai
 - 重点源码：
   - `deploy/docker/work_queue.py`
   - `deploy/docker/job.py`
-  - `deploy/docker/ARCHITECTURE.md`
+  - `deploy/docker/api.py`
+  - `deploy/docker/artifacts.py`
   - `deploy/docker/MIGRATION.md`
+  - `deploy/docker/ARCHITECTURE.md`
+  - `deploy/docker/SECURITY-VERIFY.md`
 - 关联文档：
   - https://docs.crawl4ai.com/advanced/multi-url-crawling/
   - https://docs.crawl4ai.com/blog/releases/v0.7.7/
   - https://docs.crawl4ai.com/blog/releases/0.7.6/
 
-本次调研关注的不是“怎样用 Crawl4AI 抓一个 URL”，而是它在自托管模式下如何解决 **长任务异步化、浏览器资源复用、运行时限流、实时监控、安全边界和运维控制**，以及这些机制应该怎样纳入 1000+ 技术博客全历史抓取平台。
+本次调研只关心 Crawl4AI Self-Hosting 对“1000+ 技术博客全历史回填 + 持续增量同步 + Web 运维”的可复用能力，不把它当成整个知识库平台。
 
-> 版本注意：当前 Self-Hosting 页面顶部已经说明 0.9.x 为 secure-by-default，但页面部分旧示例仍保留 0.8.x 写法。生产设计应以 `main` 分支的 `deploy/docker/MIGRATION.md`、实际发布版本源码和 Contract Test 为准，不能把文档中的旧示例直接当作安全契约。
+当前官方 Self-Hosting 页面已经以 **v0.9.x** 为标题，并明确提示 0.9.0 是 secure-by-default 的破坏性升级；但页面中仍混有部分旧版示例。因此生产实现不能只照抄文档片段，必须以固定 release/tag 的源码、`MIGRATION.md`、运行时 capability probe 和 Contract Test 共同定义行为契约。
 
 ---
 
 ## 2. 核心结论
 
-Crawl4AI Self-Hosting 很适合充当本方案中的 **Browser Runtime Service / Slow Lane**，但不适合作为 1000 个站点的全局业务调度器和 Coverage Truth Store。
+Crawl4AI Self-Hosting 很适合成为知识库平台中的 **Browser Runtime Service / JS Slow Lane**，不适合成为全局调度器、永久任务库、Coverage Truth Store 或最终 Markdown 生成真相。
 
 应该吸收的能力：
 
-1. **异步 Job API**：长抓取任务提交后返回 `task_id`，状态与结果异步获取；
-2. **有界 Work Queue**：固定 worker 数、队列容量、调用方并发配额，避免无限 BackgroundTask；
-3. **浏览器池**：按配置签名复用 permanent/hot/cold browser，并以 janitor 做内存自适应清理；
-4. **运行时并发保护**：MemoryAdaptiveDispatcher / SemaphoreDispatcher / RateLimiter；
-5. **实时运维面**：health、request、browser pool、error、timeline、WebSocket、Prometheus；
-6. **人工控制动作**：cleanup、kill browser、restart browser；
-7. **安全加固**：默认认证、声明式 hooks、危险字段禁止从网络传入、artifact id 代替 caller-controlled path、Redis 隔离、队列/请求体/时间预算；
-8. **Webhook**：任务完成事件可推送到上游，适合事件驱动流水线。
+1. 异步 `/crawl/job` / `/llm/job` API，把长尾浏览器任务从调用方 HTTP 生命周期中拆开；
+2. 有界 `WorkQueue`，限制排队量、worker 数和单 principal 在途数；
+3. Browser Pool，复用高成本 Chromium runtime；
+4. `MemoryAdaptiveDispatcher`、`SemaphoreDispatcher`、`RateLimiter` 等 worker-local 保护；
+5. health、request、browser pool、timeline、WebSocket、Prometheus 等实时运维信号；
+6. cleanup、kill browser、restart browser 等运维动作；
+7. secure-by-default 的网络/API 边界；
+8. Webhook 完成提示；
+9. screenshot/PDF 使用 opaque `artifact_id` 而不是 caller-controlled path。
 
 不能直接照搬的部分：
 
-1. Docker server 的队列本质上是 **进程内 `asyncio.Queue`**，不是跨 Pod 的 durable queue；
-2. Monitor 主要描述 **运行时近期状态**，不能代替文章、URL、Task、Coverage、Version 的长期业务事实；
-3. Browser pool 的 hot/cold/permanent 是资源复用策略，不等于平台级公平调度、域名限速或 lease；
-4. `/crawl/job` 的 `task_id` 是 runtime task identity，不能直接作为平台 Article/Attempt/Task 的唯一业务主键；
-5. Webhook 可能重复、延迟、丢失或重放，必须由平台幂等消费，并保留 reconciliation；
-6. 单个 Crawl4AI 容器的内存阈值只能保护本容器，不能解决集群全局浏览器容量；
-7. 运行时返回 `success=true` 只代表执行成功，不代表抓到了正确文章、完整历史或高质量 Markdown。
+1. `WorkQueue` 是 **单进程内 `asyncio.Queue`**，容器退出或 worker 被取消后，等待中的任务并不是 durable queue；
+2. Redis 中的 runtime task status/result 仍只是运行时临时状态，具有 TTL，不能作为平台永久 Attempt/Document 事实；
+3. Runtime `task_id` 不能冒充平台 `run_id/task_id/attempt_id/document_id`；
+4. webhook 不是 exactly-once 完成协议，只能是 hint；
+5. runtime monitor 描述“这个容器现在怎么样”，不能证明“某站历史文章是否抓全”；
+6. browser pool 是资源缓存，不是跨 Source 公平调度器；
+7. `success=true` 只说明一次运行时调用完成，不代表页面是正文、不是 soft-404、内容完整或历史覆盖完整；
+8. Runtime artifact 是 **短期制品**，官方实现有 TTL 和 quota，必须及时晋升到平台对象存储，不能让业务事实引用会过期的 runtime-local id。
 
-因此最终架构应采用：
+因此推荐边界是：
 
 ```text
-平台控制面/业务真相
-    |
-    |  durable Task + lease + admission + idempotency
-    v
+Web Admin / API
+      |
+PostgreSQL Truth + Durable Task + Fair Scheduler
+      |
+Global Admission / Lease / Fencing
+      |
 Runtime Gateway
-    |
-    +---- HTTP Worker
-    |
-    +---- Crawl4AI Self-Hosted Runtime Pool
-             |
-             +-- bounded work queue
-             +-- browser pool
-             +-- memory adaptive dispatcher
-             +-- runtime monitor / websocket / prometheus
-             +-- webhook callback
-    |
-    v
-Result Materializer
-    |
-    v
-Raw Artifact -> Extract -> Quality -> Canonical IR -> Markdown
+      |
++-----+------------------------------+
+|                                    |
+HTTP Fast Lane                Crawl4AI Runtime Pool
+                                     |
+                           bounded WorkQueue
+                           Browser Pool
+                           local Dispatcher
+                           Monitor / WebSocket / Metrics
+                           Webhook / Runtime Redis
+                                     |
+                         Result Materializer
+                                     |
+                  Runtime Artifact Promotion Gate
+                                     |
+Object Storage Raw Artifact -> Extract -> Quality -> IR -> Markdown
 ```
 
 ---
 
-## 3. 异步 Job Queue 的实现原理
+## 3. 异步 Job 的真实实现结构
 
-### 3.1 为什么要异步 Job
+### 3.1 API、队列和 Redis 是三个不同层次
 
-Self-Hosting 文档区分两类调用：
+`job.py` 的 `/crawl/job` 最终调用 `api.py` 中的 handler。当前代码同时存在：
 
-- 同步 `/crawl`：客户端一直等待抓取结束；
-- 异步 `/crawl/job`、`/llm/job`：立即返回 `task_id`，后台执行，之后查询状态或由 webhook 通知。
+- **HTTP Job API**：接收请求并返回 runtime `task_id`；
+- **进程内 WorkQueue**：决定后台 coroutine 什么时候执行；
+- **Redis task hash**：保存 runtime task 的 status/result，并设置 TTL。
 
-这个模型解决了浏览器抓取天然存在的长尾：页面可能需要 JS、等待选择器、滚动、重试、下载资源，HTTP 请求生命周期不应该承担完整作业生命周期。
-
-对于知识库平台，这个原则应推广为：
+这三个对象不能混为一个“队列”。更准确的模型是：
 
 ```text
-API Request != Crawl Task != Crawl Attempt != Runtime Request
+POST /crawl/job
+      |
+      +--> 创建 runtime task id / Redis 状态
+      |
+      +--> _enqueue_job(factory, principal)
+                |
+                +--> WorkQueue.submit()
+                       |
+                  asyncio.Queue
+                       |
+                    workers
+                       |
+                 crawl coroutine
+                       |
+                 Redis result/status
+                       |
+                    webhook
 ```
 
-Web 管理端点击“回填”只创建一个 `crawl_run`；`crawl_run` 再生成大量持久化 task；task 被 worker lease 后，才发起一次 runtime request。任何一层都不能互相冒充。
+因此“用了 Redis”并不意味着排队本身是 durable 的。Redis 可以保存任务状态，但当前 `work_queue.py` 明确使用进程内 `asyncio.Queue` 承载等待执行的 coroutine factory。
 
-### 3.2 `work_queue.py` 的关键变化
+### 3.2 为什么这对平台很重要
 
-官方源码明确记录了一个重要演进：旧版 `/crawl/job` 和 `/llm/job` 使用 FastAPI `BackgroundTasks`，没有边界，调用方可以无限入队并耗尽内存和 browser slot；新实现引入：
+如果 Crawl4AI Pod 在排队期间重启：
+
+- 平台不能假设 runtime 队列会恢复；
+- runtime Redis 中可能仍留有一段时间的 task 状态；
+- webhook 也可能永远不会到达；
+- 平台自己的 lease/attempt 必须通过 reconciliation 发现“runtime 丢失/未知”，再决定重试。
+
+所以：
+
+```text
+平台 durable task != runtime job
+平台 attempt != runtime task id
+平台完成态 != runtime Redis completed
+```
+
+---
+
+## 4. `WorkQueue`：有界背压的技术原理
+
+`deploy/docker/work_queue.py` 解决了旧实现使用 FastAPI `BackgroundTasks` 无上限接受后台任务的问题。核心接口：
 
 ```python
 WorkQueue(maxsize, workers, per_principal)
 ```
 
-核心结构是：
+其内部是：
 
 ```text
 asyncio.Queue(maxsize=N)
@@ -111,133 +152,246 @@ asyncio.Queue(maxsize=N)
       +--> worker M
 ```
 
-它提供三层保护：
+### 4.1 三个限制分别解决什么
 
-- `maxsize`：等待队列上限，满时返回 QueueFull，对应 HTTP 503；
-- `workers`：固定后台 worker 数，控制实际并行量；
-- `per_principal`：按 principal 统计并发/在途 job 数，超限返回 429。
+- `maxsize`：限制等待队列长度；满时抛 `QueueFull`，上层映射为 HTTP 503，并带 `Retry-After`；
+- `workers`：固定真正执行 factory 的后台 worker 数；
+- `per_principal`：限制同一调用主体的 queued + running 在途数，超限映射为 HTTP 429。
 
-这背后的技术原理是 **Admission Control 必须发生在创建昂贵资源之前**。如果先接受无限任务，再依赖浏览器层排队，内存、Future、闭包、请求上下文就已经被放大。
+这里最重要的原理是 **Admission 必须发生在昂贵资源创建之前**。如果请求全部先转成 background task，再让 Chromium 自己“慢慢排”，内存中的 coroutine、Future、request context 和待处理结果早已无界增长。
 
-### 3.3 对知识库平台的改造
+### 4.2 `0 = unbounded` 是生产风险点
 
-不能把该 `asyncio.Queue` 直接作为平台主队列，因为容器退出会丢队列状态，也不能跨副本协调。
-
-平台应使用：
-
-- PostgreSQL：Task truth、状态机、lease、attempt、deadline；
-- Redis Streams（或后续 Kafka/NATS JetStream）：任务运输；
-- Runtime 内部 WorkQueue：**第二道局部保险丝**。
-
-即形成双层背压：
+源码明确把：
 
 ```text
-Global Admission
-  - tenant/source/domain/browser quotas
-  - durable task + lease
-  - fair scheduling
-        |
-        v
-Runtime Admission
-  - container queue maxsize
-  - workers
-  - per-principal
-  - memory threshold
+queue.maxsize = 0       -> unbounded
+queue.per_principal = 0 -> unlimited
+wall_clock_s = 0        -> no deadline
 ```
 
-当 Runtime 返回 429/503 时，上游不是立即无限重试，而应记录 `RUNTIME_BACKPRESSURE`，带抖动地重新排队，并降低该 runtime endpoint 的可用容量估计。
+作为兼容旧行为的语义。
+
+对知识库平台不能直接暴露这个语义。外部 Source Profile 中的 `0` 应被 Config Compiler 拒绝或编译成平台安全默认值；只有平台管理员的受审 Release 才能显式申请 unbounded，而且生产环境原则上仍不应使用。
+
+这也是为什么方案需要 **Capability Firewall + Config Compiler**，而不是把 Crawl4AI 原生 YAML/JSON 直接透传给 Web 用户。
+
+### 4.3 `_enqueue_job` 的降级行为也要测试
+
+`api.py` 中 `_enqueue_job` 在 WorkQueue 没有启动时会回退到 FastAPI `BackgroundTasks`。这对测试/无 lifespan 环境有用，但生产启动如果配置或生命周期异常，就可能悄悄退回无边界模式。
+
+因此平台上线必须有启动 Contract Test：
+
+1. runtime readiness 返回 pinned release；
+2. WorkQueue 已 started；
+3. `maxsize/workers/per_principal` 与发布配置一致；
+4. 压满队列时实际返回预期 503；
+5. 超 principal 配额时实际返回 429；
+6. 任何一项不满足，Runtime Registry 标记 `UNROUTABLE`。
 
 ---
 
-## 4. Webhook 的实现原则
+## 5. 平台级双层背压
 
-Crawl4AI 的 Job API支持在完成时发送 webhook，支持自定义 header、成功/失败 payload，并有重试机制。文档也明确要求 webhook handler 幂等、快速返回并异步处理。
+Runtime 自带的队列只能保护一个进程。1000+ Source 还需要平台层解决跨 Pod、公平性和域名级礼貌抓取。
 
-知识库平台应把 webhook 定义成 **提示事件（hint）**，而不是唯一完成凭证。
+推荐双层：
 
-推荐事件模型：
+```text
+第一层：Platform Global Admission
+- per-source concurrency
+- per registrable-domain concurrency/RPS
+- per-host token bucket
+- global browser slots
+- per-runtime slots
+- per-run page/request/byte/wall-clock budget
+- incremental reserved capacity
+- repair reserved capacity
+- weighted fair scheduling
 
-```json
-{
-  "runtime_id": "c4ai-pool-a-03",
-  "runtime_task_id": "crawl_xxx",
-  "platform_attempt_id": "att_xxx",
-  "event_type": "runtime.completed",
-  "event_id": "...",
-  "status": "completed",
-  "emitted_at": "...",
-  "result_ref": "..."
-}
+第二层：Crawl4AI Local Admission
+- WorkQueue maxsize
+- workers
+- per_principal
+- MemoryAdaptiveDispatcher
+- RateLimiter
+- browser pool memory pressure
 ```
 
-消费逻辑：
+### 5.1 429、503、504 不能统一当普通失败
 
-1. 先认证 callback；
-2. 以 `(runtime_id, runtime_task_id, event_id)` 去重；
-3. 查询平台 attempt 当前状态；
-4. 若 attempt 已终态，则只做审计，不重复生成文档；
-5. 拉取/接收 runtime result；
-6. Result Materializer 逐条物化；
-7. 原子更新 attempt + outbox；
-8. 超时未收到 webhook 的 job 由 reconciliation 定时查询 runtime status。
+建议分类：
 
-必须有 reconciliation 的原因：Webhook 是网络消息，不具备 exactly-once 语义。可靠系统依赖 **幂等 + 至少一次 + 对账**，而不是假设“回调一定只来一次且永不丢”。
+- `429 RUNTIME_PRINCIPAL_QUOTA`：该 gateway principal 在途过多；降低该 principal 的提交速率；
+- `503 RUNTIME_QUEUE_FULL`：实例排队已饱和；遵守 `Retry-After`，把 task 退回 durable queue，降低 runtime capacity score；
+- `504 RUNTIME_WALL_CLOCK`：一次运行超预算；是否重试取决于页面类型和 repair policy；
+- connection reset / pod lost：标记 `RUNTIME_LOST`，由 reconciliation + lease 恢复；
+- 业务 HTTP 429/503：这是目标网站的响应，必须归入 host rate adaptation，不能和 Runtime 过载混淆。
 
-安全上还要额外限制：
-
-- runtime 的 webhook destination 必须由服务端配置或 allowlist 选择，不能让普通 Web 用户填写任意 URL，否则会形成 SSRF；
-- callback header 不允许透传 `Authorization`、`Cookie` 等敏感 hop-by-hop/header；
-- webhook payload 大结果优先只传 artifact/result reference，避免放大请求体和敏感数据泄露。
+重试统一采用有限次数、指数退避 + jitter，并保留 error class；不能在 Runtime 和平台两层同时无限重试。
 
 ---
 
-## 5. Browser Pool 的技术原理
+## 6. Runtime task、Webhook 与 Reconciliation
 
-官方架构文档描述了 3 级浏览器池：
+### 6.1 Webhook 只能是 hint
 
-- **Permanent**：默认配置常驻；
-- **Hot Pool**：高频配置；
-- **Cold Pool**：低频或首次使用配置；
-- **Janitor**：根据内存压力改变清理周期和 TTL。
-
-### 5.1 为什么按配置签名复用
-
-浏览器进程启动成本高，Chromium 的进程树、共享内存、JS runtime 都比普通 HTTP 请求昂贵。对相同 BrowserConfig 反复创建 Browser 会造成：
-
-- 冷启动延迟；
-- RSS/共享内存尖峰；
-- 并发时进程爆炸；
-- 稳定性下降。
-
-Crawl4AI 把 BrowserConfig 序列化后计算签名，将相同配置映射到同一池对象。其本质是 **按资源兼容性 key 做复用**。
-
-### 5.2 热冷分层
-
-Hot/Cold 的意义不是业务优先级，而是缓存价值估计：
+官方文档支持 webhook 自定义 header、完成通知以及最佳实践中的幂等处理。平台端应建立 `runtime_event_inbox`：
 
 ```text
-高复用配置 -> 更长 TTL -> 减少重新启动成本
-低复用配置 -> 更短 TTL -> 优先释放内存
+runtime_event_inbox
+- runtime_id
+- runtime_task_id
+- platform_attempt_id
+- event_id / payload_hash
+- status
+- received_at
+- processed_at
+- payload_artifact_id
 ```
 
-这类似缓存的 admission + eviction，只是缓存对象变成了重量级 browser runtime。
+处理顺序：
 
-### 5.3 Memory Pressure + Janitor
+1. 校验来源和 secret；
+2. 根据 `(runtime_id, runtime_task_id, event_id/payload_hash)` 幂等去重；
+3. 绑定平台 attempt；
+4. 拉取/物化所有结果；
+5. 晋升 runtime artifact；
+6. 只有材料完整后才推进平台 attempt；
+7. 写 outbox 触发 Extract/Quality。
 
-官方实现会读取容器 cgroup 内存，并在不同压力档位调整清理策略。它解决的是“浏览器不是请求结束就释放，怎样避免池无限膨胀”。
+### 6.2 一定要有主动对账
 
-本方案应进一步做 **两级生命周期**：
+周期性 Runtime Reconciler 查询：
 
-1. **Context Generation**：按页面数、错误率、污染风险、session key 回收 context；
-2. **Browser Process Generation**：按 PID age、累计 page 数、RSS、crash/renderer error、FD 数、总任务数，主动 drain 并替换整个 browser process/Pod。
+- 已提交但长期无 webhook 的 job；
+- runtime completed 但平台 materialization 未完成的 attempt；
+- runtime endpoint 重启前后的 orphan attempt；
+- lease 即将过期但 runtime 仍 active 的 attempt。
 
-原因是“回收 context”不能证明 Chromium 主进程、renderer、GPU/utility 子进程的长期泄漏已被清除。对 7×24 小时知识库平台，必须把进程代际作为独立治理对象。
+Webhook + polling 的正确关系是：
 
-### 5.4 配置签名不能包含跨安全域 Secret
+```text
+webhook = 快速路径
+reconciliation = 正确性兜底
+```
 
-如果 browser pool 只按 viewport、UA、headless 等配置签名复用，却忽略 tenant、source auth scope、cookie/profile，就可能把安全状态跨任务串用。
+而不是二选一。
 
-因此平台的 pool/isolation key 至少要纳入：
+### 6.3 webhook destination 必须服务端决定
+
+普通 Web 用户不能填写任意 callback URL，否则会制造 SSRF 出口。Runtime Gateway 使用固定 callback endpoint 或服务端 allowlist；自定义 header 也只能由服务器生成，不允许透传 `Authorization`、`Cookie`、`Host` 等敏感字段。
+
+---
+
+## 7. Runtime Artifact Store：本次新增的关键落地点
+
+0.9 hardening 把 screenshot/PDF 从 caller-controlled `output_path` 改为 opaque `artifact_id`。`deploy/docker/artifacts.py` 的实现值得直接吸收其安全思想：
+
+- server 自己生成 32 hex id；
+- `O_EXCL | O_NOFOLLOW` 创建文件；
+- 文件权限 0600，目录 0700；
+- 校验 regular file / 非 symlink；
+- 单文件大小限制；
+- 总 quota；
+- TTL；
+- janitor 清理过期文件并在超 quota 时按最老优先删除。
+
+当前源码默认值中：
+
+```text
+CRAWL4AI_MAX_ARTIFACT_BYTES   = 50 MiB
+CRAWL4AI_ARTIFACT_QUOTA_BYTES = 2 GiB
+CRAWL4AI_ARTIFACT_TTL_SECONDS = 3600
+```
+
+这意味着 Runtime Artifact **天然不是知识库永久存储**。
+
+### 7.1 必须增加 Artifact Promotion Gate
+
+平台收到 runtime result 后，不允许把 `artifact_id` 直接写进最终 Document Version 并宣称完成。正确流程：
+
+```text
+Runtime result
+   |
+   +--> runtime artifact refs
+            |
+       FETCH_PENDING
+            |
+       GET /artifacts/{id}
+            |
+       stream + byte limit
+            |
+       sha256 + mime verify
+            |
+       S3/MinIO immutable object
+            |
+       DURABLE
+            |
+       attach platform artifact_id
+            |
+       attempt MATERIALIZED
+```
+
+建议新增：
+
+```text
+runtime_artifact_ref
+- runtime_id
+- runtime_task_id
+- platform_attempt_id
+- runtime_artifact_id
+- declared_mime
+- declared_size
+- discovered_at
+- fetch_started_at
+- durable_artifact_id
+- sha256
+- status: PENDING/FETCHING/DURABLE/MISSING_EXPIRED/TOO_LARGE/CORRUPT
+- error_class
+```
+
+### 7.2 为什么必须在终态之前晋升
+
+Runtime artifact 会因为：
+
+- TTL 到期；
+- quota janitor；
+- Pod 重建；
+- 人工 cleanup；
+- runtime 本地卷异常；
+
+而消失。
+
+因此平台 Attempt 的最终 `SUCCEEDED` 应建立在“所有 required artifact 已经 durable”之上。若 screenshot/MHTML 只是 diagnostic，可按策略标记 optional；但 Raw HTML/PDF 等作为重放输入的材料必须先完成平台持久化。
+
+建议告警：
+
+```text
+runtime_artifact_promotion_age_seconds
+runtime_artifact_ttl_headroom_seconds
+runtime_artifact_missing_expired_total
+runtime_artifact_promotion_failure_total
+```
+
+当 headroom 低于安全阈值时，应停止向该 runtime 提交新的高制品任务，优先清空晋升 backlog。
+
+---
+
+## 8. Browser Pool：性能缓存而不是业务状态
+
+Self-Hosting 架构把浏览器大体分为 permanent / hot / cold，并由 janitor 根据内存压力清理。
+
+### 8.1 配置签名复用
+
+浏览器启动成本高，按 BrowserConfig signature 复用可以显著降低：
+
+- Chromium 冷启动；
+- RSS 峰值；
+- renderer 数量抖动；
+- JS Runtime 初始化成本。
+
+但 signature 的复用不能跨越安全边界。平台的 isolation key 至少加入：
 
 ```text
 runtime_profile_release
@@ -248,371 +402,321 @@ proxy_policy_class
 browser_feature_class
 ```
 
-公开技术博客默认使用无认证、无持久 profile 的 public isolation class；需要登录的来源必须单独审批并独立池化。
+公开技术博客默认走 `public-anonymous`，不使用持久 cookie/profile。需要认证的 Source 必须单独审批、独立 credential scope 和池化边界。
+
+### 8.2 Context Generation 与 Process Generation 分离
+
+只关闭 Browser Context 不能证明 Chromium 主进程和 renderer 长期泄漏已消除。7x24 运行时应增加两层代际：
+
+- Context：按页面数、错误、污染风险、session 状态回收；
+- Browser Process：按进程 age、累计 page、RSS、FD、renderer crash、错误率主动 drain + replace。
+
+处理流程：
+
+```text
+ACTIVE -> DRAINING
+  禁止新 admission
+  等待 active page 收敛
+  超时则 cancel/kill
+  校验 active=0
+  restart browser/process/pod
+  readiness + contract probe
+  ACTIVE
+```
+
+不能在仍有平台 attempt 绑定时直接点 restart。
 
 ---
 
-## 6. Dispatcher、限流与资源保护
+## 9. Dispatcher 与 Streaming Result
 
-Crawl4AI 的 Multi-URL Crawling 提供：
+Crawl4AI Multi-URL 能力中的 `MemoryAdaptiveDispatcher`、`SemaphoreDispatcher`、`RateLimiter` 和 streaming mode 很适合 Runtime 内部使用。
 
-- `MemoryAdaptiveDispatcher`：内存超过阈值时暂停新任务；
-- `SemaphoreDispatcher`：固定并发；
-- `RateLimiter`：对 429/503 等进行退避；
-- `CrawlerMonitor`：记录运行状态；
-- streaming mode：结果完成一个就消费一个，避免整个批次堆在内存。
+关键原则：
 
-这些是非常好的 **worker-local guardrail**，但在 1000 站点场景必须再加平台全局约束：
+1. `MemoryAdaptiveDispatcher` 只知道本实例内存，不知道全局 Browser Slot；
+2. Runtime RateLimiter 只做局部保护，目标 host 的长期速率状态应由平台维护；
+3. 批量/Deep Crawl 结果优先 streaming 逐条物化；
+4. 绝不能假设“输入列表位置 == 输出列表位置”；
+5. 每一条结果必须携带/恢复 URL identity、runtime task id、attempt correlation；
+6. cardinality mismatch、duplicate result、unknown result 都要显式告警。
 
-```text
-global_browser_slots
-per_runtime_browser_slots
-per_source_concurrency
-per_registrable_domain_concurrency
-per_host_rps
-per_source_daily_budget
-per_run_page_budget
-repair_budget
-```
-
-推荐采用“全局 token + 本地 dispatcher”组合：
-
-```text
-Redis/DB distributed admission token
-          +
-Crawl4AI local MemoryAdaptiveDispatcher
-```
-
-前者解决跨 Worker/Pod 的公平和硬上限，后者解决单机瞬时内存压力。
-
-另外，批量抓取优先使用 streaming 结果逐条进入 Result Materializer。平台绝不能假设 runtime 返回 list 的位置与输入 URL 一一对应；应按 URL / runtime task id / correlation id 显式关联。
+对于 1000 Source，较安全的方式不是一次给 Runtime 塞几万个 URL，而是平台生成细粒度 durable task，再由 Runtime Adapter 做受控 micro-batch。
 
 ---
 
-## 7. 实时监控系统的实现原理
+## 10. Monitor / WebSocket / Prometheus 的正确定位
 
-Self-Hosting 的 monitor 维护：
+官方 monitor 能观察：
 
+- CPU / Memory / Network / Uptime；
 - active requests；
-- completed requests 的有限窗口；
-- endpoint 聚合统计；
-- browser pool；
-- janitor events；
+- completed request 窗口；
+- Browser Pool；
+- janitor；
 - errors；
-- memory/request/browser timeline；
-- WebSocket 实时推送；
-- Prometheus `/metrics`；
-- `/health`；
-- 手工 cleanup/kill/restart 操作。
+- timeline；
+- WebSocket 实时更新；
+- `/metrics` Prometheus。
 
-其价值在于把原来“只能翻日志”的浏览器运行时，变成可观察、可干预的服务。
+这些信号用于 **Runtime Capacity 与运维判断**，不能直接作为业务 Coverage。
 
-### 7.1 两类监控必须分开
-
-对知识库平台，应在 Web 管理端同时展示两套但不同语义的数据：
-
-**业务监控（平台真相）**
-
-- Source coverage；
-- Backfill progress；
-- frontier depth；
-- queue age；
-- discovered/fetched/pass/repair/dlq；
-- freshness；
-- article version；
-- extractor quality；
-- gap/stop reason。
-
-**运行时监控（Crawl4AI telemetry）**
-
-- runtime health；
-- active request；
-- browser pool count / reuse；
-- RSS/memory pressure；
-- request latency/error；
-- janitor events；
-- browser restart/kill。
-
-运行时监控只能回答“爬虫服务现在健康吗”，不能回答“这个博客历史是否抓全”。
-
-### 7.2 WebSocket 的定位
-
-WebSocket 适合 Web 管理端的实时视图，但不能作为历史指标存储。建议：
+平台需要把两类 telemetry 分开：
 
 ```text
-Crawl4AI /monitor/ws
-        |
-Runtime Telemetry Collector
-        +--> Prometheus / TSDB
-        +--> Web Admin live channel
+Runtime Telemetry
+- queue saturation
+- browser pool reuse
+- memory pressure
+- runtime 429/503/504
+- restart/drain
+- artifact quota/promotion
+
+Business Telemetry
+- discovered URL count
+- fetched article count
+- PASS Markdown count
+- known gap
+- backfill stop reason
+- incremental freshness
+- extraction quality
 ```
 
-Web UI断线后应从聚合 API/Prometheus 恢复状态，而不是依赖浏览器页面一直在线。
-
-### 7.3 控制动作要经过平台审计
-
-Crawl4AI 支持 cleanup、kill browser、restart browser。最终 Web Admin 不应把这些 endpoint 直接暴露给用户，而应：
-
-```text
-Admin Action
- -> RBAC
- -> reason / ticket
- -> audit log
- -> Runtime Control Gateway
- -> Crawl4AI admin endpoint
- -> action result + correlation id
-```
-
-同时提供“一键 Drain Runtime”：先停止新 admission，等待 active request 收敛，再重启 Pod。它比直接 kill 单个 browser 更适合生产滚动维护。
+Runtime 绿灯但 URL Inventory 漏了一半，业务仍然失败。
 
 ---
 
-## 8. 0.9.x 安全加固带来的架构启示
+## 11. Monitor Control Action 的平台化
 
-官方 `MIGRATION.md` 的变化非常值得直接吸收。
+0.9 的 cleanup / kill_browser / restart_browser 是 admin-scope 运维动作。知识库 Web Admin 不应直接把这些 Runtime endpoint 暴露给普通操作员。
 
-### 8.1 网络 API 只能接受声明式低能力配置
-
-0.9.x 禁止通过远程请求直接传入大量高风险字段，包括任意 JS、proxy、CDP URL、持久 user data dir、deep crawl strategy、magic/simulate_user 等；hooks 也从 Python 代码改为固定的声明式 action。
-
-这验证了本方案的 **Capability Firewall + Config Compiler** 方向：
+平台提供高层动作：
 
 ```text
-Web 表单/REST JSON
- -> Source Profile DSL
- -> Policy Validation
- -> Capability Check
- -> Runtime Config Compiler
- -> pinned Runtime Config
+Drain Runtime
+Recycle Browser Generation
+Force Cold Pool Cleanup
+Quarantine Runtime
+Resume Runtime
 ```
 
-普通用户只能配置“需要滚动”“阻止图片”“等待选择器”等经过审核的 intent，而不是直接注入代码。
+每个动作都：
 
-### 8.2 caller 不拥有服务器文件路径
+1. 记录 operator / reason / correlation id；
+2. 先从 Runtime Registry 摘除新流量；
+3. 等待或接管 active attempts；
+4. 调用底层 admin endpoint；
+5. readiness + capability + contract probe；
+6. 再加入路由。
 
-新版 screenshot/pdf 返回 `artifact_id`，而不是让调用者提供 `output_path`。这是典型的 **Caller Never Owns Paths** 原则，可避免路径穿越、覆盖任意文件和宿主路径泄露。
-
-本方案所有 raw HTML、MHTML、screenshot、PDF、Markdown 都应由 Artifact Service 分配 object key，客户端只拿 opaque artifact id。
-
-### 8.3 Runtime 默认必须是私网服务
-
-官方新版默认 loopback + token，Redis 不再公开，CORS deny by default，monitor 控制动作需要 admin principal。
-
-生产部署建议：
-
-```text
-Internet/Web Admin
-   |
-API Gateway
-   |
-Platform Control Plane
-   |
-private mTLS network
-   |
-Runtime Gateway
-   |
-Crawl4AI Pods
-```
-
-Crawl4AI runtime 不直接面向公网，不接受终端用户 token，不暴露 Redis/monitor control。
-
-### 8.4 `0 = unbounded` 是危险语义
-
-官方配置中多个限制以 `0` 表示无限。平台 Config Compiler 必须禁止“默认 0 被误当作关闭功能”，所有生产预算应显式非零，并在编译报告中展示：
-
-```text
-resolved_max_body_bytes
-resolved_wall_clock_s
-resolved_queue_maxsize
-resolved_runtime_workers
-resolved_per_principal
-```
-
-任何 unbounded 值都需要 admin override 和审计。
+这能避免“为了降内存点一下 restart，把正在抓取的 200 个平台任务变成幽灵任务”。
 
 ---
 
-## 9. 对现有博客知识库方案的具体优化
+## 12. 0.9 Secure-by-default 的安全含义
 
-基于本次调研，应在最终方案中增加/强化以下设计。
+`MIGRATION.md` 中最值得平台吸收的是“网络调用只允许低能力、声明式配置”。重要变化包括：
 
-### 9.1 新增 Runtime Service Plane
+- 默认认证；
+- 无 token 时默认 loopback；
+- 需要暴露时应放 TLS reverse proxy；
+- CORS deny by default；
+- TLS verification 默认开启；
+- Redis loopback/password，不再公开端口；
+- Monitor control 要 admin principal；
+- hooks 从任意 Python code 改为固定 declarative actions；
+- 禁止通过网络请求传 `js_code`、`proxy`、`user_data_dir`、`cdp_url`、`cookies`、`headers`、`base_url`、`deep_crawl_strategy`、`magic` 等高能力字段；
+- LLM endpoint 只按 provider name 选择，key/base URL 服务端持有；
+- screenshot/PDF caller 不再拥有路径；
+- request body、queue、wall-clock 可设置硬限制；
+- webhook header 做敏感字段校验。
 
-原本 Fetch Plane 中直接使用 Crawl4AI 的描述还不够，应显式增加：
+### 12.1 对平台的进一步要求
 
-- Runtime Registry；
-- Runtime Gateway；
-- Runtime Admission；
-- Runtime Result Materializer；
-- Runtime Telemetry Collector；
-- Runtime Control Gateway；
-- Runtime Reconciliation。
+即使 Runtime 已做 hardening，平台仍要再加：
 
-这样平台不会把第三方 crawler SDK/server 的内部状态与业务状态混为一谈。
+- Source Profile -> Config Compiler -> Runtime Config，而不是原样透传 JSON；
+- SSRF/私网/metadata 地址阻断；
+- redirect 每跳复验；
+- DNS rebinding 防护 / egress pinning；
+- secret 只能用引用，不落用户配置；
+- Runtime 只部署私网，普通用户永不直接获得 runtime token；
+- admin token 只在 Runtime Gateway/Operator Controller；
+- Chromium 容器使用 read-only rootfs、tmpfs、cap_drop、no-new-privileges、合理 shm；
+- 对 `--no-sandbox` 风险显式登记，条件允许时启用 unprivileged user namespace/seccomp 后打开 Chromium sandbox。
 
-### 9.2 双层队列与双层限流
+---
 
-- 平台层：durable queue、fair scheduler、lease、domain token、browser token；
-- Crawl4AI 层：bounded work queue、workers、per-principal、memory adaptive dispatcher。
+## 13. Runtime Registry 与 Capability Contract
 
-目标是既防止全局争抢，也防止单个 runtime 因突发流量被击穿。
-
-### 9.3 增加 Runtime Callback Inbox
-
-Webhook 不能直接修改文档状态。新增 inbox：
+Self-Hosting 文档和源码可能跨版本漂移，因此平台必须把“运行时行为”建模为 release：
 
 ```text
-runtime_event_inbox
-- event_key unique
+runtime_instance
 - runtime_id
-- runtime_task_id
-- attempt_id
-- event_type
-- payload_hash
-- received_at
-- processed_at
-- process_status
+- endpoint
+- software_release
+- image_digest
+- result_schema_release
+- config_schema_release
+- capabilities_hash
+- queue_config_hash
+- security_profile_release
+- browser_generation
+- status
+- last_probe_at
 ```
 
-通过 inbox + outbox 实现幂等事件衔接。
+每次加入流量前 probe：
 
-### 9.4 增加 Runtime Reconciler
+- auth 是否生效；
+- loopback/private exposure 策略；
+- `/health` / monitor schema；
+- WorkQueue 是否有界且已 started；
+- 429/503 行为；
+- result schema；
+- artifact endpoint；
+- hook allowlist；
+- forbidden power fields 是否确实被拒绝；
+- internal URL / redirect 是否被拒绝；
+- monitor admin action 是否需要 admin scope。
 
-周期扫描：
-
-- platform attempt = RUNNING 但 runtime 无 active request；
-- webhook 超时；
-- runtime task completed 但平台未 materialize；
-- runtime 重启导致 job 丢失；
-- attempt lease 过期。
-
-根据 fencing token 决定重试或归档，避免 ghost running task。
-
-### 9.5 Web 管理端增加 Runtime 运维页
-
-至少展示：
-
-- 每个 Runtime Pod/实例健康；
-- active request、queue saturation；
-- browser permanent/hot/cold 数；
-- memory pressure；
-- pool reuse；
-- error rate/latency；
-- runtime version/release；
-- drain/restart/cleanup 操作；
-- 操作审计。
-
-同时与业务 Source/Coverage 页面分离，避免用户把 runtime success rate 当 coverage。
-
-### 9.6 明确 Browser Process Generation
-
-监控数据已经能暴露 browser age、hits、memory，因此平台可以建立主动进程代际策略：
-
-- max process age；
-- max pages；
-- max RSS；
-- crash/error threshold；
-- drain timeout；
-- replacement readiness；
-- force-kill fallback。
-
-“永久浏览器”只意味着池策略上的 permanent，不应解释为生产进程真的永不重启。
-
-### 9.7 安全配置采用编译而不是透传
-
-禁止 Web 用户直接填写：
-
-- arbitrary JS/Python hook；
-- proxy URL；
-- CDP URL；
-- local path；
-- browser profile path；
-- LLM base URL；
-- deep crawl object；
-- monitor admin action endpoint。
-
-只允许受控 DSL，并在 server-side 编译到 pinned release 支持的字段。
+行为不匹配就 fail loud，不做“尽量兼容”。
 
 ---
 
-## 10. 推荐运行流程
+## 14. 推荐平台状态机
 
-### 10.1 历史回填
+一次 Browser Attempt 推荐：
 
 ```text
-Source Approved
- -> Discovery Providers 构建 URL Inventory
- -> Persistent Frontier
- -> Fair Scheduler
- -> HTTP Fast Lane
- -> 若动态渲染/质量失败，则 Browser Slow Lane
- -> Global Browser Token
- -> Runtime Gateway
- -> Crawl4AI /crawl/job
- -> runtime task id 与 platform attempt 绑定
- -> webhook/poll reconciliation
- -> Result Materializer
- -> Raw Artifact
- -> Extraction Portfolio
- -> Quality Gate
- -> Canonical IR
- -> Markdown + Version
- -> Coverage Ledger
+LEASED
+  -> ADMITTED
+  -> RUNTIME_SUBMITTING
+  -> RUNTIME_QUEUED
+  -> RUNTIME_RUNNING
+  -> RUNTIME_TERMINAL
+  -> MATERIALIZING_RESULT
+  -> PROMOTING_ARTIFACTS
+  -> MATERIALIZED
+  -> RAW_PERSISTED
+  -> SUCCEEDED
 ```
 
-### 10.2 增量同步
-
-优先不用 browser：
+异常态：
 
 ```text
-CMS/RSS/Sitemap/Listing Delta
- -> URL/updated_at/etag observation
- -> conditional fetch
- -> content hash
- -> unchanged: touch freshness evidence
- -> changed/new: extraction/version pipeline
+RUNTIME_BACKPRESSURE
+RUNTIME_LOST
+RESULT_SCHEMA_MISMATCH
+RESULT_CARDINALITY_MISMATCH
+ARTIFACT_EXPIRED
+ARTIFACT_QUOTA
+CANCEL_REQUESTED
+DRAINING
+FAILED_RETRYABLE
+FAILED_FINAL
 ```
 
-只有当 HTTP 无法得到正文、需要 JS、质量门禁失败或站点 Profile 明确要求时才进入 Crawl4AI browser runtime。
+其中 **RUNTIME_TERMINAL 不是 SUCCEEDED**。只有 result 已逐条物化、required artifacts 已永久保存、Raw Artifact 已入对象存储后，平台才推进后续 extraction。
 
 ---
 
-## 11. 生产验收指标
+## 15. 典型故障与处理
 
-新增 Runtime 相关指标：
-
-- `runtime_queue_saturation_ratio`
-- `runtime_429_total`
-- `runtime_503_total`
-- `runtime_active_requests`
-- `runtime_memory_pressure`
-- `runtime_browser_pool_size`
-- `runtime_browser_reuse_ratio`
-- `runtime_janitor_events_total`
-- `runtime_browser_restart_total`
-- `runtime_callback_duplicate_total`
-- `runtime_callback_lag_seconds`
-- `runtime_reconciliation_recovered_total`
-- `runtime_attempt_orphan_total`
-- `browser_process_generation_age_seconds`
-- `browser_process_generation_pages`
-- `browser_process_drain_seconds`
-
-建议告警关注“趋势 + SLO”，不要机械复制官方示例阈值。内存阈值、复用率、成功率需在实际 workload 压测后确定。
+| 故障 | 不能怎么做 | 推荐处理 |
+|---|---|---|
+| Runtime 503 | 紧循环重试 | 遵守 Retry-After，退回 durable queue，降低实例 capacity score |
+| Runtime 429 | 加更多并发 | 降 principal 提交速率，检查 per_principal 配置 |
+| Pod 重启 | 默认 runtime job 会恢复 | lease + reconciliation，必要时新 attempt |
+| webhook 丢失 | 永久等待 | 主动 status reconciliation |
+| webhook 重复 | 重复生成文档 | inbox 幂等去重 |
+| artifact 404 | 当“无截图”忽略 | 区分 optional/required；required 标记 ARTIFACT_EXPIRED 并 repair |
+| artifact quota 满 | 继续提交截图任务 | 暂停高 artifact workload，优先 promotion/cleanup |
+| browser RSS 高 | 直接全局 restart | Drain -> quiesce -> recycle -> readiness |
+| result 数量不等于输入 | 取相同下标 | 按 URL/correlation identity 对齐，mismatch fail loud |
+| monitor 健康 | 推断抓取完整 | Coverage 独立由 URL Inventory/Evidence 计算 |
 
 ---
 
-## 12. 最终判断
+## 16. 必须增加的 Contract / Stress Test
 
-Crawl4AI Self-Hosting 的最大价值不是“多了一个 Docker 包装”，而是把浏览器抓取从单次 SDK 调用提升成了一个具有 **异步任务、资源池、局部背压、实时监控、运维控制和安全边界** 的运行时服务。
+### 16.1 Queue
 
-对于 1000+ 博客知识库，最合理的组合不是让它接管整个爬虫平台，而是：
+- `maxsize` 压满后必须 503；
+- `Retry-After` 存在；
+- `per_principal` 超限必须 429；
+- `0` 值不允许从普通 Source Profile 编译出来；
+- WorkQueue 未 started 时生产 readiness 失败；
+- Pod restart 后平台能恢复 orphan attempt。
 
-- 平台掌握 Source、Coverage、Frontier、Task、Version、Artifact 和公平调度；
-- Crawl4AI 负责受控的 Browser Runtime；
-- 两者之间通过 Runtime Gateway、持久 Attempt、幂等 Callback Inbox、Result Materializer 和 Reconciler 解耦；
-- Web 管理端同时呈现业务面和运行时面；
-- 所有高能力配置均经过 Capability Firewall；
-- 单机自适应保护与集群全局硬预算同时存在。
+### 16.2 Artifact
 
-这套分层能够保留 Crawl4AI 自托管的工程收益，又避免把其进程内队列、近期监控和 browser cache 错当成长期知识库的业务真相，是当前方案最值得吸收的优化方向。
+- opaque id 格式；
+- caller path 被拒绝；
+- required artifact 在 TTL 内被晋升；
+- expired artifact 会触发明确错误；
+- quota 满时平台进入 backpressure；
+- MIME/size/hash 不匹配时不建立 durable reference。
+
+### 16.3 Security
+
+- 无 auth 不能调用数据 API；
+- data principal 不能调用 monitor admin action；
+- `js_code/proxy/cookies/cdp_url/user_data_dir/base_url` 等网络 power field 被拒绝；
+- internal IP、metadata IP、redirect 到私网都被拒绝；
+- webhook arbitrary destination 不可由普通用户指定。
+
+### 16.4 Browser lifecycle
+
+- drain 后不再 admission；
+- active request 能收敛；
+- 超时强制回收会把平台 attempt 标记为明确可恢复状态；
+- recycle 后 browser/process generation 递增；
+- readiness 未通过前不重新路由。
+
+### 16.5 Result integrity
+
+- streaming 顺序打乱仍能正确关联；
+- duplicate result 幂等；
+- missing result / extra result fail loud；
+- runtime schema 漂移时隔离实例。
+
+---
+
+## 17. 对博客知识库最终方案的具体优化
+
+本次 Self-Hosting 调研应在总方案中固化以下新增/强化设计：
+
+1. **Runtime Queue 与 Durable Queue 明确分层**：Redis Streams/PostgreSQL 是平台任务真相，Crawl4AI `asyncio.Queue` 只是局部保险丝；
+2. **双层 Admission**：平台解决全局公平和硬预算，Runtime 解决单实例保护；
+3. **Runtime Registry + Contract Probe**：避免文档/版本漂移导致静默兼容错误；
+4. **Webhook Inbox + Reconciler**：webhook 走快速路径，对账保证最终收敛；
+5. **Browser 两级代际与 Drain**：context recycle 与 browser process recycle 分离；
+6. **Runtime Artifact Promotion Gate**：短 TTL runtime artifact 必须先晋升到 S3/MinIO，再允许平台 Attempt 终态；
+7. **Admin Action 平台化**：cleanup/kill/restart 必须先摘流、收敛 active attempt、审计；
+8. **0 != 安全默认**：Runtime 中 `0=unbounded` 的配置不能直接暴露给用户；
+9. **Runtime Telemetry 与 Coverage Telemetry 分离**；
+10. **secure-by-default 再包一层 Capability Firewall**：网络 API 永远只接受声明式低能力 intent。
+
+---
+
+## 18. 最终判断
+
+Crawl4AI Self-Hosting 的最佳位置不是“整个平台”，而是一个 **可替换、受约束、可观测、可隔离的浏览器执行运行时**。
+
+平台必须把长期正确性握在自己手里：
+
+```text
+Coverage truth       -> PostgreSQL
+Durable queue        -> PostgreSQL + Redis Streams
+Raw evidence         -> S3/MinIO
+Runtime queue        -> Crawl4AI asyncio.Queue（临时）
+Runtime status       -> Crawl4AI Redis（临时）
+Browser pool         -> Crawl4AI（性能缓存）
+Runtime artifact     -> Crawl4AI（短 TTL，必须晋升）
+Final Markdown       -> Canonical IR projection
+Incremental truth    -> URL observation + document version
+```
+
+在这个边界下，Self-Hosting 能显著减少 Browser Runtime、资源池、监控、安全 hardening 的自研成本，同时不会把历史完整性、任务恢复和知识库可重放性绑定到第三方运行时的内部实现。
