@@ -4,85 +4,84 @@
 
 - 编号：58
 - 原文：https://juejin.cn/post/7556863932343287844
+- 原文标题：`[1339]python crawl4ai基本用法`
+- 原文发布时间：2025-10-06
 - 主题：Crawl4AI 基本抓取、Markdown 生成、Pruning/BM25 内容过滤，以及 `arun_many()` 多 URL 并发抓取
-- 相关官方文档：
+- 相关官方资料：
   - https://docs.crawl4ai.com/advanced/multi-url-crawling/
   - https://docs.crawl4ai.com/api/arun_many/
   - https://docs.crawl4ai.com/core/fit-markdown/
-  - https://docs.crawl4ai.com/core/markdown-generation/
+  - https://docs.crawl4ai.com/core/cache-modes/
   - https://docs.crawl4ai.com/api/parameters/
+  - https://github.com/unclecode/crawl4ai/blob/main/crawl4ai/content_filter_strategy.py
 
-这篇文章属于教程型实践，示例规模不大，但它把“多个真实文章 URL -> Crawl4AI 批量抓取 -> Markdown 内容过滤 -> 文件落盘”这一条最短链路展示得比较清楚。对 1000 个技术博客知识库项目而言，真正值得吸收的不是把示例代码直接放大，而是明确三个边界：批量抓取只是 Worker 内执行机制，Markdown 过滤是派生视图，增量同步不能靠每次禁用缓存并全量重抓。
+这篇文章属于教程型实践，展示了“多个文章 URL -> Crawl4AI 并发抓取 -> Markdown 过滤 -> 本地文件”的最短链路。对 1000 个技术博客知识库项目而言，值得吸收的不是直接把示例放大，而是把 Crawl4AI 放到正确的工程边界：`arun_many()` 是 Worker 内批执行器，Pruning/BM25 是有损内容投影，Crawl4AI cache 是执行优化而不是增量同步事实源。
 
-## 2. 原文实现链路与技术含义
+同时必须纠正原文一个重要概念错误：原文把 BM25 描述成“向量检索，根据内容生成向量再检索相似内容”。Crawl4AI 当前 `BM25ContentFilter` 的实现并不是向量检索，而是基于 `rank_bm25.BM25Okapi` 的词法相关性评分；这直接影响中文处理、版本设计和检索架构判断。
 
-原文主要包含以下能力：
+## 2. 原文实现链路
 
-1. 使用 Crawl4AI 抓取网页并生成 Markdown；
-2. 使用 `PruningContentFilter` 过滤低价值 DOM 内容；
-3. 使用 `BM25ContentFilter` 按查询相关性保留内容；
-4. 对多个 Anthropic News URL 使用 `arun_many()` 批量抓取；
-5. 将过滤后的 Markdown 写入本地文件。
+原文主要包含：
 
-从工程角度可抽象为：
+1. 安装 Crawl4AI，并使用异步 crawler 抓取页面；
+2. 使用 `DefaultMarkdownGenerator` 生成 Markdown；
+3. 使用 `PruningContentFilter` 做无查询条件的启发式裁剪；
+4. 使用 `BM25ContentFilter(user_query=...)` 做查询相关过滤；
+5. 使用 `arun_many()` 对多个 Anthropic News URL 批量抓取；
+6. 将结果直接写入本地 Markdown 文件；
+7. 示例中使用 `CacheMode.DISABLED` 获取最新内容。
+
+教程链路可抽象为：
 
 ```text
 URL List
-  -> CrawlerRunConfig
+  -> BrowserConfig / CrawlerRunConfig
   -> AsyncWebCrawler.arun_many()
   -> CrawlResult per URL
   -> raw_markdown / fit_markdown
   -> local markdown file
 ```
 
-教程中的链路适合作为单机原型，但知识库平台必须进一步拆成：
+生产知识库必须拆为：
 
 ```text
 Durable Task
   -> Fetch Route
   -> Worker-local Batch Dispatcher
   -> Fetch Attempt
-  -> Snapshot
+  -> Immutable Snapshot
   -> Extraction Candidate
-  -> Canonical IR / Document Version
-  -> Markdown Projection
+  -> Canonical IR
+  -> Document / Document Version
+  -> Canonical Markdown Projection
   -> Filtered Markdown Projection
-  -> Chunk / Index / Embedding
+  -> Chunk / Fulltext / Embedding / Index
 ```
 
-关键区别是：教程直接把抓取结果当最终文件；生产系统必须把网络事实、正文事实和派生 Markdown 分开保存。
+网络事实、正文事实和派生内容必须分层，否则过滤器升级、抽取器升级、源站变化和检索重建会互相污染。
 
-## 3. `arun_many()` 的实现原理与正确边界
+## 3. `arun_many()` 的执行模型
 
-### 3.1 它解决的是单 Worker 内并发
+### 3.1 它是 Worker 内并发入口，不是平台调度器
 
-Crawl4AI 官方文档当前将 `arun_many()` 定义为多 URL 批处理入口，并提供 Dispatcher、资源监控、限流和流式返回能力。它非常适合解决一个 Browser Worker 或 Crawl4AI Worker 内部的并发控制问题。
+当前 Crawl4AI 官方多 URL 文档将 `arun_many()` 作为多 URL 批执行入口，允许传入：
 
-典型执行模型：
+- URL 列表；
+- 单个或多个 `CrawlerRunConfig`；
+- Dispatcher；
+- `stream=True` 流式结果；
+- URL matcher 驱动的 per-URL config。
+
+Dispatcher 负责当前进程/Worker 内的资源约束，典型包括：
 
 ```text
-worker lease N tasks
-  -> arun_many(urls, stream=True)
-  -> dispatcher 控制并发与内存
-  -> URL A 完成 -> 立即持久化并 ack A
-  -> URL C 完成 -> 立即持久化并 ack C
-  -> URL B 失败 -> 单独 retry B
+MemoryAdaptiveDispatcher
+SemaphoreDispatcher
+RateLimiter
+CrawlerMonitor
 ```
 
-这里应该启用 partial success，而不是等待整个批次全部成功后再提交。
-
-### 3.2 它不能替代平台调度器
-
-1000 个站点意味着同时存在：
-
-- 不同域名的 robots 与访问策略；
-- 不同站点的 QPS、并发和失败率；
-- HTTP 与 Browser 的成本差异；
-- FULL_BACKFILL、INCREMENTAL、RECONCILE 等不同优先级；
-- Worker 崩溃后的任务恢复；
-- 跨节点重试、checkpoint、幂等与审计。
-
-因此需要两层调度：
+它无法提供平台级的 durable task、跨节点 lease、站点级持久限流、优先级、全局预算、失败恢复和审计。因此 1000 站点必须采用两层调度：
 
 ```text
 平台 Scheduler
@@ -90,7 +89,8 @@ worker lease N tasks
   + registrable-domain token bucket
   + source token bucket
   + route budget
-  + durable lease/retry/checkpoint
+  + priority
+  + durable lease / retry / checkpoint
         ↓
 Worker
   arun_many()
@@ -99,118 +99,321 @@ Worker
   + stream=True
 ```
 
-平台 Scheduler 决定“谁应该什么时候抓”；Crawl4AI Dispatcher 只决定“当前 Worker 如何安全并发执行”。
+平台 Scheduler 决定“谁、何时、以什么路由抓”；Crawl4AI Dispatcher 决定“当前 Worker 如何在内存和并发预算内执行”。
 
-### 3.3 批量不是越大越好
+### 3.2 `stream=True` 应与逐 URL 提交绑定
 
-批次大小必须同时考虑：
+正确执行模式：
+
+```text
+worker lease N tasks
+  -> arun_many(urls, stream=True)
+  -> URL A 返回
+     -> persist FetchAttempt
+     -> persist Snapshot
+     -> commit
+     -> ack A
+  -> URL C 返回
+     -> persist / ack C
+  -> URL B 失败
+     -> retry B only
+```
+
+不能在一个数据库事务中包住整个 batch。否则慢 URL、失败 URL 或 Worker 取消会让已成功结果失去 partial success 价值。
+
+推荐任务状态和 fencing：
+
+```text
+PENDING -> LEASED -> RUNNING -> SUCCEEDED
+                      |            
+                      -> RETRY_WAIT
+                      -> FAILED_TERMINAL
+                      -> CANCELLED
+```
+
+持久化时必须验证 lease token / fencing token，避免旧 Worker 超时后继续写入覆盖新 Worker 结果。
+
+### 3.3 批大小必须自适应
+
+批次大小至少受以下因素共同约束：
 
 - Worker 可用内存；
-- Browser context/page 数；
-- 单页 DOM 大小；
-- 页面平均响应时间；
+- Chromium page/context 数；
+- 单页 DOM / HTML 大小；
+- 页面响应时间；
 - 单域名并发上限；
-- 返回结果持久化速度；
-- Object Storage 写入吞吐；
-- 下游 Extraction backlog。
+- Object Storage 写入速度；
+- Extraction backlog；
+- Browser CPU；
+- 结果消费速度。
 
-因此不能固定 `batch_size=1000`。建议采用“平台 lease 小批次 + Worker 自适应调度 + 单结果流式提交”。
+因此不能固定 `batch_size=1000`。应采用“平台 lease 小批次 + Worker 自适应 Dispatcher + 单结果流式提交”。
 
-## 4. `raw_markdown` 与 `fit_markdown` 的本质区别
+## 4. Dispatcher 与 RateLimiter 的边界
 
-官方文档明确区分：
+### 4.1 MemoryAdaptiveDispatcher
+
+其核心价值是根据 Worker 内存压力动态控制并发，避免 Browser page 大量堆积导致 OOM。它适合动态页面和 DOM 较大的站点，但依然只知道当前 Worker 的内存，不知道整个集群或某域名在其他 Worker 上的并发。
+
+### 4.2 SemaphoreDispatcher
+
+适用于明确固定并发上限、页面成本较稳定的场景。它简单可预测，但不能像 MemoryAdaptiveDispatcher 一样根据内存变化自调。
+
+### 4.3 Crawl4AI RateLimiter
+
+官方多 URL 文档中的 RateLimiter 可按响应码进行退避，并处理类似 429、503 的速率限制响应；它适合作为 Worker 内第二道保护。
+
+平台仍必须单独维护：
+
+```text
+global limiter
+registrable-domain limiter
+source limiter
+route limiter
+provider limiter
+```
+
+原因是 Worker-local limiter 不能跨节点共享状态，也不能作为 durable 限流真相。`Retry-After` 应被解析并反馈给平台下一次可运行时间，而不是仅在当前进程 sleep。
+
+## 5. `arun_many()` 取消、泄漏与 Runtime 固定
+
+Crawl4AI 运行时版本必须被视为行为的一部分，而不是普通依赖。当前官方项目 v0.9.x 的发布说明中包含过与 `MemoryAdaptiveDispatcher`、流式 crawl 提前关闭后 task/page 清理相关的修复。这说明：
+
+1. `stream=True` 的消费者如果提前退出，必须有明确取消与清理语义；
+2. Browser page/context 泄漏会直接放大为长期 Worker 内存泄漏；
+3. 不能只测试“完整消费全部结果”的 happy path。
+
+Runtime Artifact Release 至少固定：
+
+```text
+crawl4ai_version
+playwright_version
+browser_revision
+python_version
+system_dependency_manifest
+runtime_image_digest
+```
+
+CI Contract Test 必须包含：
+
+```text
+正常 arun_many 完整消费
+stream=True 提前 break
+任务 timeout / cancellation
+单 URL exception
+Worker SIGTERM graceful drain
+Browser page/context 数归零
+lease 未提交任务重新可见
+```
+
+升级 Crawl4AI 前先用固定 Golden URL 和提前取消测试验证，再切换 Runtime Release。
+
+## 6. per-URL `CrawlerRunConfig` 与匹配规则
+
+Crawl4AI 支持为不同 URL 使用不同配置，并通过 `url_matcher` 匹配。这很适合映射平台的 Fetch Route：
+
+```text
+PDF URL      -> PDF config
+Article URL  -> article config
+Dynamic Hub  -> interaction config
+JSON/API     -> structured config
+Fallback     -> default config
+```
+
+但这里有一个平台级风险：多个 matcher 可能重叠，顺序变化会导致同一 URL 命中不同配置。配置不能只作为 Python list 隐藏在 Worker 中。
+
+建议新增可审计的 Route Match Contract：
+
+```text
+fetch_route_release
+  ordered_rules[]
+    rule_id
+    matcher
+    expected_url_type
+    crawler_run_config_ref
+    priority
+  default_rule
+```
+
+发布前执行 fixture：
+
+```text
+URL -> expected_rule_id -> actual_rule_id
+```
+
+要求：
+
+- 所有已知 URL 模板有确定命中；
+- 重叠 matcher 有显式优先级；
+- default rule 永远位于兜底位置；
+- 新 Profile/Runtime Release 不能让既有 fixture 静默改路由。
+
+## 7. `raw_markdown`、`fit_markdown` 与事实分层
+
+官方文档区分：
 
 - `raw_markdown`：由清洗后 HTML 转换得到的较完整 Markdown；
-- `fit_markdown`：启用内容过滤器后得到的裁剪版 Markdown；
-- `fit_html`：生成 `fit_markdown` 的过滤后 HTML。
+- `fit_markdown`：启用 Content Filter 后产生的裁剪 Markdown；
+- `fit_html`：过滤后 HTML。
 
-这对知识库非常重要，因为 `fit_markdown` 不是“更正确的原文”，而是一个经过算法删减的派生结果。
-
-生产系统建议定义：
+生产系统应定义：
 
 ```text
 Snapshot                 = 不可变网络事实
 Canonical IR             = 正文事实
-CLEAN_MARKDOWN            = 从 IR 确定性生成
+CLEAN_MARKDOWN            = IR 确定性输出
 CRAWL4AI_RAW_MARKDOWN     = 抽取候选/对照产物
-FILTERED_MARKDOWN         = 可重建检索派生物
-BM25_QUERY_VIEW           = query-dependent 临时/缓存视图
+FILTERED_MARKDOWN         = 有损可重建投影
+BM25_QUERY_VIEW           = query-dependent 临时/缓存投影
 ```
 
-任何 Filter 都不能覆盖 Snapshot、Canonical IR 或 canonical Markdown。
+`fit_markdown` 不是更权威的正文。Pruning、BM25、LLM Filter 都不能覆盖 Snapshot、Canonical IR 或 canonical Markdown。
 
-## 5. PruningContentFilter 的技术原理
+## 8. `PruningContentFilter` 的当前实现原理
 
-Crawl4AI 的 Pruning 过滤是 query-independent 的启发式裁剪。官方文档描述的核心评分因素包括：
+### 8.1 不是 LLM，而是 DOM 启发式评分
 
-- 文本密度；
-- 链接密度；
-- DOM 标签重要度；
-- 节点结构上下文；
+当前官方源码中的 Pruning 评分配置包含：
+
+```text
+text_density     weight 0.4
+link_density     weight 0.2
+tag_weight       weight 0.2
+class_id_weight  weight 0.1
+text_length      weight 0.1
+```
+
+它还结合：
+
 - `min_word_threshold`；
-- 固定或动态 threshold。
+- fixed / dynamic threshold；
+- DOM tag importance；
+- class/id 的正负向信号；
+- 链接文本占比；
+- 文本长度。
 
-可以把它理解为给 DOM block 计算一个内容价值分数：
-
-```text
-score(block) =
-  + text_density
-  - link_density_penalty
-  + tag_semantic_weight
-  + structural_context_weight
-```
-
-然后根据 threshold 丢弃低分节点。
-
-它的优点：
-
-- 不需要 LLM；
-- 不需要用户 query；
-- 成本低，适合批量预处理；
-- 对导航、广告、侧栏等低密度区域通常有效。
-
-但它仍然是有损过滤，存在以下风险：
-
-- 短代码片段可能被当作低字数块删除；
-- API 参数表、列表或短定义可能被误删；
-- 技术博客中链接密集的参考资料区域可能被低估；
-- threshold 对不同模板不能一刀切；
-- 中文“词数”与英文 whitespace word count 的行为不同。
-
-因此 Pruning 只能作为 Projection 或 Extraction Candidate，不能直接成为唯一归档版本。
-
-## 6. BM25ContentFilter 的技术原理与局限
-
-BM25 本质是 query-to-document/block 的词项相关性排序。简化表达：
+可以抽象为：
 
 ```text
-score(D, Q) = Σ IDF(q) * tf(q, D) * (k1 + 1)
-              ----------------------------------
-              tf(q, D) + k1 * (1 - b + b * |D|/avgdl)
+score(node) =
+  w1 * text_density
+  + w2 * (1 - link_density)
+  + w3 * tag_importance
+  + w4 * class_id_signal
+  + w5 * text_length_signal
 ```
 
-因此 BM25ContentFilter 天生是 query-dependent：换一个 query，同一网页保留下来的内容可能完全不同。
+低于阈值的 DOM node 被裁剪。其优势是速度快、无 LLM 成本、无需 query；风险则来自“技术内容并不总是长文本高密度”。
 
-这使它非常适合：
+### 8.2 `preserve_tags` / `preserve_classes` 是重要保护能力
 
-- 临时围绕某主题提取重点；
-- 给 LLM 减少输入 token；
-- RAG 查询阶段生成局部候选视图。
+当前官方实现支持：
 
-但不适合：
+```text
+preserve_tags
+preserve_classes
+```
 
-- 作为文章 canonical Markdown；
-- 用于内容版本 hash；
-- 用于判断源站正文是否变化；
-- 直接覆盖完整历史文章。
+命中白名单的节点可以绕过普通 pruning score 被保留。对技术知识库非常有价值，例如：
 
-原文还提到 BM25 对中文效果不理想。工程上不能把这一点简单理解为“BM25 不适合中文”，真正问题通常来自 tokenizer/analyzer。中文没有天然空格分词，如果过滤器内部的词法处理与语言不匹配，召回与相关性就会明显下降。因此知识库平台需要单独管理 Analyzer/Language Policy，不能复用英文默认词法假设。
+```text
+preserve_tags:
+  pre
+  code
+  table
+  th
+  time
 
-## 7. 内容过滤需要独立 Release
+preserve_classes:
+  api-parameters
+  signature
+  code-block
+  changelog
+  references
+```
 
-现有方案应增加 `content_filter_release`，不要把参数隐含在业务代码或临时 CrawlerRunConfig 中。
+但不能全局把 `div`、`span` 等宽泛标签加入 preserve，否则会重新带回导航、广告和推荐内容。正确做法是“全局少量语义标签 + Site Profile 精确 class 白名单”。
 
-建议数据结构：
+### 8.3 Pruning Release 需要包含保护策略
+
+建议：
+
+```text
+content_filter_release
+  strategy = PRUNING
+  threshold
+  threshold_type
+  min_word_threshold
+  preserve_tags[]
+  preserve_classes[]
+  preservation_policy_version
+```
+
+这样过滤结果才可复现。
+
+## 9. `BM25ContentFilter` 的真实实现
+
+### 9.1 原文“BM25 是向量检索”是错误的
+
+当前官方源码直接使用：
+
+```text
+rank_bm25.BM25Okapi
+```
+
+处理链路大致是：
+
+```text
+HTML
+ -> BeautifulSoup
+ -> 提取 body 文本块
+ -> 获取 query
+    user_query 优先
+    否则 title/h1/meta/首个显著段落
+ -> tokenization
+ -> optional Snowball stemming
+ -> clean_tokens
+ -> BM25Okapi.get_scores(query)
+ -> tag priority weight
+ -> threshold filter
+ -> 返回对应 HTML chunks
+```
+
+这是词法排序，不产生 embedding，也不进行 cosine similarity。
+
+### 9.2 tag priority 会修改纯 BM25 分数
+
+源码对部分标签施加权重，例如标题、`strong`、`code`、`pre`、`th` 等，因此最终筛选不是“纯粹的 BM25 文本分数”，而是：
+
+```text
+adjusted_score = bm25_score * tag_weight
+```
+
+这让技术结构更容易保留，但也意味着行为与 Crawl4AI Runtime 版本绑定，不能只记录 `bm25_threshold`。
+
+### 9.3 中文效果差的根因是词法处理，不是 BM25 理论失效
+
+当前实现默认：
+
+```text
+language = english
+use_stemming = true
+```
+
+并以类似 `lower().split()` 的空白切分得到 token，再执行 Snowball stemming/cleaning。英文天然适配，而中文句子通常没有空格，容易形成超长 token，导致 query 与正文词项匹配非常差。
+
+因此生产平台必须把以下参数纳入 Filter Release：
+
+```text
+use_stemming
+stemmer_language
+tokenization_mode
+language_scope
+```
+
+更重要的是，不要让 Crawl4AI 的页面级 BM25 Filter 承担生产全文检索。生产中文检索应该使用 OpenSearch/专用引擎的中文 Analyzer、ICU/Jieba 类 tokenizer，并建立独立 `analyzer_release`。
+
+## 10. Content Filter Release 的完整建议
 
 ```text
 content_filter_release
@@ -220,8 +423,14 @@ content_filter_release
   threshold
   threshold_type
   min_word_threshold
+  preserve_tags[]
+  preserve_classes[]
+  preservation_policy_version
   query_mode                # NONE / FIXED / RUNTIME_QUERY
   fixed_query
+  use_stemming
+  stemmer_language
+  tokenization_mode
   language_scope
   input_projection_type
   output_projection_type
@@ -230,11 +439,20 @@ content_filter_release
   created_at
 ```
 
-这样可以回答：某个 filtered Markdown 到底由哪种算法、哪个 threshold、哪一版 Crawl4AI、哪种语言策略生成。
+对于 `RUNTIME_QUERY`：
 
-## 8. Markdown Filter 的质量门禁
+```text
+filter_idempotency_key =
+  input_projection_hash
+  + content_filter_release_id
+  + runtime_query_hash
+```
 
-仅检查“文件生成成功”不够。建议为过滤后 Markdown 增加质量特征：
+Query-dependent 视图必须设置 TTL 或缓存策略，不能无限保存所有查询结果。
+
+## 11. Filter 质量门禁
+
+过滤成功不能以“文件写出来了”为标准。至少记录：
 
 ```text
 content_retention_ratio
@@ -244,25 +462,36 @@ table_retention_ratio
 list_retention_ratio
 link_retention_ratio
 reference_section_retained
+preserved_node_count
+preserve_rule_hit_count
 language_consistency
 truncation_signal
 ```
 
-其中：
+例如：
 
 ```text
-content_retention_ratio = len(filtered_text) / len(canonical_text)
+content_retention_ratio = filtered_text_length / canonical_text_length
 ```
 
-该比例不是越高越好，而是用于发现异常。例如某模板历史基线在 0.65~0.80，突然降到 0.12，就可能是 filter threshold、DOM 结构或正文 selector 漂移。
+该指标不是越高越好，而是与同 Source/Template 的历史基线比较。若正常区间长期为 0.65~0.80，新 Filter Release 突然降到 0.12，应 quarantine，而不是自动发布。
 
-对于技术文章，代码、表格和 heading 的保真度应设置独立门禁，避免一个看似“很干净”的 Markdown 实际已经丢失技术细节。
+技术博客要单独保护：
 
-## 9. CacheMode 与增量同步不能混为一谈
+- fenced code；
+- API signature；
+- 参数表；
+- shell command；
+- reference section；
+- heading path；
+- changelog；
+- footnote/link target。
 
-教程为了“拿最新内容”常使用 `CacheMode.DISABLED` 或 BYPASS。这在手工测试中合理，但不能作为 1000 站点长期同步策略。
+## 12. CacheMode 与增量同步的边界
 
-生产增量同步应优先：
+原文示例使用 `CacheMode.DISABLED` 获取最新内容，适合作为调试手段，但不能成为长期增量同步策略。
+
+生产增量链路应优先：
 
 ```text
 Feed/API cursor
@@ -273,114 +502,146 @@ Feed/API cursor
   -> Browser fallback
 ```
 
-如果服务端返回 304：
+304 时：
 
-- 不新增正文 Snapshot；
-- 不重复抽取；
+- 记录 Observation / Fetch Attempt；
+- 不创建正文 Snapshot 副本；
+- 不重复 Extraction；
 - 不创建 Document Version；
-- 不重新生成 Markdown/Chunk/Embedding；
-- 只记录 observation/fetch attempt。
+- 不重复 Markdown/Filter/Chunk/Embedding。
 
-这样才能把“是否访问源站”“是否下载正文”“是否重建派生物”拆开，避免每天对数十万篇历史文章做无意义全量重抓。
+Crawl4AI CacheMode 只决定当前执行如何使用 Crawl4AI cache，它不是源站新旧判断的系统真相，也不能替代 ETag、Last-Modified、provider cursor 和 reconcile。
 
-## 10. HTTP First 与 Crawl4AI Browser 的关系
-
-原文以 Crawl4AI 作为统一入口很方便，但平台级方案仍应坚持 HTTP First。
+## 13. HTTP First 与 Browser Worker
 
 对于普通技术博客正文：
 
 ```text
 HTTPX/aiohttp
-  -> HTML snapshot
-  -> deterministic extractors
+ -> immutable HTML snapshot
+ -> deterministic extractors
 ```
 
-只有以下情况再进入 Browser：
+以下情况再升级 Browser：
 
-- 正文依赖 JavaScript 渲染；
-- Archive/Load More 只能通过交互发现 URL；
-- HTTP 正文质量低于阈值；
-- 需要执行明确、受控的 Interaction Recipe。
+- 正文依赖 JS 渲染；
+- Archive/Load More 只能交互发现 URL；
+- HTTP 抽取质量低于阈值；
+- 明确需要版本化 Interaction Recipe。
 
-Browser 应独立 Worker 池扩容。`arun_many()` 的资源自适应能力非常适合这一层，但不能把所有静态文章都 Browser 化。
+Browser 应独立 Worker pool。`arun_many()`、MemoryAdaptiveDispatcher 等正适合这一层，而不是让 1000 个站点所有静态文章默认走 Chromium。
 
-## 11. 对 1000 站点方案的具体优化
+## 14. `prefetch` 的正确使用位置
 
-基于本篇调研，主方案应新增或强化以下能力：
-
-### 11.1 新增 Content Filter Release
-
-Pruning、BM25、LLM Filter 都版本化，记录参数、语言范围、运行时和 benchmark。
-
-### 11.2 明确 Markdown 三层
+当前 Crawl4AI 版本提供更轻量的预取/发现能力，可在只需要 URL、链接、轻量页面信号时避免完整 Markdown/抽取链路。平台可以将它作为 Discovery/PROBE 的执行优化：
 
 ```text
-Canonical Markdown
-  = 从 Canonical IR 确定性生成
-
-Crawl4AI Raw Markdown
-  = 抽取候选 / 对照结果
-
-Filtered/Fit Markdown
-  = 检索或 LLM 输入优化 Projection
+Hub / Archive
+ -> lightweight prefetch
+ -> collect links / metadata
+ -> classify URL
+ -> only article candidates enter Fetch
 ```
 
-即使 Pruning 不依赖 query，也不能直接升级为 canonical。
+但 Prefetch 结果仍是发现证据，不是正文 Snapshot。只有进入 Fetch Route 并按平台规则持久化的响应才能成为文章事实。
 
-### 11.3 Worker 使用流式批处理
+## 15. 对主技术方案的落地优化
 
-Browser/Crawl4AI Worker 从平台 lease 一小批 Task，使用 `arun_many(stream=True)`，每个 URL 成功即写 Snapshot、提交 Task；失败 URL 单独 retry。
+### 15.1 Content Filter Release 增加保护与词法参数
 
-### 11.4 按 URL 类型匹配 CrawlerRunConfig
-
-Crawl4AI 官方支持为不同 URL 匹配不同 Run Config。平台可以将这一能力映射到 Site Profile/Fetch Route：
-
-- PDF -> PDF scraping strategy；
-- article -> raw markdown + optional pruning projection；
-- dynamic hub -> JS interaction recipe；
-- JSON/API -> structured extraction。
-
-但配置真相仍应保存在数据库的 Release 中，而不是 Worker 内硬编码。
-
-### 11.5 过滤质量可视化
-
-Web 管理增加：
-
-- raw/canonical/fit 三栏对比；
-- threshold 调整预览；
-- retention ratio；
-- code/table/heading 丢失提示；
-- Source 模板的历史基线；
-- Filter Release A/B；
-- 一键回滚到上一版 Filter Release。
-
-## 12. 推荐执行流水线
+必须增加：
 
 ```text
-[Discovery]
-  provider 枚举 URL
-      ↓
+preserve_tags[]
+preserve_classes[]
+preservation_policy_version
+use_stemming
+stemmer_language
+tokenization_mode
+```
+
+避免 Pruning 误删技术结构，也让 BM25 Filter 的语言行为可复现。
+
+### 15.2 Runtime Contract Test 增加流式提前取消
+
+除了静态/动态抓取 smoke test，还应测试：
+
+```text
+arun_many stream early-close
+cancelled task cleanup
+browser page/context cleanup
+dispatcher permit recovery
+unacked lease recovery
+```
+
+避免升级 Crawl4AI 后出现长期 page/task 泄漏。
+
+### 15.3 URL Config 增加 Match Contract
+
+所有 `url_matcher` 规则必须按 Release 保存顺序/优先级，并通过 URL fixture 测试，防止重叠 matcher 静默改变路由。
+
+### 15.4 Worker RateLimiter 不代替平台限流
+
+Worker 内 RateLimiter 继续保留，但域名/source/global limiter 必须由平台 durable scheduler 控制，并把 `Retry-After` 转换成下一次调度时间。
+
+### 15.5 流式结果逐 URL 事务提交
+
+每个 URL 独立保存 FetchAttempt/Snapshot 并 ack，禁止整个 `arun_many()` batch 共用一个长事务。
+
+### 15.6 Web 增加 Dispatcher/Filter 诊断
+
+增加：
+
+```text
+batch_size
+active_pages
+peak_memory
+stream_completed_count
+stream_cancelled_count
+stream_cleanup_latency
+rate_limit_wait_ms
+retry_after_ms
+config_rule_id
+config_match_mismatch
+preserve_rule_hit_count
+```
+
+这样能区分“站点慢”“Worker 资源紧张”“配置路由错”“过滤误删”“取消清理异常”。
+
+## 16. 推荐执行流水线
+
+```text
+[Discovery / Probe]
+  CMS / Sitemap / Feed / Archive / CC
+  + Crawl4AI lightweight prefetch when useful
+        ↓
 [Scheduler]
-  durable task + domain/source budget
-      ↓
+  durable task
+  + global/domain/source/route budget
+  + Retry-After-aware next_run_at
+        ↓
 [Fetch Route]
   HTTP first
-      ├─ success/high quality -> Snapshot
-      └─ dynamic/low quality -> Browser/Crawl4AI
-                                ↓
-                      arun_many(stream=True)
-                                ↓
-                           Snapshot
-                                ↓
+        ├─ high quality -> Snapshot
+        └─ dynamic/low quality -> Browser/Crawl4AI Worker
+                               ↓
+                    lease small task batch
+                               ↓
+                    arun_many(stream=True)
+                    + local Dispatcher
+                    + local RateLimiter
+                               ↓
+                      result per URL
+                               ↓
+                 persist + commit + ack
+                               ↓
 [Extraction]
-  Selector / JSON-LD / Trafilatura / Readability / Crawl4AI raw
-                                ↓
-                      Candidate Quality
-                                ↓
-                         Canonical IR
-                                ↓
-                       Document Version
-                                ↓
+  Selector / JSON-LD / Trafilatura / Readability / Crawl4AI candidate
+                               ↓
+                        Canonical IR
+                               ↓
+                     Document Version
+                               ↓
 [Projection]
   CLEAN_MARKDOWN
   CRAWL4AI_RAW_MARKDOWN
@@ -389,15 +650,56 @@ Web 管理增加：
   CHUNK / EMBEDDING / INDEX
 ```
 
-## 13. 结论
+## 17. 验证用例
 
-这篇教程最值得吸收的不是把 `arun_many()` 直接作为系统调度器，也不是把 `fit_markdown` 直接当知识库正文，而是把 Crawl4AI 的两类能力放到正确层级：
+### 17.1 Batch / Dispatcher
 
-1. `arun_many()` 是 Worker 内资源感知、多 URL 并发执行器；
-2. Pruning/BM25 是内容过滤 Projection，不能替代原始事实与 canonical 内容；
-3. Pruning 虽然 query-independent，仍然有损，必须版本化并做质量门禁；
-4. BM25 Filter 是 query-dependent，不允许参与 canonical 文档身份和版本判断；
-5. 1000 站点增量同步应依赖 durable scheduler、条件请求和 reconcile，而不是持续禁用缓存全量重抓；
-6. Web 管理需要支持 raw/canonical/fit 的可视化比较、Filter Release 调参和回滚。
+- 100 URL 中 90 成功、10 失败，90 个事实必须保留；
+- `stream=True` 消费一半后主动取消，不应持续残留 page/context；
+- Worker 崩溃后未 ack task 能重新 lease；
+- 大页面导致内存压力时并发应下降而不是 OOM；
+- 429/503 能产生退避并反馈平台下一次调度。
 
-这些调整能让 Crawl4AI 在方案中从“单机抓取工具”变成可被审计、可批处理、可灰度、可回放的执行组件，同时保持知识库事实层的长期稳定性。
+### 17.2 Route Match
+
+- article/PDF/API/dynamic hub 各有 fixture；
+- 重叠 matcher 的命中顺序固定；
+- Profile Release 改动后 fixture diff 可见；
+- 未命中规则时进入明确 fallback，而不是无声失败。
+
+### 17.3 Pruning
+
+- code/pre/table 在配置保护后保持；
+- reference section 不因链接密度高而误删；
+- 不同 template 使用不同 threshold baseline；
+- preserve 规则不能把导航/广告重新引入。
+
+### 17.4 BM25
+
+- 英文 query 可正常匹配相关块；
+- 中文 query 在默认 whitespace tokenization 下必须暴露低召回风险；
+- query 变化不创建 Document Version；
+- BM25 Filter 与生产 OpenSearch BM25 指标/Release 完全分离。
+
+### 17.5 Incremental
+
+- 304 不创建正文版本和派生物；
+- CacheMode 切换不会改变平台文档身份；
+- Feed/Sitemap/Conditional GET/Reconcile 才驱动源站同步事实。
+
+## 18. 结论
+
+这篇教程最有价值的部分是展示了 Crawl4AI 的批量抓取和内容过滤入口，但放入 1000 站点知识库后必须重新划分边界：
+
+1. `arun_many()` 是 Worker 内资源感知批执行器，不是 durable scheduler；
+2. `stream=True` 必须与逐 URL 提交、partial success、lease fencing 和取消清理结合；
+3. Worker-local Dispatcher/RateLimiter 是执行保护，平台仍需全局/domain/source 持久调度与退避；
+4. per-URL `CrawlerRunConfig` 适合路由不同 URL 类型，但 matcher 顺序必须版本化并做 Contract Test；
+5. Pruning 是启发式有损裁剪，当前实现支持 `preserve_tags` / `preserve_classes`，非常适合保护技术代码、表格和参数结构；
+6. 原文对 BM25 的“向量检索”描述不正确，Crawl4AI 当前实现是 `BM25Okapi` 词法评分并叠加 tag weight；
+7. 中文效果问题主要来自默认英文 stemming 与 whitespace tokenization，不意味着 BM25 理论本身不适用于中文；
+8. Content Filter 必须独立 Release，并记录 preservation、stemming、tokenization、语言和 Runtime；
+9. `raw_markdown`/`fit_markdown` 都不是系统事实源，Canonical IR 和 Snapshot 才能支撑长期重放；
+10. `CacheMode.DISABLED/BYPASS` 不能替代 Feed/API cursor、Sitemap、Conditional GET 和 Reconcile 的生产增量同步。
+
+采用这些边界后，Crawl4AI 可以作为可升级、可审计、可回滚的抓取执行组件，而不会绑架知识库的事实层、增量语义和长期可维护性。
