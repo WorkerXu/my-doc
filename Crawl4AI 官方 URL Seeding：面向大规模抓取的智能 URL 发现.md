@@ -1,927 +1,866 @@
 # Crawl4AI 官方 URL Seeding：面向大规模抓取的智能 URL 发现
 
-## 1. 调研对象与版本锚点
+## 1. 调研对象与结论
 
 - 官方文档：https://docs.crawl4ai.com/core/url-seeding/
-- 主实现：https://github.com/unclecode/crawl4ai/blob/7e801521428ee12509994d39151006f64055ebe3/crawl4ai/async_url_seeder.py
-- 配置实现：https://github.com/unclecode/crawl4ai/blob/7e801521428ee12509994d39151006f64055ebe3/crawl4ai/async_configs.py
-- Crawl4AI 版本：v0.9.2
-- 源码提交：`7e801521428ee12509994d39151006f64055ebe3`
-- 调研目标：判断 `AsyncUrlSeeder` 在 1000+ 技术博客全历史回填、增量同步、URL Inventory、Web 管理与可恢复调度中的正确定位，并把文档名称与源码真实语义之间的差异明确下来。
+- 官方仓库：https://github.com/unclecode/crawl4ai
+- 本次源码基线：Crawl4AI v0.9.2，commit `7e801521428ee12509994d39151006f64055ebe3`
+- 核心实现：`crawl4ai/async_url_seeder.py`
+- 相关配置：`crawl4ai/async_configs.py`
+- 相关测试：`tests/general/test_async_url_seeder_bm25.py`
 
-本文以源码行为为准。文档中的字段名称、性能描述和示例只能作为能力提示，生产系统必须使用 pinned release + Contract Test 固化行为。
+结论：`AsyncUrlSeeder` 非常适合做 **低成本 URL 批量发现、候选预筛选和轻量 metadata probe**，但不适合直接承担 1000+ 博客知识库的“历史完整性 Provider”“持久 Frontier”“严格 QPS 控制”“可恢复增量同步”或“Coverage Complete”职责。
 
----
+生产方案应把它定位为 `DISCOVERY_ACCELERATOR`：其产出首先转成平台 `URL Observation`，之后再由平台做 Normalize、Scope、Robots、Classify、Dedup、Persistent Frontier、Fetch、Quality 和 Coverage。Sitemap、CMS、RSS、Archive、Common Crawl 等真正参与历史 Coverage 的来源应由平台原生 Provider 分开运行并保存 Evidence、Checkpoint 和明确的 terminal outcome。
 
-## 2. 结论摘要
+本次源码核对还发现几处对生产设计很重要的语义：
 
-`AsyncUrlSeeder` 适合作为 **URL Discovery Accelerator / Observation Producer**，不适合作为平台的 Coverage Truth、增量状态机、全局调度器、严格 QPS 限流器或百万 URL 的持久队列。
-
-它最有价值的能力是：
-
-1. Sitemap / Sitemap Index 的批量 URL 发现；
-2. Common Crawl 索引的快速 URL 补洞；
-3. partial-head 元数据探测；
-4. URL pattern、元数据 BM25 等低成本优先级计算；
-5. 有界工作队列带来的局部 backpressure；
-6. 本地 Sitemap、CC、HEAD/Live cache 带来的执行层加速。
-
-源码分析得到的关键边界如下：
-
-- `hits_per_sec` 当前通过 `asyncio.Semaphore` 实现，真实语义是局部并发门，不是严格“每秒请求数”；
-- 主 worker queue 有界，但 `seen`、`results`、`discovered_urls`、单个 sitemap 的 `regular_urls`、BM25 corpus 和 sitemap-index 子任务仍然可能 O(N)/O(K) 增长；
-- Sitemap smart cache 在判断缓存是否可用前就可能 GET 根 sitemap，因此不等价于 HTTP Conditional GET；
-- `max_urls` 是提前停止预算，而且共享 `results` 的并发检查不是原子操作，内部请求/结果可能发生少量超额，最终仅通过切片限制返回条数；
-- `source=sitemap+cc` 的两个 source 在 generator 中按顺序执行，不是两个独立可审计 Provider Run；
-- 更重要的是，producer 会捕获 discovery generator 异常、记录日志后正常结束，因此上游调用可能拿到“部分结果列表”却没有结构化的 Provider failure；
-- Common Crawl 的 index 默认取“latest”，而公开 `SeedingConfig` 没有 `cc_index_id` 参数，不能通过公开配置直接固定历史回填 index；
-- CC cache 直接写最终 `.jsonl` 文件，中途异常可能留下 partial file；下次 `force=false` 只要文件存在就会当成完整 cache 读取，存在 partial-cache poisoning 风险；
-- `many_urls()` 对所有域名 `asyncio.gather()`，并复用同一个 Seeder 的 `_rate_sem`、`force`、cache config 等共享可变状态，不能替代平台级 durable/fair scheduler；
-- 文档对 `filter_nonsense_urls` 的描述比 v0.9.2 当前实现更激进：源码中不少 API、媒体、压缩包、源代码扩展名过滤规则实际上被注释掉，说明“行为必须按代码与测试固化”；
-- HEAD/live/head-data cache 默认受 Seeder `ttl` 控制，默认常量为 7 天，不能作为 freshness 真相；
-- `status=valid`、partial head、BM25、cache hit 都只能是 hint，不能直接生成 `VALID_ARTICLE`、Document 或 PASS Markdown。
-
-因此，对博客知识库最合理的设计是：
-
-**权威 Sitemap/RSS/CMS/Common Crawl index 查询由平台 Provider Adapter 负责持久状态、条件请求、分片与可重放；Crawl4AI URL Seeder 作为 best-effort discovery accelerator 和 metadata probe，仅产生 Observation。**
+1. `sitemap+cc` 实现固定先跑 sitemap，再跑 Common Crawl；配合 `max_urls` 时可能在 CC 尚未执行前就停止，因此不能把组合模式理解为“两个来源均完整执行后的最大覆盖”。
+2. `max_urls` 在 BM25 评分之前就参与停止发现，因此 `max_urls=10 + query` 不是“全候选中的 top 10”，而是“先拿到至多一批候选，再在这批候选上评分”。
+3. 文档宣称 `extract_head=False + query` 可以做 URL 结构评分，但 v0.9.2 源码会直接告警并跳过评分，官方测试也明确断言结果不带 `relevance_score`，说明文档与实现存在漂移。
+4. `hits_per_sec` 实际是 `asyncio.Semaphore`，限制的是同时进入 `_validate()` 的局部并发，不是按秒补 token 的严格 QPS。
+5. 官方强调 bounded queue，但端到端内存仍包含 `seen`、`results`、Sitemap 的 `discovered_urls`，并且 Sitemap Index 会一次创建全部子 sitemap task，因此不能据此推导“百万 URL 全流程内存有界”。
+6. Sitemap Smart TTL Cache 默认仍会先探测并 GET sitemap 以读取 `<lastmod>` 再判断 cache 是否有效，不等价于 HTTP `ETag/If-None-Match` 或 `Last-Modified/If-Modified-Since` 增量同步。
+7. Producer、子 sitemap 处理等位置存在“记录错误后继续并返回已有结果”的路径，因此普通 List 返回本身没有“Provider 已完整枚举”的证明力。
 
 ---
 
-## 3. 官方能力模型与适用场景
+## 2. AsyncUrlSeeder 的执行模型
 
-官方文档把 URL Seeding 定位为“先发现 URL，再抓正文”，与 Deep Crawling 的“边抓边发现”形成对比。
-
-博客知识库的全历史回填天然适合两阶段：
+`AsyncUrlSeeder.urls(domain, config)` 的核心流程可以概括为：
 
 ```text
-URL Inventory
-  -> Fetch
-  -> Raw Artifact
-  -> Extract
-  -> Quality
-  -> Canonical IR
-  -> Markdown
+SeedingConfig
+   |
+解析 source = sitemap / cc / sitemap+cc
+   |
+必要时获取 latest Common Crawl index
+   |
+按固定顺序构建 discovery generator
+   |-- sitemap
+   `-- cc
+   |
+bounded asyncio.Queue
+   |
+producer 去重并写 queue
+   |
+N 个 worker
+   |
+_validate()
+   |-- no probe -> status=unknown
+   |-- live_check -> HEAD
+   `-- extract_head -> partial GET + <head> parse
+   |
+results list
+   |
+可选 BM25
+   |
+score_threshold
+   |
+最终 max_urls slice
 ```
 
-`SeedingConfig` 当前公开的核心参数包括：
+它的优势是实现简单、异步、对单机批量 URL 发现很友好；局限是多数状态是进程内临时状态，并没有 durable checkpoint、typed completion、分片恢复、跨进程公平性和全局限流语义。
+
+### 2.1 Source 解析不是独立 Provider Run
+
+`source` 会按 `+` 拆成若干 token，但真正 generator 的代码顺序是：
 
 ```text
-source = sitemap | cc | sitemap+cc
-pattern
-extract_head
-live_check
-max_urls
-concurrency
-hits_per_sec
-force
-query
-scoring_method = bm25
-score_threshold
-filter_nonsense_urls
+if sitemap in sources:
+    yield sitemap URLs
+if cc in sources:
+    yield CC URLs
+```
+
+也就是说无论用户传 `sitemap+cc` 还是 `cc+sitemap`，实际都先 sitemap、后 CC。
+
+这对于探索型工具没有问题，但对于 Coverage 有两个风险：
+
+- 两个来源的错误、缓存、截断和完成状态混在一次 List 返回里，无法独立审计；
+- 若前一个来源已触发 `max_urls`，后一个来源可能根本没有运行。
+
+因此生产平台必须拆为独立的 Provider Run：
+
+```text
+NATIVE_SITEMAP Provider Run
+NATIVE_COMMON_CRAWL_INDEX Provider Run
+CRAWL4AI_URL_SEEDER Accelerator Run
+```
+
+三者最后在 Coverage Snapshot 中汇总，不把 Seeder 组合模式当作两个权威 Provider 的替代品。
+
+---
+
+## 3. Sitemap 实现细节
+
+### 3.1 自动发现逻辑
+
+Seeder 先尝试：
+
+```text
+https://<host>/sitemap.xml
+https://<host>/sitemap_index.xml
+http://<host>/sitemap.xml
+http://<host>/sitemap_index.xml
+```
+
+每个候选先走 `_resolve_head()`；如果没有找到默认 sitemap，才尝试 `https://<host>/robots.txt` 并读取其中的 `Sitemap:` 行。
+
+生产含义：
+
+- 自动探测只是 convenience，不应替代 Source Profile 中显式保存的 sitemap URL；
+- 站点若不支持 HEAD，但 GET 可用，默认 sitemap 可能被误判不可用；
+- 若已经通过 HEAD 找到默认 sitemap，但随后 GET/解析失败，当前路径不会自然退回到 robots 中的其它 sitemap 作为完整枚举策略；
+- 生产 Native SitemapProvider 应同时支持显式 URL、robots sitemap、多个 sitemap root、HTTP validator 和 typed error。
+
+### 3.2 Sitemap XML 解析
+
+实现支持：
+
+- 普通 `<urlset>`；
+- `<sitemapindex>`；
+- `.gz`；
+- namespace-agnostic `local-name()`；
+- 相对 `<loc>` 通过 `urljoin()` 转绝对 URL；
+- LXML 不可用时回退到 `xml.etree.ElementTree`。
+
+这使其兼容性不错，但解析方式是“整份 response 读入内存后解析”，并非真正 streaming XML parser。
+
+### 3.3 Sitemap Index 并发
+
+遇到 Sitemap Index 时，当前实现会：
+
+```text
+sub_sitemaps = 全部子 sitemap
+for each sub_sitemap:
+    asyncio.create_task(process_subsitemap(...))
+result_queue = bounded queue
+持续从 result_queue yield URL
+```
+
+这里 bounded 的只是 **结果队列**，不是子 sitemap task 数。假设一个 sitemap index 有 5 万个子 sitemap，代码会先创建 5 万个 task；`SeedingConfig.concurrency` 也没有直接约束这些子 sitemap fetch task。
+
+因此生产平台的大 sitemap 必须改成 durable shard：
+
+```text
+root sitemap index
+ -> 保存 root evidence
+ -> materialize sub-sitemap identities
+ -> provider_shard 表
+ -> Fair Scheduler 小批 lease
+ -> 每 shard 独立 Conditional GET / parse / checkpoint
+```
+
+不能把“result_queue 有界”误解成“整个 Sitemap Index 的并发和内存都严格有界”。
+
+### 3.4 `discovered_urls` 带来的 O(N) 内存
+
+`_from_sitemaps()` 一边 yield URL，一边把所有 URL append 到 `discovered_urls`，最后为了写 sitemap cache 再整体保存。
+
+所以一个超大站至少同时可能存在：
+
+```text
+producer seen set          O(N)
+worker results list        O(N)
+sitemap discovered_urls    O(N)
+sub-sitemap task set       O(number_of_sub_sitemaps)
+```
+
+bounded queue 只能限制 producer 与 worker 之间的瞬时缓冲，不能保证总体 O(1) 或严格受控内存。
+
+### 3.5 Smart TTL Cache 的真实语义
+
+v0.9.x 增加了：
+
+```text
 cache_ttl_hours
 validate_sitemap_lastmod
 ```
 
-这些字段里有多项会改变结果集合或网络行为，因此在生产平台中都必须经过配置编译、审批和版本化，不能由 Web 用户直接透传。
-
----
-
-## 4. `urls()` 的执行链路
-
-源码主流程可以抽象为：
+cache JSON 保存：
 
 ```text
-SeedingConfig
-  -> parse sources
-  -> sitemap generator
-  -> cc generator
-  -> producer
-  -> seen de-dup
-  -> bounded asyncio.Queue
-  -> N workers
-  -> optional nonsense filter
-  -> optional live/head probe + cache
-  -> shared results list
-  -> optional BM25 collective scoring
-  -> threshold/sort
-  -> return List[Dict]
+version
+created_at
+sitemap_lastmod
+sitemap_url
+url_count
+urls[]
 ```
 
-主 queue 大小为：
+但代码在判断 cache 是否有效之前，会先 HEAD 探测 sitemap，再 GET sitemap 内容以计算 `_parse_sitemap_lastmod()`。因此即便最终 cache hit，默认路径仍可能发生完整 sitemap 网络下载。
 
-```python
-queue_size = min(10000, max(1000, concurrency * 100))
-```
+此外 `_parse_sitemap_lastmod()`：
 
-`await queue.put()` 会在队列满时阻塞 producer，因此能给 URL discovery 到 validation 之间提供局部 backpressure。
+- 抓取 XML 中全部 `<lastmod>`；
+- 使用 `max(lastmods)` 取“最大值”；
+- cache 校验时用字符串 `current_lastmod > cached_lastmod` 比较；
+- 没有把它转换成统一时区、统一精度的时间对象；
+- 也没有使用 HTTP ETag / Last-Modified 做标准 Conditional GET。
 
-但这不能被理解为“任务整体内存有界”，因为至少还有：
-
-```text
-seen                  O(unique URLs)
-results               O(returned URLs)
-discovered_urls       O(sitemap URLs)
-regular_urls           O(one sitemap size)
-sub-sitemap tasks      O(number of sub-sitemaps)
-BM25 text corpus       O(scored URLs)
-```
-
-对常规技术博客足够实用；对几十万到百万 URL 的大站，必须切换到平台级 streaming provider + durable shard。
-
----
-
-## 5. `max_urls`：返回上限不等于严格执行预算
-
-worker 的核心逻辑是先检查：
-
-```python
-if max_urls > 0 and len(res_list) >= max_urls:
-    stop_event.set()
-    ...
-```
-
-然后才调用 `_validate()`，而 `_validate()` 最终会向共享 `res_list` append。
-
-由于多个 worker 并发执行，`len(res_list)` 的检查与后续 append 不是一个原子“领取配额”操作。多个 worker 可能同时看到“还没到上限”，随后都继续请求并 append。
-
-最后 `urls()` 使用：
-
-```python
-return results[:max_urls] if max_urls > 0 else results
-```
-
-保证的是 **返回条数上限**，不是严格的网络请求数、校验数或内部结果数上限。
-
-因此：
-
-- `max_urls` 只能映射为 `RESULT_LIMIT_REACHED` / budget hint；
-- 不能拿它当成本硬配额；
-- 不能把“返回了 N 条”解释成 Provider exhausted；
-- 平台若需要硬预算，应在 durable scheduler / provider shard 层做 token/lease accounting。
-
----
-
-## 6. Discovery 异常可能退化为“部分结果正常返回”
-
-这是生产集成中最重要的源码边界之一。
-
-producer 结构大致是：
-
-```python
-async def producer():
-    try:
-        async for u in gen():
-            ...
-    except Exception as e:
-        log_error(...)
-    finally:
-        producer_done.set()
-```
-
-异常被记录后没有重新抛给 `urls()` 调用方。
-
-结果是：
-
-1. Sitemap 已发现 5000 条；
-2. 随后 Common Crawl 请求失败；
-3. producer 记录 error；
-4. worker 把已入队数据处理完；
-5. `urls()` 仍可以返回一个普通的 List。
-
-如果平台只看“函数成功返回 + 返回了很多 URL”，很容易把部分结果误判为完整 Provider Run。
-
-因此生产集成必须遵守：
-
-```text
-successful function return != provider completed
-non-empty result != provider exhausted
-```
-
-最佳方案不是从日志猜终止原因，而是：
-
-- Coverage 任务中把 Sitemap 与 Common Crawl 拆成两个独立 Provider Run；
-- 每个 Provider 有自己的 typed terminal outcome；
-- 权威 Sitemap/CC 使用平台原生 Adapter，能明确返回 HTTP、解析、分页、分片和 completion 状态；
-- Seeder 结果只能作为 observation augmentation；
-- 若继续使用 Seeder 组合模式，只能标记为 best-effort discovery，不能生成 `AUTHORITATIVE_PROVIDER_EXHAUSTED`。
-
----
-
-## 7. `source=sitemap+cc` 的真实执行方式
-
-`gen()` 里先：
-
-```text
-_from_sitemaps(...)
-```
-
-再：
-
-```text
-_from_cc(...)
-```
-
-因此这两个来源并不是平台语义上的并行 Provider，也没有独立的 source completion 状态、错误类型和 evidence boundary。
-
-对可解释 Coverage，更合理的建模是：
-
-```text
-Provider Run A = SITEMAP
-Provider Run B = COMMON_CRAWL_INDEX
-```
-
-两者可以由平台并行调度，也可以有不同优先级、预算、重试、缓存、证据和停止原因。
-
-`SITEMAP_PLUS_CC` 只适合探索、候选补洞或交互式发现，不适合作为最终 Coverage 的唯一 Provider Run。
-
----
-
-## 8. Sitemap 根发现机制与局限
-
-Seeder 会尝试：
-
-```text
-https://host/sitemap.xml
-https://host/sitemap_index.xml
-http://host/sitemap.xml
-http://host/sitemap_index.xml
-```
-
-使用 HEAD 探测；若都没找到，则退到：
-
-```text
-https://host/robots.txt
-```
-
-解析 `Sitemap:` 行。
-
-局限：
-
-- 自定义 sitemap 路径无法通过 `SeedingConfig` 直接指定；
-- HEAD 405/403、GET 200 的站点可能被漏掉；
-- robots fallback 固定从 HTTPS 开始；
-- sitemap 可能位于独立 host/CDN；
-- 平台需要保存明确的 Provider URL 和 HTTP validator。
-
-所以 Source Profile 的显式 sitemap URL 应由 **原生 SitemapProvider** 处理；Seeder 的根探测更适合 onboarding probe 或 best-effort discovery。
-
----
-
-## 9. Sitemap Index 并行展开：队列有界但 task 数不有界
-
-`_iter_sitemap_content()` / `_iter_sitemap()` 会识别 sitemap index，然后为每个 sub-sitemap 创建 task：
-
-```python
-tasks = [asyncio.create_task(process_subsitemap(sm)) for sm in sub_sitemaps]
-```
-
-结果通过有界 `result_queue` 返回。
-
-这意味着：
-
-- URL 结果传输具有 backpressure；
-- 但有多少 sub-sitemap，就可能一次创建多少 asyncio Task；
-- 一个普通 sitemap 又会先建立 `regular_urls` 列表；
-- 顶层 `_from_sitemaps()` 为写 cache 还会维护 `discovered_urls`。
-
-所以百万级 sitemap source 应改成：
-
-```text
-Root Sitemap Index
- -> save immutable provider artifact
- -> parse sub-sitemap loc
- -> materialize provider_shard
- -> durable fair scheduler
- -> conditional GET one shard
- -> streaming XML parse
- -> batch upsert observations
- -> shard checkpoint
-```
-
-这样内存与恢复粒度从“全站”变成“单 shard”。
-
----
-
-## 10. Sitemap Smart Cache 的真实网络成本
-
-smart cache 逻辑会先尝试找到 sitemap，然后为了得到 sitemap 内部 `<lastmod>`，可能先 GET 根 sitemap 内容，之后才调用 `_is_cache_valid()`。
-
-因此 `cache hit` 不等于“没有访问根 sitemap”。
-
-这类 cache 的价值主要在：
-
-- 少做递归解析；
-- 少做 URL 列表重建；
-- 少做后续 head/live probe。
-
-但增量同步真正应依赖：
+所以它可以作为本地 accelerator cache，但不能替代平台增量 Provider 的：
 
 ```text
 If-None-Match
 If-Modified-Since
+HTTP 304
+body sha256
+provider checkpoint
 ```
 
-并持久化：
-
-```text
-provider_checkpoint
-- provider_id
-- request_url
-- etag
-- http_last_modified
-- response_sha256
-- observed_lastmod_hint
-- fetched_at
-- http_status
-- provider_release_id
-```
-
-304 表示本次 representation 未变；200 则保存新 Provider Artifact 后做 inventory diff。
+`<lastmod>` 应被视为 hint，而不是增量同步的唯一真相。
 
 ---
 
-## 11. `<lastmod>` 只应当作 Hint
+## 4. Common Crawl 实现细节
 
-`_parse_sitemap_lastmod()` 会取 XML 中所有 `<lastmod>` 文本的 `max()`，随后 `_is_cache_valid()` 使用字符串：
+### 4.1 默认使用“latest index”
 
-```python
-current_lastmod > cached_lastmod
-```
-
-这不是统一解析成 UTC datetime 的强一致比较。
-
-不同站点可能混用：
-
-- 日期；
-- datetime；
-- 不同时区；
-- 不同精度；
-- 非严格 ISO 表示。
-
-即使格式完全规范，`<lastmod>` 也只是站点声明，不是内容 hash 或 HTTP validator。
-
-平台只应保存为：
+首次需要 CC 时，Seeder 调 `_latest_index()`：
 
 ```text
-updated_at_hint
+GET https://index.commoncrawl.org/collinfo.json
+取第 1 个 collection id
+本地缓存 latest_cc_index.txt
 ```
 
-而不能作为正文没有变化的最终证据。
+Seeder 实例的默认 TTL 为 7 天，因此“同样的配置”在不同时间可能落到不同 Common Crawl index。
 
----
-
-## 12. Common Crawl：latest index 与可重放性问题
-
-Seeder 的 `_latest_index()` 会读取：
-
-```text
-https://index.commoncrawl.org/collinfo.json
-```
-
-取第一条 collection id，并把 index id 本地缓存，默认 `TTL = 7 days`。
-
-生产回填要求“同一个逻辑任务可重放”，因此必须固定：
+对一次探索没有问题，对历史回填 replay 有问题。生产 Native CommonCrawlIndexProvider 必须显式固定：
 
 ```text
 cc_index_id
-cc_query_pattern
-cc_query_url / query parameters
-provider_release_id
-provider_evidence
+url_pattern
+query params
+page/shard cursor
+query evidence
 ```
 
-但 v0.9.2 的公开 `SeedingConfig` 并没有 `cc_index_id` 字段；仓库里也没有公开的 `cc_index_id` 配置入口。
+同一次 Backfill 的 retry/replay 不允许静默切到“最新 index”。
 
-所以现有方案里“固定 Common Crawl index”不能简单写成一个 Seeder 配置字段。推荐实现：
+### 4.2 CC 查询与缓存
 
-### 12.1 首选：平台原生 CommonCrawlProvider
+`_from_cc()`：
 
-由平台直接请求：
+- 生成 Common Crawl index 查询；
+- 用 `httpx.AsyncClient.stream()` 流式读 JSONL；
+- 每条记录取 `rec["url"]`；
+- 同时把 URL 一行一行写入本地 `.jsonl` cache；
+- 下次只要 cache 文件存在且 `force=False`，就直接读取该文件。
+
+关键风险在于：cache 没有单独的 `complete=true`、checksum、terminal marker 或事务提交。
+
+若网络在写入中途失败：
+
+1. 文件可能已经存在并包含部分 URL；
+2. 当前调用抛出的 CC 错误又可能被上层 producer 捕获并只记录日志；
+3. 下一次不 `force` 时，`path.exists()` 即可触发读 cache；
+4. 部分文件可能被当成普通 cache 复用。
+
+所以生产方案必须：
+
+- Attempt-scoped cache directory；
+- 失败 attempt cache 不复用；
+- 成功后再原子 promotion；
+- cache 永远不等同 Coverage Evidence；
+- 更推荐由 Native CommonCrawlIndexProvider 自己维护 durable cursor/checkpoint。
+
+### 4.3 CC 错误与完成语义
+
+CC 对 503 有有限重试，但没有输出结构化：
 
 ```text
-https://index.commoncrawl.org/<cc_index_id>-index
+EXHAUSTED
+RESULT_LIMIT_REACHED
+RATE_LIMITED
+ERROR_PARTIAL
 ```
 
-显式传固定 index，支持分页/流式解析/typed failure/evidence/checkpoint。
-
-### 12.2 次选：版本锁定的 Seeder Wrapper
-
-如果为了复用 Seeder 代码，Adapter 可在 pinned release 下显式设置内部 `seeder.index_id`，但这属于内部实现耦合：
-
-- 必须有 Contract Test；
-- 升级版本必须重新验证；
-- 不应暴露给普通 Web 用户；
-- 长期仍优先收敛到原生 Common Crawl Adapter。
-
-因此，Seeder 的 CC 模式定位应是 **gap acceleration**，不是可重放 CC truth provider。
+因此普通 Seeder List 无法证明“已经遍历完这个 index 的约定范围”。
 
 ---
 
-## 13. CC Cache 的 partial-file 风险
+## 5. Producer / Worker 与 `max_urls`
 
-`_from_cc()` 的行为是：
+### 5.1 去重与 backpressure
 
-1. 如果 cache path 存在且 `force=false`，直接逐行读取并返回；
-2. 否则对 CC index 发 streaming GET；
-3. 使用 `aiofiles.open(path, "w")` 直接打开最终 cache 文件；
-4. 每收到一条就写一条；
-5. 网络/HTTP/JSON 异常会抛出。
-
-这里没有：
+Seeder 创建：
 
 ```text
-write temp file
- -> fsync/close
- -> completion marker
- -> atomic rename
+queue_size = min(10000, max(1000, concurrency * 100))
+asyncio.Queue(maxsize=queue_size)
+seen = set()
+results = []
 ```
 
-因此如果流式下载中途失败，最终 path 可能已经存在且包含部分 URL。下次 `force=false` 时，逻辑只判断 `path.exists()`，有可能把 partial cache 当成完整 cache。
+producer：
 
-这对 Coverage 是不可接受的。
-
-平台策略：
-
-- Seeder cache 永远不是 Provider completion evidence；
-- Provider attempt 失败后，重试必须 `force=true` 或使用新的 attempt-scoped cache root；
-- 更稳妥的 Runtime 包装方式是每 Attempt 使用隔离临时目录，只有成功结束才把 cache 作为 accelerator artifact 晋升；
-- 原生 CommonCrawlProvider 应使用对象存储临时 key + completion metadata/atomic promotion；
-- Web UI 不允许把 `cache file exists` 显示成“已完整同步”。
-
----
-
-## 14. `hits_per_sec` 实际是 Semaphore，不是 QPS
-
-源码：
-
-```python
-self._rate_sem = asyncio.Semaphore(hits_per_sec)
-
-async with self._rate_sem:
-    await self._validate(...)
+```text
+source generator -> seen dedup -> queue.put()
 ```
 
-Semaphore 控制的是同时处于 validation 区间的协程数量，不包含基于时间窗口的 token refill。
+worker：
+
+```text
+queue.get() -> _validate() -> results.append()
+```
+
+队列满时 producer 会阻塞，这确实提供了局部 backpressure；但 `seen/results` 仍随候选规模增长。
+
+### 5.2 `max_urls` 是软停止，不是严格事务配额
+
+worker 在处理每个 URL 前检查：
+
+```text
+if max_urls > 0 and len(results) >= max_urls:
+    stop_event.set()
+```
+
+多个 worker 共享同一普通 List；多个 worker 可以在相近时刻看到同一个长度并继续执行 `_validate()`。最终函数还会 `results[:max_urls]` 切片，所以“返回条数”可能守住限制，但内部请求数和中间结果数不一定严格等于该限制。
+
+平台如果需要硬预算，应独立维护：
+
+```text
+max_requests
+max_observations
+max_bytes
+max_wall_clock
+```
+
+并把达限记录成 typed terminal outcome，而不是只依赖 `max_urls`。
+
+### 5.3 `max_urls` 会让 CC 饥饿
+
+因为 generator 固定：
+
+```text
+sitemap -> cc
+```
+
+若 sitemap 很快提供超过 `max_urls` 个候选，worker 触发 stop 后 producer 会停止，Common Crawl 分支可能完全没有执行。
 
 因此：
 
 ```text
-hits_per_sec = 5
+source="sitemap+cc", max_urls=100
 ```
 
-不能推导出：
+不能解释为“从 sitemap 和 CC 综合得到前 100 条”，更不能解释为“两种来源都完成后得到 100 条”。
+
+### 5.4 `max_urls` 发生在 BM25 之前
+
+BM25 是所有 worker 完成之后才执行。因此：
 
 ```text
-requests_per_second <= 5
+query + max_urls=10
 ```
 
-请求 50ms 时可能远高于 5 QPS；请求 3 秒时又可能低于 5 QPS。
-
-生产平台继续使用：
+实际流程是：
 
 ```text
-Redis Lua token bucket
-+ shared per-host semaphore
-+ Retry-After
-+ origin_backoff_until
+先发现/验证到约 10 个候选
+ -> 停止更多 discovery
+ -> 对这批候选算 BM25
+ -> 排序
 ```
 
-Seeder semaphore 只做本进程第二道安全网。
+而不是：
+
+```text
+发现全候选
+ -> 全量 BM25
+ -> top 10
+```
+
+这对 focused discovery 的结果质量影响很大。若要真正 top-K，要么不要在 discovery 前用小 `max_urls`，要么由平台分阶段做候选采样/排序。
 
 ---
 
-## 15. `many_urls()`：不应作为 1000 Source 调度器
+## 6. `hits_per_sec` 与并发控制
 
-源码：
+文档把 `hits_per_sec` 描述为 rate limit，但源码实现是：
 
 ```python
-tasks = [self.urls(domain, config) for domain in domains]
-results = await asyncio.gather(*tasks)
+self._rate_sem = asyncio.Semaphore(hits_per_sec)
+...
+async with self._rate_sem:
+    await self._validate(...)
 ```
 
-问题不仅是一次创建很多 domain 协程，还包括 Seeder 实例有共享可变状态：
+Semaphore 的语义是“同时有多少 coroutine 进入临界区”，不是“每秒允许多少次请求”。如果单次请求耗时 50ms，`Semaphore(5)` 的吞吐可以远大于 5 req/s；如果单次请求耗时 5s，吞吐又会远低于 5 req/s。
+
+另外它主要包围 `_validate()`，并不自然覆盖 Sitemap Index 中所有 sub-sitemap fetch 的全局 QPS 语义。
+
+生产系统必须在 Seeder 外再做跨 Worker 的：
 
 ```text
-self._rate_sem
-self.force
-self._cache_ttl_hours
-self._validate_sitemap_lastmod
-self.index_id
+per_host_qps             Token Bucket
+per_host_concurrency     Distributed Semaphore
+per_domain_concurrency
+per_source_concurrency
+Retry-After
+origin_backoff_until
 ```
 
-每个 `urls()` 调用都可能重设 `_rate_sem`。`many_urls()` 中多个域名共享同一个 Seeder，worker 运行时读取的是共享属性，因此不能把 `hits_per_sec` 理解为稳定的 per-domain 或 aggregate rate contract。
-
-1000 Source 应使用：
-
-```text
-Persistent Provider Task
- -> lease
- -> Global Admission
- -> one source / small bounded batch
- -> invoke adapter
- -> materialize observations
- -> checkpoint
- -> ack
-```
-
-而不是 `many_urls(1000_domains)`。
+Seeder 的 local semaphore 只能算第二道保护。
 
 ---
 
-## 16. Live Check 与 Head Extraction
+## 7. Live Check 与 Partial Head
 
-### 16.1 Live Check
+### 7.1 `live_check=True`
 
 `_resolve_head()`：
 
-- HEAD 2xx 视为 alive；
-- 对 301/302/303/307/308 验证一个 redirect target；
-- 第二个 HEAD 2xx 才返回成功；
-- 多级 redirect、HEAD 405、WAF HEAD/GET 差异都可能产生 false negative。
+- 发 HEAD；
+- 2xx 返回成功；
+- 301/302/303/307/308 只继续验证一层 redirect；
+- 目标再 HEAD 2xx 才算成功；
+- HEAD 405、网络错误、多级 redirect 等都会得到 `not_valid`。
 
-所以 `status=valid/not_valid` 是探测结果，不是文章判定。
+这不等于文章无效。很多服务器不支持 HEAD，但 GET 正常。
 
-### 16.2 Partial Head
+另外纯 `live_check` 结果中会保留原始 URL，redirect target 不会像 extract-head 分支那样单独保留 `original_url/final_url` 关系，因此不应直接用它决定 URL Identity。
 
-`_fetch_head()` 使用 GET stream：
+### 7.2 `extract_head=True`
 
-- 手动 redirect，默认最多 5 次；
-- 最多读取约 64 KiB；
-- 找到 `</head>` 就提前结束；
-- 找不到时只拿前约 10 KiB 做解析；
-- 解析 title/meta/link/JSON-LD/lang。
+它不是 HTTP HEAD，而是 partial GET：
 
-它适合产生：
+- `Accept-Encoding: identity`；
+- 最多跟随 5 层 redirect；
+- 每次读取 4096 bytes；
+- 找到 `</head>` 或达到约 64 KiB 时停止；
+- 用 LXML 或 regex 解析 title/meta/link/JSON-LD/lang。
+
+这是一个很实用的低成本 metadata probe，但 `status=valid` 本质上仍表示“这个 partial GET 成功”，不表示：
 
 ```text
-canonical_hint
-published_at_hint
-updated_at_hint
-og_type_hint
-language_hint
-redirect_hint
+这是文章
+正文可抽取
+MIME 正确
+不是 soft-404
+不在登录页
+最终 URL 在 scope 内
 ```
 
-但不是 Raw Artifact 或正文。
+所以平台仍需 Fetch + Scope + MIME + Soft-404 + Quality Gate。
 
-### 16.3 Probe Cache Freshness
+### 7.3 Probe Cache
 
-HEAD/live cache 的 `_cache_get()` 使用 Seeder constructor 的 `ttl`，默认与 `TTL` 常量一致，即 7 天。
-
-这意味着同一个 cache root 内的 metadata/live probe 可能在数天内直接复用。
-
-所以：
-
-- probe cache 只能是执行加速；
-- freshness SLO 不得依赖它；
-- Incremental 的正文更新仍依赖 Provider revalidation + GET validator/content hash；
-- repair/freshness-sensitive probe 应使用更短 TTL 或 `force`，但由平台策略编译，不让用户直接控制。
+`live/head` 结果按 URL SHA1 缓存在本地 `~/.cache/url_seeder/...`，默认使用 Seeder 实例 TTL。它适合减少重复 probe，但不应成为 Document 或 Provider 真相。
 
 ---
 
-## 17. `filter_nonsense_urls`：文档与当前实现存在漂移
+## 8. `filter_nonsense_urls` 的真实行为
 
-官方文档把 nonsense filter 描述为会过滤 robots、sitemap、API、媒体、归档、源码、管理路径等大量 URL。
+默认值为 `True`。源码会过滤一批路径，例如：
 
-但 v0.9.2 当前源码中，多组规则实际被注释掉，例如：
-
-- feed；
-- API/data；
-- archive/download；
-- media；
-- source code/config。
-
-当前真正启用的规则主要包括：
-
-- robots/sitemap；
-- 部分 utility files；
+- robots / sitemap；
+- 常见 utility files；
 - hidden path；
-- 常见 admin/login/cart/search 等路径；
-- print pattern；
-- 部分极短路径。
+- `/wp-admin`、`/login`、`/account`、`/search` 等；
+- print 相关路径；
+- 某些极短 path。
 
-这说明生产系统不能根据参数名称或文档说明猜过滤行为。
+很多更激进的扩展名过滤在当前源码中反而被注释掉。
 
-Coverage 模式仍应：
+这说明所谓 “nonsense” 是版本相关 heuristic，而不是稳定协议。对于全历史 Inventory：
 
 ```text
-pattern = *
+pattern = "*"
 filter_nonsense_urls = false
+query = null
+score_threshold = null
 ```
 
-先保存 Observation，再由平台版本化 Selection Policy 分类。
+先保存 Observation，再由平台版本化 Selection Policy 判断是不是文章候选。
 
-每个 pinned release 都应运行真实 article/non-article fixtures，测 false positive/false negative。
+对 focused discovery 可以打开过滤，但被过滤数量和 release 都要记录。
 
 ---
 
-## 18. BM25 的实现与边界
+## 9. BM25 与文档/实现漂移
 
-当存在 query 且 `extract_head=true` 时，Seeder 会从：
+### 9.1 Metadata BM25
+
+当：
+
+```text
+query != null
+extract_head = true
+scoring_method = bm25
+```
+
+Seeder 会把以下 metadata 拼成文本：
 
 - title；
-- description/keywords/author；
-- OpenGraph；
+- description / keywords / author / summary；
+- Open Graph；
 - Twitter Card；
 - Dublin Core；
-- JSON-LD；
+- JSON-LD name/headline/description/keywords；
+- `@graph` 中部分字段。
 
-拼成文本，用 `rank_bm25.BM25Okapi` 评分。
-
-实现还有几个重要特征：
-
-1. tokenizer 是简单 whitespace split；
-2. 分数在当前候选集合内做 min-max normalization；
-3. 候选集合改变，归一化分数会漂移；
-4. 如果所有 BM25 原始分数一样，代码会给所有项 `0.5`；
-5. metadata 缺失时可能退化到 URL 字符串相关度。
-
-因此 BM25 适合：
+之后：
 
 ```text
-focused discovery
-repair priority
-topic subset
-admin UI candidate ranking
+whitespace tokenize
+ -> rank_bm25.BM25Okapi
+ -> corpus 内 min-max normalize 到 0..1
+ -> score_threshold
+ -> descending sort
 ```
 
-不适合：
+### 9.2 分数不是跨批次稳定值
+
+因为 min-max normalization 依赖当前候选集合：
+
+- 加入/删除候选会改变其它 URL 的归一化分数；
+- 不同日期、不同 cache、不同 `max_urls` 会改变 corpus；
+- 所有 raw score 相等时源码直接给所有结果 `0.5`。
+
+因此 Seeder BM25 只能用于：
 
 ```text
-article truth
-historical completeness
-permanent exclusion
+优先级
+探索
+focused subset
+人工候选排序
 ```
+
+不能用于 Coverage 的永久保留/删除，也不能拿 0.7 当跨批次稳定业务阈值。
+
+### 9.3 官方文档与 v0.9.2 源码不一致
+
+官方 URL Seeding 文档存在“Smart URL-Based Filtering (No Head Extraction)”章节，写明 `extract_head=False + query` 会根据 domain/path/query param/n-gram 做 URL-based scoring。
+
+但 v0.9.2 `urls()` 的实际分支是：
+
+```text
+if query and extract_head and scoring_method == bm25:
+    _apply_bm25_scoring(...)
+elif query and not extract_head:
+    warning
+```
+
+官方 `test_query_without_extract_head` 也明确断言：
+
+```text
+extract_head=False
+query=...
+=> all results do NOT contain relevance_score
+```
+
+虽然源码内部仍保留 `_calculate_url_relevance_score()`，它只在 `_apply_bm25_scoring()` 的 fallback 中使用，而该函数本身没有在 `extract_head=False` 分支被调用。
+
+生产结论：**行为以 pinned release + fixture/contract test 为准，不以文档描述或参数名字为准。**
 
 ---
 
-## 19. 对博客知识库技术方案的优化结论
+## 10. Error Handling 与 Completion 的根本问题
 
-本次源码深挖后，现有方案应进一步收紧 URL Seeder 的职责。
+### 10.1 Producer 会吞掉异常并结束
 
-### 19.1 将 Coverage Provider 与 Seeder Accelerator 分层
+producer 外层捕获 Exception 后只记录 error，finally 设置 `producer_done`。已有 worker 仍会把 queue 中的候选处理完成，`urls()` 最终可以正常返回一个 List。
 
-```text
-Authoritative / Replayable Providers
-- Native CMS/API
-- Native Sitemap
-- RSS/Atom
-- Archive
-- Native CommonCrawlIndex
-- Wayback
-
-Best-effort Discovery Accelerators
-- Crawl4AI URL Seeder
-- Domain Mapping
-- Deep/Adaptive Crawl
-```
-
-Seeder 只产生 Observation，不产生 Provider complete 结论。
-
-### 19.2 Coverage 模式拆分 Sitemap 与 CC
-
-不要以 `sitemap+cc` 作为一个完整性 Provider Run。
+因此可能出现：
 
 ```text
-SITEMAP Provider Run
-COMMON_CRAWL_INDEX Provider Run
+Sitemap 成功一部分
+CC 中途失败
+=> 调用方仍得到非空 List
 ```
 
-分别保存 evidence、count、error、termination reason，再在 Coverage Snapshot 汇总。
+若调用方只看“函数没抛异常 / List 非空”，就会错误宣称 Provider 成功。
 
-### 19.3 增加 Provider Completion Attestation
+### 10.2 子 Sitemap 错误同样可局部吞掉
+
+`process_subsitemap()` 捕获异常、记录日志，最后放 sentinel；父级循环会继续处理其它 shard。没有结构化地告诉调用方“第 17 个 sub-sitemap 失败”。
+
+这对于 best-effort discovery 是合理的，但与 Coverage Provider 需要的语义不同。
+
+### 10.3 需要平台 Completion Attestation
+
+平台定义至少这些 terminal outcome：
 
 ```text
-provider_run
-- provider_run_id
-- provider_type
-- started_at
-- terminal_at
-- terminal_outcome
-- completion_attested
-- raw_observation_count
-- truncated
-- result_limit
-- error_class
-- evidence_artifact_id
+EXHAUSTED
+NOT_MODIFIED
+RESULT_LIMIT_REACHED
+REQUEST_BUDGET_REACHED
+BYTE_BUDGET_REACHED
+TIME_BUDGET_REACHED
+RATE_LIMITED
+ROBOTS_BLOCKED
+ACCESS_DENIED
+ERROR_PARTIAL
+PROVIDER_ERROR
+CANCELLED
 ```
 
-只有平台原生 Adapter 或能给出可信 typed completion 的 wrapper 才允许：
+只有 Adapter 能证明约定范围完成时才允许：
 
 ```text
 completion_attested = true
 ```
 
-Seeder 普通 List 返回不能自动得到这个值。
-
-### 19.4 Common Crawl 原生化
-
-为可重放回填新增：
-
-```text
-provider_type = COMMON_CRAWL_INDEX
-- cc_index_id
-- url_pattern
-- pagination/checkpoint
-- query_artifact
-```
-
-Seeder CC 保留为快速 gap discovery。
-
-### 19.5 Seeder Cache Attempt Isolation
-
-```text
-attempt_cache_root/<attempt_id>/...
-```
-
-失败 Attempt 不复用其 cache；成功后 cache 可作为 accelerator artifact 记录，但永不作为 Coverage evidence。
-
-### 19.6 平台硬预算，不依赖 `max_urls`
-
-平台调度器负责：
-
-```text
-max_observations
-max_requests
-max_bytes
-max_wall_clock
-```
-
-Seeder `max_urls` 仅作为本地软停止手段。
-
-### 19.7 明确两类限流
-
-```text
-Platform QPS / concurrency = authoritative
-Seeder semaphore            = local safety
-```
-
-### 19.8 Raw Observation First
-
-Coverage 模式：
-
-```text
-raw observation
- -> normalize
- -> scope
- -> classify
- -> dedup
- -> frontier
-```
-
-不在 Seeder 前置 BM25/nonsense filter 永久丢数据。
+普通 Seeder List 一律默认 `completion_attested=false`。
 
 ---
 
-## 20. Web 管理端应展示的 URL Seeder 诊断
+## 11. `many_urls()` 为什么不适合作为 1000 站调度器
 
-每个 discovery run 至少展示：
+`many_urls(domains, config)` 本质上是：
 
 ```text
-Provider Type
-Authoritative / Accelerator
-Provider Release
-Crawl4AI Runtime Release
-Pinned Commit / Image Digest
-Source Component: sitemap | cc
-CC Index ID
-Completion Attested
-Terminal Outcome
-Sitemap Root
-HTTP ETag / Last-Modified / 304
-Provider Evidence SHA256
-Seeder Cache Root / Scope
-Seeder Cache Hit / Age
-Cache Completion Trusted: false
-Raw Observations
-Selected Observations
-Filtered Count
-Duplicate Count
-Result Limit
-Platform Hard Budget
-Truncated
-Provider Error Class
-Sub-sitemap Count
-Peak RSS
-Local Queue Size
-Local Seeder Concurrency
-Platform Admission Wait
+for domain in domains:
+    task = self.urls(domain, config)
+await asyncio.gather(*tasks)
+return dict(zip(domains, results))
 ```
 
-UI 必须明确区分：
+对几十个域名非常方便，但 1000+ Source 生产调度不能只靠它：
+
+- 一次创建所有 domain coroutine；
+- 全部结果最后聚合进一个 dict；
+- 没有 durable lease/checkpoint；
+- 没有 Source/Tenant fairness；
+- 单个大站会与小站共享进程资源；
+- 失败恢复以整个进程调用为边界；
+- 不能直接表达跨 Worker 的 host/domain 限流。
+
+生产模式应该是：
 
 ```text
-Provider complete
-Seeder returned list
-Cache hit
-Result truncated
-Platform QPS
-Seeder semaphore
-```
-
-避免“返回很多 URL”被误读成“历史已抓全”。
-
----
-
-## 21. Contract Test 清单
-
-每个 Crawl4AI pinned release 至少测试：
-
-1. `hits_per_sec` 的真实请求速率/并发语义；
-2. `max_urls` 多 worker 下是否存在内部超额请求/结果；
-3. Sitemap 成功、CC 失败时 `urls()` 是否仍返回 partial list；
-4. `sitemap+cc` 的执行顺序和 source error 可见性；
-5. 根 sitemap HEAD 405 / GET 200；
-6. 自定义 sitemap URL 的处理边界；
-7. cache hit 时根 sitemap 是否仍 GET；
-8. `<lastmod>` 不同格式/时区/精度；
-9. 100/1000 sub-sitemap 的 asyncio task 数；
-10. `seen/results/discovered_urls` 内存增长曲线；
-11. CC index 选择是否仍只能 latest；
-12. CC cache 下载中断后是否留下 partial final file；
-13. retry `force=false` 是否会读取 partial CC cache；
-14. HEAD/live cache TTL；
-15. 多级 redirect；
-16. partial-head 64 KiB/无 `</head>` 边界；
-17. `filter_nonsense_urls` 实际启用规则与文档差异；
-18. article fixture 误杀率；
-19. BM25 候选集变化时分数漂移；
-20. 所有分数相同是否归一化为 0.5；
-21. `many_urls` 多 domain 下共享 `_rate_sem` 的真实行为；
-22. Runtime crash 后 Seeder local cache/queue 是否会被错误当作持久状态。
-
-Contract Test 的结果必须绑定：
-
-```text
-crawl4ai_version
-commit_sha
-image_digest
-url_seeder_release_id
+Persistent Provider Task
+ -> Fair Scheduler
+ -> lease 1 Source / small bounded batch
+ -> Global Admission
+ -> invoke Seeder Adapter
+ -> batch upsert Observation
+ -> checkpoint / terminal outcome
+ -> ack
 ```
 
 ---
 
-## 22. 推荐生产架构
+## 12. 安全边界
 
-```text
-                    Source Profile / Provider Release
-                                 |
-                         Platform Fair Scheduler
-                                 |
-            +--------------------+---------------------+
-            |                    |                     |
-     Native Sitemap/RSS    Native CommonCrawl      Seeder Accelerator
-            |                    |                     |
-   Conditional GET         pinned cc_index_id      sitemap/cc probe
-   durable shard           streaming evidence      head/BM25 hint
-            |                    |                     |
-            +--------------------+---------------------+
-                                 |
-                           URL Observation
-                                 |
-                    PostgreSQL Inventory / Coverage
-                                 |
-                 normalize -> scope -> classify -> dedup
-                                 |
-                        Persistent Frontier
-                                 |
-                        Fetch Scheduler
-                                 |
-                      HTTP / Browser Runtime
-                                 |
-                        Immutable Raw Artifact
-                                 |
-                     Extract / Quality / IR
-                                 |
-                             Markdown
+v0.9.2 的 `async_configs.py` 把 `SeedingConfig` 排除在 untrusted network body 可构造类型之外，这个设计方向与平台方案一致：Seeder 原生配置不应由普通 Web 用户直接透传。
+
+平台应提供声明式 intent，例如：
+
+```yaml
+discovery_acceleration:
+  enabled: true
+  sources: [sitemap, cc]
+  mode: exhaustive_hint
 ```
 
-其中：
+Config Compiler 再根据 Capability Policy 生成受控 SeedingConfig，并强制：
 
-- 原生 Provider 决定可重放的 provider evidence 与 completion；
-- Seeder 提升发现速度和元数据预判能力；
-- 所有最终身份、Coverage、Task、Document、Version 都在平台真相层闭合。
+- approved hosts；
+- 预算上限；
+- 禁止任意代理/CDP/本地路径；
+- 不允许用户把 0 当 unbounded；
+- 不允许用户控制任意 Common Crawl query；
+- probe 前再次做 robots/scope/egress 检查。
 
 ---
 
-## 23. 最终判断
+## 13. 对博客知识库技术方案的具体优化
 
-Crawl4AI URL Seeding 的价值很明确：它把 Sitemap、Common Crawl、并发 head probe、相关度预筛和局部 backpressure 封装成了一个很好用的 discovery SDK。
+### 13.1 Seeder 保持 Accelerator，不升级为 Coverage Truth
 
-但源码也说明，SDK 级“好用”不能直接等价为平台级“可审计、可重放、可恢复、严格限流和历史完整”。特别需要防止以下误判：
+继续保持：
 
 ```text
-List returned               != Provider completed
-max_urls returned           != Source exhausted
-cache file exists           != Cache complete
-status=valid                != Valid article
-hits_per_sec=N              != <= N requests/s
-latest CC index             != Reproducible history
-bounded queue               != Bounded job memory
-sitemap+cc                  != Two successful providers
-BM25 score                  != Article truth
+provider_type = CRAWL4AI_URL_SEEDER
+role = DISCOVERY_ACCELERATOR
+completion_attested = false by default
 ```
 
-因此最终集成原则是：
+### 13.2 Coverage 必须拆 Provider
 
-**Crawl4AI URL Seeder 作为高性能 Observation Accelerator；平台原生 Provider + PostgreSQL + Object Storage 承担 Coverage、Checkpoint、Completion、Evidence、Persistent Frontier 和可重放真相。**
+```text
+Native CMS/API
+Native Sitemap
+Native RSS/Atom
+Native Archive
+Native CommonCrawlIndex
+Wayback Gap
+Seeder Accelerator
+```
+
+### 13.3 大 Sitemap Index 必须平台分片
+
+不使用 Seeder 的“一次创建全部 sub-sitemap task”作为持久调度模型。
+
+### 13.4 增量同步不用 Seeder Smart TTL 替代 HTTP Validator
+
+Native SitemapProvider 使用：
+
+```text
+ETag
+If-None-Match
+Last-Modified
+If-Modified-Since
+304
+body hash
+```
+
+Seeder cache 只作加速。
+
+### 13.5 记录 Source Stage
+
+Seeder Run 增加：
+
+```text
+source_sequence = [sitemap, cc]
+source_started
+source_completed
+source_failed
+source_observation_count
+stopped_before_source
+```
+
+如果 Adapter 无法从原生 API可靠取得这些信息，则该 Run 仍保持 unattested。
+
+### 13.6 `max_urls` 必须显式记录“限制发生在哪个阶段”
+
+至少区分：
+
+```text
+DISCOVERY_CANDIDATE_LIMIT
+POST_FILTER_LIMIT
+POST_SCORE_TOPK
+PLATFORM_OBSERVATION_BUDGET
+```
+
+避免把 Seeder `max_urls` 当成统一 top-K 或 Coverage 截断语义。
+
+### 13.7 Web UI 需要暴露行为而非只暴露参数
+
+建议展示：
+
+```text
+Seeder Release / commit
+source sequence
+max_urls
+observations before stop
+stopped before CC: true/false
+query/extract_head/scoring actually applied
+docs-contract drift status
+local queue max/peak
+seen count
+result count
+sub-sitemap count
+tasks created
+cache path scope/age
+partial cache detected
+local semaphore value
+measured request rate
+completion attested: false
+```
+
+---
+
+## 14. 建议的 Contract Test
+
+每个 pinned URL Seeder Release 至少验证：
+
+1. `sitemap` 普通 urlset；
+2. sitemap index；
+3. 100/1000/10000 sub-sitemap task 数和 peak RSS；
+4. `concurrency` 是否约束 sub-sitemap fetch；
+5. HEAD 405 / GET 200 的 sitemap probe；
+6. robots 中多个 sitemap；
+7. 默认 sitemap 已发现但 GET 失败时 fallback 行为；
+8. cache valid 时实际发生哪些网络请求；
+9. `<lastmod>` 非统一格式、时区和精度；
+10. ETag/Last-Modified 是否真正参与 Seeder cache；
+11. CC latest index 的选择与缓存 TTL；
+12. CC stream 中途失败后的 cache 文件状态；
+13. 失败 attempt cache 是否会被后续读取；
+14. `sitemap+cc + max_urls` 是否在 CC 前停止；
+15. `cc+sitemap` 是否仍按 sitemap-first 执行；
+16. 多 worker `max_urls` 内部请求/结果是否超额；
+17. `query + max_urls` 是否是 pre-score limit；
+18. `extract_head=False + query` 是否产生 relevance score；
+19. BM25 all-equal 时是否全部为 0.5；
+20. BM25 corpus 变化后的分数漂移；
+21. `hits_per_sec` 的真实 req/s 曲线；
+22. `many_urls(1000 domains)` task 数、内存和失败传播；
+23. producer partial error 是否仍返回 List；
+24. sub-sitemap partial error 是否对调用方可见；
+25. live_check HEAD 405、单级和多级 redirect；
+26. extract_head 64KiB 截断、无 `</head>`、非 HTML MIME；
+27. `filter_nonsense_urls` article fixture 误杀率；
+28. cache force / TTL / corruption recovery；
+29. 全历史模式不得把 Seeder List 自动映射 Completion；
+30. 所有测试绑定 version、commit SHA 和 image digest。
+
+---
+
+## 15. 推荐生产用法
+
+### 15.1 全历史 Coverage
+
+不要依赖 Seeder 单独完成全历史。优先：
+
+```text
+CMS/API -> Native Sitemap -> RSS -> Archive -> Native Common Crawl -> Wayback
+```
+
+Seeder 只额外提供 Observation，配置倾向：
+
+```text
+pattern = "*"
+filter_nonsense_urls = false
+query = null
+score_threshold = null
+extract_head = false
+live_check = false
+```
+
+若站点巨大，不建议用 `max_urls=-1` 把全域所有 URL 留在单进程 `seen/results` 中；优先切到 Native Provider 的 durable shard/streaming 模式。
+
+### 15.2 Focused Discovery / Repair
+
+可以充分利用：
+
+```text
+pattern
+extract_head
+query + BM25
+score_threshold
+live_check
+```
+
+但这些结果只影响 priority 和候选选择，不修改 Coverage Truth。
+
+### 15.3 多域名
+
+不要把 1000 个 Source 一次交给 `many_urls()`；由平台 Scheduler 给 Seeder 小批次工作。
+
+---
+
+## 16. 最终判断
+
+Crawl4AI URL Seeding 的价值非常明确：它把“先抓页面再发现 URL”转成“先从 Sitemap/Common Crawl 批量拿 URL，再决定是否抓正文”，对降低带宽、浏览器成本和无效抓取非常有效。
+
+但其实现本质仍是 **单进程、best-effort、面向探索和候选发现的异步工具**。它有局部 bounded queue、cache、metadata probe 和 BM25，却没有生产知识库所需的 durable Completion、持久 Shard、跨 Worker admission、严格 QPS、可重放 Provider Evidence 和强一致硬预算。
+
+因此博客知识库最终方案应继续采用：
+
+```text
+URL Seeder = Discovery Accelerator
+Native Providers = Replayable Inventory / Coverage
+PostgreSQL = Frontier / Task / Provider Truth
+Object Storage = Evidence / Raw / IR / Markdown Truth
+Fair Scheduler + Redis Lua = Global Admission
+Pinned Release + Contract Test = 行为真相
+```
+
+本次调研新增的最重要约束是：**不能被“maximum coverage”“rate limit”“bounded queue”“smart cache”“max_urls”“URL-based scoring”等文档名称误导，生产语义必须以固定版本源码和自动化 Contract Test 的实际行为为准。**
