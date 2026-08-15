@@ -71,9 +71,9 @@ Crawl4AI 当前提供 `arun_many()`、`MemoryAdaptiveDispatcher`、`SemaphoreDis
 
 因此平台应把一个 Crawl4AI 批次看成一次受控执行：输入是一组已经通过 Scope、Policy、Budget 校验的 FetchPlan，输出是 Snapshot/Render Artifact 和执行指标。
 
-### 2.4 URL Seeding 与 Deep Crawl 的角色不同
+### 2.4 URL Seeding、Prefetch 与 Deep Crawl 的角色不同
 
-Crawl4AI 官方文档对两者的定位很清晰：URL Seeding 适合快速、低成本批量发现；Deep Crawl 适合结构未知或需要实时探索的站点。
+Crawl4AI 官方文档对这些能力的定位可以组合成三层发现机制：URL Seeding 适合快速、低成本批量发现；Prefetch 适合在站点结构未知时只获取 HTML 与链接做快速映射；Deep Crawl 适合动态探索和补洞。
 
 对于博客历史回填，优先级应该是：
 
@@ -87,6 +87,8 @@ RSS / Atom
 Archive / Pagination / Tag Index
   ↓
 AsyncUrlSeeder(sitemap + 可选 Common Crawl)
+  ↓
+Prefetch Mapping（仅结构未知或 Coverage 证据不足时）
   ↓
 bounded Deep Crawl 补洞
 ```
@@ -123,6 +125,21 @@ assets: []
 ```
 
 再由版本化 renderer 输出 Markdown。这样修改链接规则、代码块规则、图片路径、Front Matter 时不需要重新访问原站。
+
+### 2.6 Prefetch 的本质是“先画地图，再决定哪些页面值得做完整处理”
+
+Crawl4AI v0.9.x 的 `CrawlerRunConfig(prefetch=True)` 使用轻量路径，只抓 HTML 并提取链接，跳过 Markdown 生成、正文抓取、媒体抽取和 LLM 抽取。官方文档将其定位为 two-phase crawling：第一阶段快速建立站点链接地图，第二阶段只对通过 Scope/URL Pattern/Article Classifier 的 URL 做完整处理。
+
+对 1000 站点平台，Prefetch 不能替代 Sitemap/URL Seeder，因为它仍然要实际访问页面；它应该只在以下情况触发：
+
+- Sitemap/CMS/Archive 的 Coverage 证据不足；
+- 站点归档结构未知，需要发现分页和文章路径模式；
+- Deep Crawl 成本过高，希望先用轻量模式估算空间；
+- 需要在正式 Backfill 前估算 URL 数量、分支因子和噪声路径。
+
+建议把 Prefetch 输出当作 `DISCOVERY_PREFETCH` 类型的网络事实：至少保存 final URL、状态码、响应哈希、内部链接集合、父子边、发现时间、Runtime Release 和 Scope 判定。若 Raw HTML 已经获取且在可接受 freshness 窗口内，可将其持久化为 Snapshot 并直接进入后续 Extract，避免对被选中的文章二次请求。
+
+重要的是，官方文档给出的性能数字只能作为工具能力说明，不应直接写成平台 SLO。真实吞吐要在自己的 Golden Sites/Benchmark 上测量，并按静态站、JS 站、网络区域分别建立基线。
 
 ## 三、针对 1000 站点方案应新增的能力
 
@@ -252,6 +269,76 @@ class ExtractionAdapter(Protocol):
 
 可选：Firecrawl/其他托管 Provider 只作为明确启用的 fallback、灾备或特殊站点 Adapter。这样未来价格、限制、稳定性变化时不需要改业务模型。
 
+### 3.6 在线模板漂移检测：Golden Corpus 只能防“升级回归”，不能防“源站突然改版”
+
+Golden Corpus 主要回答“我们升级 Runtime/Extractor 后有没有变坏”，但技术博客会在没有任何平台 Release 的情况下改主题、CMS、DOM、分页方式或反爬策略。因此生产链还需要在线 Template Drift Detector。
+
+每个 Source 建议维护滚动基线：
+
+```text
+layout_fingerprint
+article_container_fingerprint
+selector_hit_rate
+content_length_p50/p95
+boilerplate_ratio_p50
+link_density_p50
+heading_count_p50
+code_block_count_p50
+http_to_browser_fallback_ratio
+quality_pass_ratio
+```
+
+每次新样本到达时计算 drift score。以下信号应触发 `Source -> DEGRADED` 或至少告警：
+
+- 稳定 selector 命中率突然大幅下降；
+- 同一 Source 的正文长度、结构块数量发生群体性突变；
+- HTTP 路径质量骤降、Browser fallback 突然升高；
+- 多篇文章同时出现相同 Cookie/Login/Challenge 文本；
+- Sitemap/Archive 的 URL pattern 明显改变。
+
+漂移发生后不能让 LLM 自动修改生产 Recipe。正确流程是：生成 Profile/Recipe 候选 -> 在最近样本 + Golden Corpus 上回放 -> 比较 Coverage/Quality/Cost -> 人工或策略审批 -> 发布新 Release。
+
+### 3.7 分布式 Domain Admission 与 Source Fairness
+
+Crawl4AI 的 `RateLimiter` 和 Dispatcher 是执行器内部能力。即使每个 Worker 都很“礼貌”，当几十个 Pod 同时访问同一域名时，整体仍可能超限。因此平台必须在任务被投递给 Fetch Worker 之前做全局 Admission Control。
+
+建议模型：
+
+```text
+domain_runtime_state
+- registrable_domain
+- configured_rps
+- burst
+- max_concurrency
+- inflight
+- backoff_until
+- circuit_state
+- last_429_at
+- last_503_at
+- adaptive_rps_ceiling
+```
+
+实现上可以把 PostgreSQL 作为策略与持久状态事实，把 Redis Lua token bucket/semaphore 作为快速分布式闸门；Redis 丢失只影响短期调度效率，不能造成 Task/Run 丢失。Worker 获取 domain slot 后才可发请求，遇到 `Retry-After`、429、503 时把退避事实回写并降低后续 Admission。
+
+同时只做 P0/P1/P2 优先级还不够。一个拥有百万历史 URL 的大站可能长期占满 Backfill 队列，导致小站饥饿。调度器应在优先级之上按 Source 做 weighted fair queue / deficit round robin：先保证增量任务优先，再在同优先级内给各 Source 公平份额，并允许通过业务权重调整而不是无限占用。
+
+### 3.8 Data Supply SLO：从“请求成功”提升为“可用知识到达速度”
+
+文章的核心是“高质量、持续更新的数据供应链”，因此平台还应增加一组直接反映知识可用性的 SLO：
+
+```text
+time_to_usable_data_seconds
+= URL 首次被发现 -> DocumentVersion Quality PASS 且索引/Markdown 可用
+
+usable_document_yield
+= Quality PASS 的新/变更 DocumentVersion / 实际完整抓取页面数
+
+rejected_fetch_ratio
+= QUARANTINE + FAIL / 完整抓取页面数
+```
+
+这些指标能识别一种常见假象：HTTP 成功率很高，但大部分抓到的是非文章页、重复页、骨架页或低质量正文。对于知识库真正有意义的是“多少网络访问最终转化成可用、可追溯的知识版本”。
+
 ## 四、增量同步的具体实现
 
 ### 4.1 两条增量链同时运行
@@ -317,6 +404,9 @@ BLOCKED
 - Quality PASS/QUARANTINE/FAIL；
 - HTTP/Browser 路由占比；
 - 成本趋势；
+- Template Drift 分数与最近改版告警；
+- Domain Admission 当前 RPS/并发/退避状态；
+- `time_to_usable_data` 与 `usable_document_yield`；
 - robots / block / 429 / 5xx 状态。
 
 ### Document 页面
@@ -341,9 +431,10 @@ BLOCKED
 2. 检测 Sitemap/Feed/CMS；
 3. 抽样 5~10 个 URL；
 4. 比较 HTTP、Crawl4AI Browser、备用 extractor 的质量/耗时；
-5. 生成 Source Profile 建议；
-6. 估算 Backfill 页数、耗时和成本区间；
-7. 人工确认后上线。
+5. 当权威发现不足时执行受限 Prefetch Mapping，估算 URL 空间与路径模式；
+6. 生成 Source Profile 建议；
+7. 估算 Backfill 页数、耗时和成本区间；
+8. 人工确认后上线。
 
 这使第 1001 个站点主要是“新增配置 + 验收”，不是“新写一个爬虫项目”。
 
@@ -380,7 +471,7 @@ asset              低优先级
 index              异步投影
 ```
 
-Crawl4AI `arun_many()` 在单 Worker 内可使用 `MemoryAdaptiveDispatcher` 做内存保护，并配合 `RateLimiter` 控制 429/503；平台外层仍按 domain/source 维护 token bucket，避免多个 Worker 同时对同一站点施压。
+Crawl4AI `arun_many()` 在单 Worker 内可使用 `MemoryAdaptiveDispatcher` 做内存保护，并配合 `RateLimiter` 控制 429/503；平台外层仍按 domain/source 维护 token bucket，避免多个 Worker 同时对同一站点施压。平台调度器还应在任务优先级之上提供 Source 级公平份额，避免超大 Backfill Source 饿死其他站点。
 
 浏览器优化：
 
@@ -394,7 +485,7 @@ Crawl4AI `arun_many()` 在单 Worker 内可使用 `MemoryAdaptiveDispatcher` 做
 
 ## 八、最终技术判断
 
-这篇文章不会推翻现有“Coverage First + Snapshot First + Adapter + Incremental”的方向，但它要求进一步把**数据质量和单位有效数据成本**提升为一等公民。
+这篇文章不会推翻现有“Coverage First + Snapshot First + Adapter + Incremental”的方向，但它要求进一步把**数据质量、可用知识到达速度和单位有效数据成本**提升为一等公民。
 
 最重要的新增设计是：
 
@@ -403,6 +494,10 @@ Crawl4AI `arun_many()` 在单 Worker 内可使用 `MemoryAdaptiveDispatcher` 做
 3. Cost Event + Source Budget + `cost/accepted_document_version`；
 4. Acquisition Planner 按质量约束选择最低成本路径；
 5. 自托管 Crawl4AI 为默认 Browser/抓取能力，但保持托管服务 Adapter 可替换；
-6. Web 管理从“任务管理”升级为“Coverage + Quality + Freshness + Cost”的数据运营控制台。
+6. Web 管理从“任务管理”升级为“Coverage + Quality + Freshness + Cost”的数据运营控制台；
+7. 在 URL Seeder 与 bounded Deep Crawl 之间加入受限 Prefetch Mapping，用两阶段策略减少无效完整抓取；
+8. 加入在线 Template Drift Detection，区分“我们升级造成的回归”和“源站改版造成的退化”；
+9. 加入分布式 Domain Admission + Source Fair Scheduler，保证横向扩容后仍对源站友好且不会发生队列饥饿；
+10. 用 `time_to_usable_data`、`usable_document_yield` 衡量真实数据供应链产出，而不只看请求成功率。
 
-这样系统才能在从 1000 个站点扩展到数千站点后，仍然知道自己抓全了多少、抓得好不好、多久没更新、每类站点花了多少钱，以及任意一篇 Markdown 是如何生成的。
+这样系统才能在从 1000 个站点扩展到数千站点后，仍然知道自己抓全了多少、抓得好不好、多久没更新、每类站点花了多少钱、网络请求最终转化出了多少可用知识，以及任意一篇 Markdown 是如何生成的。
