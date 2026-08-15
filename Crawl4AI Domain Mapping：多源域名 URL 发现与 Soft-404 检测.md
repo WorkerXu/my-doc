@@ -2,68 +2,114 @@
 
 ## 1. 调研对象与结论
 
-调研对象：Crawl4AI `DomainMapper` 及其配套的多 URL Dispatcher。
+调研对象：Crawl4AI `DomainMapper`、`DomainMapperConfig`、`AsyncUrlSeeder` 及与多 URL 执行相关的 Dispatcher。
 
 - 官方文档：`https://docs.crawl4ai.com/core/domain-mapping/`
 - 上游项目：`https://github.com/unclecode/crawl4ai`
-- 重点源码：`crawl4ai/domain_mapper.py`、`crawl4ai/async_dispatcher.py`
-- 重点版本信息：v0.8.7 引入 DomainMapper，并同时包含 Docker API 安全加固；当前 README 已进入 v0.9.x 系列。
+- 重点源码：`crawl4ai/domain_mapper.py`、`crawl4ai/async_configs.py`、`crawl4ai/async_url_seeder.py`、`crawl4ai/async_dispatcher.py`
+- 相关测试：`tests/unit/test_domain_mapper_unit.py`、`tests/integration/test_domain_mapper_e2e.py`、`tests/adversarial/test_domain_mapper_adversarial.py`
+- 版本背景：DomainMapper 在 v0.8.7 加入；当前官方文档已进入 v0.9.x 系列，生产必须 pin 经过验证的 immutable runtime release。
 
-核心结论：**DomainMapper 很适合作为“Source 接入勘探 + Coverage Gap 补洞”的运行时组件，但不能直接作为 1000 站知识库的 Coverage Truth、持久 Frontier、合规边界或全局限流器。**
+核心结论：**DomainMapper 很适合作为“Source 接入勘探 + Coverage Gap 辅助发现”的运行时组件，但不能直接作为 1000 站博客知识库的 Coverage Truth、URL Identity、持久 Frontier、当前 URL 有效性真相、合规边界或全局限流器。**
 
-对现有技术方案最值得吸收的有四点：
+最值得吸收的能力是：
 
-1. 把域名发现从单一 Sitemap 扩展为多源证据并集，尤其补入 Common Crawl / Wayback 历史索引；
-2. 把 Soft-404 识别做成一等能力，避免 SPA/自定义 404 把大量不存在页面误判为文章；
-3. 在 Worker 内采用 Crawl4AI 的 MemoryAdaptiveDispatcher 做资源自保护，同时继续由平台层做跨 Worker 的公平调度和域名限流；
-4. 把 Crawl4AI 本地缓存、内存队列、内存 RateLimiter 都降级为运行时优化，PostgreSQL + Object Storage 继续作为业务真相。
+1. 把域名级发现从单一 Sitemap 扩展为 Sitemap、Wayback、CT、Probe、robots、Feed、Homepage 等多源证据；
+2. 把 Soft-404 识别提升为一等能力，避免 SPA / 自定义 404 把大量不存在页面误判为文章；
+3. 将 Provider 失败隔离、per-source timeout、并行扫描思想用于平台 Discovery Plane；
+4. 将 Crawl4AI 的 MemoryAdaptiveDispatcher 用作 Worker 本地资源保护，而不是业务队列；
+5. 保持 PostgreSQL + Object Storage 为 URL、任务、Coverage、Artifact 和版本的业务真相。
 
-另外必须做反向约束：DomainMapper 默认能力面向“域名侦察”，其中证书透明度、子域猜测、`/admin`/`/login` 等通用路径探测并不适合博客知识库生产抓取。知识库系统必须把它收敛到**已批准内容域、已批准路径和 robots/access policy**之内。
+同时必须增加反向约束：DomainMapper 原生能力更接近“域名侦察工具”，会发现证书子域、猜测常见子域、探测通用路径，并主动对发现 host 发 HTTP 请求。博客知识库必须把它收敛到**已批准内容 host、低风险内容路径、robots/access policy、SSRF allowlist 和平台级限流**内。
+
+本次源码级检查还发现几个对生产设计非常关键的边界：
+
+- `hits_per_sec` 在 DomainMapper 中实际通过 `asyncio.Semaphore` 实现，限制的是在途并发而不是严格 RPS；
+- `_normalize_and_dedup()` 的去重 key 会对完整规范化 URL 调用 `.lower()`，可能错误合并大小写敏感 path/query；
+- Wayback URL 在并入结果时会被标记为 `status="valid"`，但并没有逐 URL live validation；
+- 当前源码里 Common Crawl 在 DomainMapper 中明确参与 host discovery，但没有看到像 Wayback `_wayback_urls` 那样把 CC URL 集合保存后并入 Phase 2 结果的对称路径；因此不能把 DomainMapper 当 Common Crawl 全历史 URL Provider；
+- Host validation 对候选 host 发 HEAD，只要请求没有抛异常就会返回该 host，HTTP 403/404 等并不会使 host 被判定为不可达；
+- Probe、Soft-404、Feed、Homepage 多处直接以 `https://host` 构造 URL，HTTP-only / 特殊 origin 行为不能只靠 DomainMapper 默认路径处理；
+- `extract_head=True` 会对大量结果额外做 metadata fetch，适合小规模勘探，不适合作为百万 URL Inventory 的默认动作；
+- `max_urls`、BM25 query、`score_threshold` 都属于选择/排序能力，不能进入全历史 Coverage Truth；
+- 当前源码定义了 DomainMapper 本地 cache helper，但在本次检查的 `scan()` 主路径中没有看到它被作为业务 checkpoint 使用；无论具体版本是否启用，都不能依赖该 cache 做增量同步或恢复。
 
 ---
 
-## 2. DomainMapper 的实现结构
+## 2. DomainMapper 的三阶段实现
 
-`DomainMapper.scan()` 的整体实现可以抽象为三阶段：
+`DomainMapper.scan()` 可以抽象为：
 
 ```text
 Phase 1 Host Discovery
     -> Phase 2 Per-host Scanning
-        -> Phase 3 Normalize / Dedup / Validate / Score
+        -> Phase 3 Normalize / Dedup / Head / Score / Limit
 ```
 
 ### 2.1 Phase 1：Host Discovery
 
-源码中的 `_discover_hosts()` 从多个来源发现 hostname：
-
-- `crt`：查询 crt.sh 证书透明度数据；
-- `wayback`：查询 Internet Archive CDX；
-- `cc`：复用 `AsyncUrlSeeder` 查询 Common Crawl；
-- `dns`：对常见子域前缀做 DNS 猜测；
-- 根域本身始终进入候选。
-
-随后 `_validate_hosts()` 会对候选 host 发 HTTP HEAD，确认其可达，并记录重定向目标。
-
-这里有一个对知识库架构非常重要的边界：**“发现了一个子域”不等于“允许主动访问这个子域”。** DomainMapper 原生实现会在发现后主动验证，因此生产系统不能在未批准的 eTLD+1 上直接开启全量子域发现再自动验证。
-
-建议平台拆成两种模式：
+`_discover_hosts()` 从以下途径发现 hostname：
 
 ```text
-Onboarding Metadata Recon
-- 只生成 host_candidate
-- 不自动进入 Source approved_domains
-- 不自动 Fetch 正文
-
-Approved Content Recon
-- 只对 approved_domains / approved_hosts 运行 HTTP/Sitemap/Feed/Homepage
-- 结果才允许进入 URL Observation
+base domain
+crt.sh Certificate Transparency
+Wayback CDX
+Common Crawl via AsyncUrlSeeder
+common-subdomain DNS guessing
 ```
 
-如果只是对一个明确批准的博客域做接入，直接固定 `include_subdomains=false` 更安全。
+如果 `include_subdomains=false`，则只扫描传入的 exact host。
 
-### 2.2 Phase 2：Per-host Scanning
+当启用多个来源时，源码用 `asyncio.wait_for()` 给每个 discovery source 加独立 timeout，再用 `asyncio.gather(..., return_exceptions=True)` 并行执行。某个来源失败不会让其他来源整体失败。
 
-每个 host 先做 Soft-404 指纹，然后并行运行启用的来源：
+这是一个非常值得平台吸收的设计：
+
+```text
+Sitemap Provider timeout != Source failure
+Wayback Provider timeout != Backfill failure
+Feed Provider failure != URL Inventory rollback
+```
+
+平台中应该一一映射为独立 `provider_run`，失败原因和 Coverage Gap 分开记录。
+
+### 2.2 Host validation 不是“内容 host 已确认”
+
+`_validate_hosts()` 对每个候选 host 依次尝试 HTTPS、HTTP HEAD。源码中的关键语义是：
+
+- 请求只要成功返回 Response，就把 host 返回；
+- 并未要求必须 2xx；
+- 301/302/303/307/308 会记录 redirect target，但原 host 仍被保留；
+- `follow_redirects=False`；
+- 只有异常才继续尝试下一 scheme。
+
+因此它得到的是“网络层能收到 HTTP 响应”的近似信号，不等价于：
+
+```text
+这是内容站
+这是允许抓取的 host
+首页有效
+当前 origin 是 HTTPS
+这个 host 属于同一知识库 Source
+```
+
+平台应拆出更严格的状态：
+
+```text
+DISCOVERED_METADATA_ONLY
+REACHABLE
+REDIRECTED
+BLOCKED
+HTTP_ERROR
+UNRESOLVED
+APPROVED_CONTENT
+REJECTED
+```
+
+尤其是 CT/DNS 发现的 host，**在人工或规则批准前不应让 DomainMapper 自动做主动 HEAD validation**。如果需要真正的 metadata-only 子域发现，应使用独立 CT/Archive Adapter 先生成 `host_candidate`，而不是直接调用全域 `DomainMapper.scan()`。
+
+### 2.3 Phase 2：Per-host Scanning
+
+每个 host 先建立 Soft-404 fingerprint，然后并行执行部分来源：
 
 ```text
 robots.txt
@@ -74,53 +120,40 @@ homepage
 wayback URL merge
 ```
 
-各 source 使用独立 timeout，并通过 `asyncio.gather(..., return_exceptions=True)` 并行执行。一个 source 超时或失败不会拖垮整次 map。
+其中：
 
-这种“Provider 失败隔离”很值得保留到平台层：
+- `robots.txt` 同时提供 `Sitemap:` 和 path 信息；
+- Sitemap 复用 `AsyncUrlSeeder` 解析；
+- Probe 默认包含通用产品/API/登录/管理类路径；
+- Feed 在一组常见 feed path 上尝试，发现一个可用 Feed 后即停止继续探测；
+- Homepage 使用普通 HTTP 客户端抓首页并提取内部链接及 `<head>` link；
+- Wayback 在 Phase 1 保存 `_wayback_urls`，Phase 2 再按 host 合并。
 
-```text
-Sitemap failure != Source failure
-Feed failure != Source failure
-Wayback timeout != Backfill failure
-```
+对博客知识库而言，运行时 Provider 之间的并行和错误隔离有价值，但来源语义必须重新定义，不能把所有来源都视为“文章 URL 的同等级证明”。
 
-平台应该分别记录 `provider_run` 状态，在 Coverage Reconcile 阶段再判断整体是否存在 Known Gap。
+### 2.4 Common Crawl 在当前 DomainMapper 中更像 host discovery signal
 
-### 2.3 Phase 3：Post Processing
+当前 `_discover_via_cc()` 会：
 
-`_normalize_and_dedup()` 对 URL 做规范化并按规范化结果去重；同一 URL 被多个来源发现时，会把 `source` 字符串合并，例如：
+1. 通过 `AsyncUrlSeeder` 取得 Common Crawl 结果；
+2. 从结果 URL 提取 hostname；
+3. 将 hostname 加入 host set。
 
-```text
-homepage+sitemap+wayback
-```
+本次源码检查没有看到 `_cc_urls` 或类似结构，也没有看到 Phase 2 将 Common Crawl URL 集合按 host 并入最终结果的对称逻辑；Wayback 则明确有 `_wayback_urls`。
 
-随后可执行：
-
-- nonsense URL 过滤；
-- `<head>` 提取；
-- BM25 相关性打分；
-- `max_urls` 截断。
-
-对通用工具这是合理的，但对需要可审计 Coverage 的知识库平台来说，**不能只保存最终 dedup 结果**。必须把每个来源的 Observation 分开保存：
+因此生产架构不能假定：
 
 ```text
-url_observation
-- url_id
-- provider_type
-- provider_run_id
-- raw_url
-- normalized_url
-- evidence
-- observed_at
+DomainMapper(source="cc") == Common Crawl 历史 URL 全量 Provider
 ```
 
-因为“同一 URL 被 Sitemap、Wayback 和 Homepage 同时发现”本身就是 Coverage 证据。
+正确做法仍是独立 `common_crawl_gap` Provider，显式遍历索引/时间范围、持久化查询证据、URL Observation 和 cursor。DomainMapper 的 CC 能力最多作为域名结构/host 候选信号以及小规模辅助 discovery。
 
 ---
 
-## 3. 8 类发现源对知识库的价值
+## 3. 八类发现源在博客知识库中的角色
 
-DomainMapper 文档提供八类发现源：
+官方文档列出：
 
 ```text
 sitemap
@@ -133,93 +166,84 @@ feed
 homepage
 ```
 
-但它们在博客知识库里的角色不同，不能全部等价对待。
+它们在知识库里的业务角色不同。
 
-### 3.1 sitemap：权威历史入口之一
+### 3.1 Sitemap：Authoritative Provider
 
-价值最高。很多博客会提供 sitemap index、按年份拆分的 post sitemap 或 CMS 自动生成 sitemap。
-
-平台中应继续作为 Authoritative Provider，支持：
+Sitemap 是历史 Inventory 的主要入口之一。生产实现应独立支持：
 
 - sitemap index 递归；
 - gzip；
-- lastmod；
-- 增量 cursor / ETag；
-- 站点多 sitemap 合并；
-- URL Observation 来源证据。
+- robots `Sitemap:` 多条声明；
+- 默认 sitemap 路径补探测；
+- `lastmod`；
+- ETag / Last-Modified；
+- cursor；
+- 多 sitemap 并集；
+- Provider Evidence。
 
-DomainMapper 可用于接入期快速探测，但生产同步应由独立 Sitemap Provider 执行，便于 cursor、重试、审计和增量调度。
+DomainMapper 更适合接入期探测，不适合替代长期 Sitemap Provider。
 
-### 3.2 Common Crawl：历史补洞 Provider
+### 3.2 Common Crawl：Historical Gap Provider
 
-Common Crawl 对“站点当前 sitemap 已经不包含旧文章”的情况很有价值。
+Common Crawl 用于发现当前站点已不再链接的旧 URL，但不能证明历史完整，也不能证明 URL 当前有效。
 
-适合作为：
-
-```text
-external_archive_gap / common_crawl_gap
-```
-
-而不是权威来源。
-
-原因：
-
-- 公共索引覆盖不是完整历史；
-- 索引有时滞；
-- 可能包含已经删除、重定向或错误 URL；
-- 结果仍需要回源验证。
-
-平台应该保存：
+平台保存：
 
 ```text
-provider = common_crawl
 archive_index
-first_seen / last_seen if available
+query/window
 original_url
+first_seen/last_seen if available
+provider_run_id
+evidence_object_key
 ```
 
-并进入正常 URL Identity / Fetch / Tombstone 流程。
+对于全历史需求，不能只依赖最新一个 CC index；应由独立 Provider 明确管理索引范围和恢复点。
 
-### 3.3 Wayback CDX：全历史回填的重要补洞来源
+### 3.3 Wayback：Historical Gap Provider
 
-DomainMapper 当前实现对 `*.domain/*` 查询 Wayback CDX，并使用 `collapse=urlkey`、`limit=10000`。
+DomainMapper 对 `*.domain/*` 查询 Wayback CDX，当前源码使用 `collapse=urlkey` 和单次 `limit=10000`。
 
-这带来一个直接限制：**单次 DomainMapper 查询不能证明大站历史完整性**。对于 URL 数大于 1 万、存在复杂时间跨度或 CDX 分页的站点，需要平台级 Wayback Provider 自己实现分页/时间窗口切片，例如：
+这意味着单次 DomainMapper 结果不能证明大站历史完整。平台需要：
 
 ```text
-按年份窗口
-按 URL prefix
-按 CDX page/resumeKey
+year/time window
+URL prefix partition
+CDX page/resume key
+independent provider_run
+cursor/checkpoint
 ```
 
-因此方案中应把 Wayback 作为独立 Provider，而不是只调用一次 `DomainMapper.scan()`。
+更关键的是，DomainMapper 将 Wayback URL 加入结果时会填 `status="valid"`，但这只是结果对象的运行时字段，并不是逐 URL 回源验证结论。平台必须忽略这个字段作为业务有效性证据，统一进入自己的 URL Validity Gate。
 
-### 3.4 crt：只能用于“候选内容 host”发现
+### 3.4 Certificate Transparency：Host Candidate Signal
 
-证书透明度能发现 `blog.example.com`、`docs.example.com` 之类内容子域，但也可能发现：
+CT 很适合发现 `blog.example.com`、`engineering.example.com`、`docs.example.com`，但同样会出现：
 
 ```text
 admin
 staging
 api
-internal-like hosts
+dev
+internal-like
 ```
-
-知识库系统不得因为 crt.sh 返回了 hostname 就自动访问。
 
 正确流程：
 
 ```text
-CT metadata
+CT observation
  -> host_candidate
- -> content-host classifier / human review
- -> approved_host
- -> 才允许网络访问
+ -> scope classifier / human review
+ -> APPROVED_CONTENT
+ -> active HTTP discovery/fetch
 ```
 
-### 3.5 probe：必须替换默认探测路径
+不能把证书里出现过的域名自动加入 active crawl scope。
 
-DomainMapper 的默认 `DEFAULT_PROBE_PATHS` 面向通用域名侦察，包含：
+### 3.5 Probe：必须替换默认 Path Set
+
+默认 `DEFAULT_PROBE_PATHS` 包含：
 
 ```text
 /docs
@@ -231,13 +255,13 @@ DomainMapper 的默认 `DEFAULT_PROBE_PATHS` 面向通用域名侦察，包含�
 /swagger.json
 /graphql
 /status
-health
+/health
 ...
 ```
 
-知识库不应该去探测登录、管理、调试或服务端接口路径。
+这不适合作为第三方技术博客的默认探测面。
 
-应提供自己的 `ContentProbeProfile`，只允许低风险内容入口，例如：
+平台应编译自己的 `ContentProbeProfile`，只允许低风险内容路径：
 
 ```text
 /blog
@@ -252,67 +276,50 @@ health
 /rss
 ```
 
-而且 Probe 仅在已批准 host 上运行。
+且 Probe 只能在 `APPROVED_CONTENT` host 上运行。
 
-### 3.6 robots：应作为访问策略，不作为“可抓路径清单”
+### 3.6 robots：Access Policy，而不是“隐藏 URL 列表”
 
-DomainMapper 会解析 `robots.txt` 的 `Disallow:` / `Allow:`，并把具体路径加入 probe 候选。
+DomainMapper 会读取 `Disallow:` / `Allow:` 并把 concrete path 加入 probe paths。
 
-对于知识库平台，这个语义必须改掉：**Disallow 不是邀请，更不是发现后可以访问的路径。**
-
-平台应把 robots 解析结果进入：
+对知识库必须改义：
 
 ```text
-access_policy
-- allowed
-- disallowed
-- crawl_delay
-- sitemap_directives
-- policy_release
+Sitemap:  -> discovery evidence
+Allow:    -> access policy input
+Disallow: -> deny/restriction input
 ```
 
-其中 `Sitemap:` 可以作为发现入口；`Disallow:` 只用于拒绝/限制，不用于主动抓取。
+`Disallow` 绝不能变成主动探测入口。
 
-### 3.7 feed：首页增量的重要信号
+### 3.7 Feed：Incremental First-class Provider
 
-RSS/Atom 对博客增量同步价值很高，但通常只包含最近 N 篇，所以：
+RSS/Atom 非常适合低成本增量同步，但通常只覆盖最近 N 篇，不能承担全历史证明。
 
-```text
-Feed = Incremental first-class provider
-Feed != Full-history proof
-```
+DomainMapper 的 Feed discovery 在找到一个可用 Feed 后就停止继续常见路径探测，因此多 Feed / 分类 Feed 站点仍应由独立 Feed Provider 完整管理。
 
-接入时用 DomainMapper 探测 Feed，确认后交给独立 RSS/Atom Provider 持续运行。
+### 3.8 Homepage：浅层结构信号
 
-### 3.8 homepage：适合浅层补洞和增量探测
+Homepage source 会提取：
 
-源码通过普通 HTTP 获取首页，使用 `quick_extract_links()` 提取内部链接，并额外读取 `<head>` 中的：
+- 普通内部 `<a href>`；
+- `<head>` 中 `alternate`、`preload`、`prefetch`、`next`、`prev` 等 link。
 
-```text
-alternate
-preload
-prefetch
-next
-prev
-```
-
-这对发现分页、Feed 和最新文章有价值；默认不需要 Browser。
-
-建议平台保留“HTTP homepage probe”作为低成本增量信号，只有检测到 JS shell 才进入 Browser slow path。
+适合发现最新文章、分页入口、Feed 和内容导航，但不构成全历史覆盖证明。
 
 ---
 
-## 4. Soft-404 的实现原理与可优化点
+## 4. Soft-404 的实现原理与平台增强
 
 ### 4.1 当前实现
 
-DomainMapper 会先访问一个随机不存在的 URL：
+每个 host 先访问随机不存在路径：
 
 ```text
 /c4ai-probe-<random>
 ```
 
-并记录：
+记录：
 
 ```text
 status_code
@@ -321,361 +328,483 @@ content_length
 body_hash = md5(first 2048 bytes)
 ```
 
-若不存在页面仍返回 HTTP 200，就认为该 host 可能存在 Soft-404。
+如果 fingerprint 的最终状态不是 200，源码会放弃 Soft-404 fingerprint；如果是 200，则后续 `_is_soft_404()` 主要比较：
 
-后续 `_is_soft_404()` 判断：
+1. 目标是否 HTTP 200；
+2. 前 2048 bytes MD5 是否完全相同；
+3. `<title>` 是否完全相同。
 
-1. 目标状态必须是 200；
-2. 前 2048 bytes hash 与指纹一致，判 Soft-404；
-3. 或 `<title>` 与指纹 title 一致，也判 Soft-404。
+值得注意的是：fingerprint 虽保存 `content_length`，当前 `_is_soft_404()` 并没有使用它参与判定。
 
-此外，当 sitemap 返回很多 URL、host 又存在 Soft-404 时，源码会随机抽样最多 5 个 sitemap URL；如果样本全部命中 Soft-404，就跳过整批 sitemap URL。
+### 4.2 Sitemap 批量 Soft-404 优化
 
-### 4.2 为什么对知识库很重要
+当 Sitemap URL 数大于 5 且 host 有 Soft-404 fingerprint 时，源码随机抽样最多 5 个 URL。如果样本全部判 Soft-404，则直接跳过这一批 Sitemap 结果。
 
-很多 SPA、Next.js fallback、CMS 自定义 404 会出现：
-
-```text
-GET /real-article     -> 200 + app shell
-GET /does-not-exist   -> 200 + same app shell
-```
-
-如果只看 HTTP 200，会造成：
-
-- URL Inventory 膨胀；
-- Fetch/Browser 成本暴涨；
-- 大量“空文章”进入 REPAIR；
-- Coverage 看起来虚高；
-- 增量同步重复处理不存在页面。
-
-因此现有方案应该新增显式的：
+对于通用侦察工具这是有效降噪，但对需要审计 Coverage 的平台风险较大：
 
 ```text
-host_validity_profile
-soft_404_signature
-url_validity_check
+已发现 URL 证据
+!=
+允许进入 Fetch Queue
 ```
 
-### 4.3 平台侧需要比上游更稳健
+正确做法：
 
-只比较前 2KB hash/title 对部分动态 404 不够。例如随机 request-id、时间戳、A/B 文案会改变 hash。
+```text
+Persist all sitemap observations
+ -> mark batch SOFT_404_SUSPECTED
+ -> lower/defer admission
+ -> expand sampling / validate individually
+ -> human review if needed
+```
 
-建议平台扩展为多特征指纹：
+**可以延迟抓取，不能删除已发现证据。**
+
+### 4.3 平台 Soft-404 Profile
+
+只比较 2KB hash 和 exact title 无法覆盖动态 request-id、时间戳、A/B 文案、统一站点 title 等情况，也可能因为多个合法页面 title 相同而误报。
+
+建议每个 host 使用 2~3 个随机不存在 URL 建立模板簇，特征：
 
 ```text
 status_code
+redirect_chain
 normalized_title
 normalized_text_simhash
 content_length_bucket
 dom_structure_hash
 canonical_target
 main_text_length
+known_error_tokens
 ```
 
-建立 2~3 个随机不存在 URL 的基线，而不是一个样本。
-
-建议判定：
+判定：
 
 ```text
-SOFT_404_HIGH_CONFIDENCE
-SOFT_404_SUSPECTED
 VALID
+SOFT_404_SUSPECTED
+SOFT_404_HIGH_CONFIDENCE
 UNKNOWN
 ```
 
-“疑似”不能直接永久删除 URL，而应保存 Observation 和 reason_code。
+Validity Profile 应有版本和 TTL，站点模板变化后重新采样。
 
-### 4.4 Sitemap 整批跳过需要更保守
+### 4.4 HTTPS-only 构造带来的边界
 
-上游采用“5 个样本全是 Soft-404 -> 跳过整批”的执行优化，对通用工具很实用，但平台不应因此丢 Coverage 证据。
+当前 `_fingerprint_soft_404()`、`_probe_paths()`、`_discover_feeds()`、`_scan_homepage()` 多处直接使用 `https://{host}` 构造 URL。
 
-改为：
+因此平台不能把 host 只存为 hostname；至少要维护：
 
 ```text
-保存全部 sitemap Observation
- -> 标记 host/sitemap batch 为 SOFT_404_SUSPECTED
- -> 暂缓 Fetch admission
- -> 增加抽样或人工确认
+preferred_scheme
+canonical_origin
+redirect_origin
+last_origin_probe_at
 ```
 
-即：**可以延期抓取，不能让已发现 URL 从 Inventory 消失。**
+对于 HTTP-only、HTTPS 配置异常、特殊反代站点，平台应由 Exact-host Probe 先确定 origin，再决定是否调用 DomainMapper 的对应能力。
 
 ---
 
-## 5. 并发、资源保护与限流实现
+## 5. URL Identity、Dedup 与“valid”语义
 
-### 5.1 MemoryAdaptiveDispatcher
+### 5.1 DomainMapper 的 dedup 不能作为业务 URL Identity
 
-`async_dispatcher.py` 中的 `MemoryAdaptiveDispatcher` 维护：
-
-```text
-memory_threshold_percent
-critical_threshold_percent
-recovery_threshold_percent
-max_session_permit
-fairness_timeout
-memory_wait_timeout
-PriorityQueue
-```
-
-运行逻辑：
-
-- 内存低于阈值时尽量填满 `max_session_permit`；
-- 达到 memory pressure 后暂停领取新任务；
-- critical 状态下把任务重新排队；
-- 长时间等待的任务通过 fairness score 提高优先级；
-- streaming generator 关闭时会 cancel 并 await 活跃任务，防止遗留 Browser page/context。
-
-这个设计非常适合当 **Worker Local Admission Controller**。
-
-### 5.2 为什么不能替代平台 Scheduler
-
-Dispatcher 的队列、memory state、domain delay 都是进程内状态。
-
-Worker 崩溃后它们会丢失，且多 Worker 之间不可见。因此：
+`_normalize_and_dedup()` 会先 `normalize_url()`，随后使用：
 
 ```text
-PostgreSQL Frontier / Task = 业务任务真相
-Redis = 分布式运输与全局 admission
-MemoryAdaptiveDispatcher = 单 Worker 资源保护
+normalized.rstrip("/").lower()
 ```
 
-推荐链路：
+作为 dedup key。
+
+问题在于 URL host 大小写不敏感，但 HTTP path 和 query 在很多服务端实现上可以大小写敏感。例如：
 
 ```text
-Fair Scheduler
- -> Domain Token Bucket
- -> Worker Lease Slice (例如 50~200 URL)
- -> Crawl4AI arun_many(stream=true)
- -> MemoryAdaptiveDispatcher
- -> Result-by-result durable commit
+/Docs/API
+/docs/api
 ```
 
-不要把百万 URL 一次塞给 `arun_many()`。
+理论上可能是两个不同资源。把整条 URL lower-case 后做 Identity 会造成错误合并。
 
-### 5.3 Crawl4AI RateLimiter 的定位
-
-`RateLimiter` 在内存中按 domain 记录：
+平台规则应是：
 
 ```text
-last_request_time
-current_delay
-fail_count
+scheme: normalize
+host: lowercase / IDNA normalize
+port: remove default port
+fragment: strip
+path: preserve case by default
+query: preserve case/order before Source Query Policy proves可归一化
 ```
 
-遇到 429/503 后做指数退避 + jitter，成功后逐渐降低 delay。
-
-它很适合作为 Worker 内的第二道保护，但无法协调多个 Worker，因此仍需要平台级 Redis Lua Token Bucket / Semaphore。
-
-### 5.4 DomainMapper 的 `hits_per_sec` 不能当严格全局 RPS
-
-DomainMapper 源码里 `hits_per_sec` 被用于创建 `asyncio.Semaphore`，这本质上限制的是**同时在途请求数**，并不严格等价于“每秒请求次数”。
-
-因此知识库方案不能把这个参数当作跨 Worker 的精确速率限制。
-
-应保持：
+并保存三层值：
 
 ```text
-Global per-domain token bucket = 真正节流
-Worker local semaphore = 并发保护
-Crawler RateLimiter = 429/503 自适应退避
+raw_url
+runtime_normalized_url
+platform_normalized_url
 ```
 
-三者职责不同。
+DomainMapper 的 dedup 仅作为 runtime convenience。
+
+### 5.2 `status="valid"` 不等于 URL 当前有效
+
+`_scan_host()` 会对 Sitemap、Probe、Feed、Homepage 等返回结果统一创建类似：
+
+```text
+status = "valid"
+```
+
+Wayback URL 也直接以 `valid` 加入结果。如果 `extract_head=false`，大量 URL 不会发生后续逐 URL head fetch。
+
+因此平台必须把 DomainMapper result status 解释为：
+
+```text
+runtime discovery status
+```
+
+而不是：
+
+```text
+business URL validity
+```
+
+所有候选仍进入统一的：
+
+```text
+URL Observation
+ -> Scope Check
+ -> URL Validity Gate
+ -> Fetch Admission
+```
+
+### 5.3 BM25、score_threshold、max_urls 只能影响优先级
+
+DomainMapper 可以提取 `<head>` 后做 BM25，并使用 `score_threshold` 过滤结果；最后还可以 `max_urls` 截断。
+
+这适合：
+
+- UI 预览；
+- focused discovery job；
+- 固定预算的人工检索。
+
+不适合全历史 Backfill，因为：
+
+- 低相关性不等于不是文章；
+- `max_urls` 是运行时截断，不是可解释 Coverage 边界；
+- host 来源是 set，聚合顺序不应被当成稳定业务排序；
+- 截断后未返回 URL 不会自动进入平台 Frontier。
+
+全历史模式应固定：
+
+```text
+query = None
+score_threshold = None
+max_urls = -1
+```
+
+如果需要打分，先持久化 Observation，再把 score 映射为 scheduler priority。
 
 ---
 
-## 6. Cache 的实现与平台边界
+## 6. 并发、资源保护与限流
 
-DomainMapper 使用本地文件目录：
+### 6.1 DomainMapper 的并发结构
+
+源码中有多层 `asyncio.gather()`：
+
+- host discovery sources 并行；
+- candidate hosts validation 并行；
+- 所有 validated hosts `_scan_host()` 并行；
+- probe path 并行；
+- DNS prefix 并行；
+- `<head>` 提取使用 `config.concurrency` semaphore。
+
+因此 `config.concurrency` 不能被理解为整个 DomainMapper 的唯一全局并发上限。尤其当自定义 `common_subdomains`、`probe_paths` 很大或一个根域发现大量 host 时，平台外层仍必须做 Slice 和 admission。
+
+推荐：
+
+```text
+Global Fair Scheduler
+ -> Source/Domain Token Bucket
+ -> bounded DomainRecon host slice
+ -> bounded probe path set
+ -> DomainMapper runtime
+ -> persist result-by-result/provider-by-provider
+```
+
+### 6.2 `hits_per_sec` 不是严格 RPS
+
+DomainMapper 中：
+
+```text
+self._rate_sem = asyncio.Semaphore(config.hits_per_sec)
+```
+
+它限制的是同时进入部分请求段的并发数，而不是按时间窗口计算的请求次数。
+
+因此：
+
+```text
+Redis Token Bucket       = 跨 Worker 真正 RPS / burst
+Worker Semaphore         = 本地在途并发保护
+Crawler RateLimiter      = 429/503 自适应退避
+MemoryAdaptiveDispatcher = Browser Worker 内存保护
+```
+
+四者职责必须分开。
+
+### 6.3 `extract_head=True` 的成本
+
+`_extract_heads()` 会为结果集合逐 URL 拉取 head/HTML metadata，文档也明确提示这一选项会增加约 1 次请求/URL。
+
+1000 站全历史发现时，如果先发现百万 URL，再开启 `extract_head=True`，会直接把“低成本 URL inventory”变成第二轮大规模网络抓取。
+
+推荐：
+
+```text
+Onboarding preview: extract_head=true on small sample
+Bulk backfill inventory: extract_head=false
+Focused UI search: extract_head=true + query
+Canonical fetch: metadata from Raw Artifact / normal Fetch Plane
+```
+
+---
+
+## 7. Cache、配置字段与版本漂移
+
+### 7.1 本地 cache 不能作为增量同步真相
+
+`domain_mapper.py` 定义了：
 
 ```text
 ~/.crawl4ai/domain_mapper_cache
+_cache_key()
+_read_scan_cache()
+_write_scan_cache()
+cache_ttl_hours
 ```
 
-缓存 key 由 domain + 部分 config 生成，并由 `cache_ttl_hours` 控制过期。
+但在本次检查的 `scan()` 主路径中，没有看到这些 helper 被用作业务恢复或 Provider cursor。即使未来版本重新接入，也存在：
 
-这类 cache 有三个问题：
+- 多 Worker 不共享；
+- Worker 替换即丢失；
+- cache key 不能表达平台全部 Source/Policy Release；
+- TTL 与增量同步业务状态不是同一概念。
 
-1. 多 Worker 不共享；
-2. Worker 被替换后可能丢失；
-3. cache key 不是平台发布版本和业务语义的完整表达。
-
-因此只把它当运行时缓存。
-
-平台应自己保存：
+所以平台只认：
 
 ```text
 provider_run
-provider_result_artifact
 provider_cursor
+provider_result_artifact
 url_observation
 coverage_snapshot
 ```
 
-如果需要缓存 Common Crawl / Wayback 查询结果，写 Object Storage，并记录 query、release、hash、captured_at。
+### 7.2 配置名不等于运行时能力已经生效
+
+官方配置表包含 `use_browser_for_homepage`。本次源码搜索中，该字段能在文档和 `async_configs.py` 中找到，但在当前 `domain_mapper.py` 的 homepage 执行路径中没有看到对应分支，`_scan_homepage()` 仍直接使用 HTTP client。
+
+这说明集成第三方 crawler 时不能只依赖配置文档；每次 runtime release 都应通过 Golden Test 验证：
+
+```text
+config -> actual network behavior
+config -> actual filtering behavior
+config -> actual browser/http route
+```
+
+若版本升级改变行为，必须发布新的 `runtime_release` / `provider_adapter_release`。
+
+### 7.3 source_timeout 是 Recon Budget，不是 Coverage Completion
+
+DomainMapper 给每个来源独立 timeout，这对交互式 scan 很合理。但大 Sitemap、Wayback、慢 Feed 在 timeout 时“跳过来源”不表示 Provider 已完整执行。
+
+平台应把结果记录为：
+
+```text
+TIMED_OUT / PARTIAL
+```
+
+而不是 `COMPLETE`，并让独立 Provider 继续分页/cursor 恢复。
 
 ---
 
-## 7. 对现有技术方案的具体优化
+## 8. 对现有博客知识库方案的优化
 
-### 7.1 新增 Provider 类型
+### 8.1 DomainReconAdapter 的固定职责
 
-在原有 Provider 基础上明确加入：
+DomainMapper 只通过平台 `DomainReconAdapter` 调用，Adapter 负责：
 
 ```text
-domain_recon
+validate_approved_scope()
+resolve_canonical_origin()
+build_safe_sources()
+build_safe_probe_paths()
+build_runtime_config()
+run_bounded_scan()
+expand_source_attribution()
+emit_raw_observations()
+classify_runtime_filter_reason()
+ignore_runtime_valid_as_business_truth()
+translate_errors/timeouts()
+```
+
+### 8.2 推荐 runtime profile
+
+全历史/结构勘探默认：
+
+```yaml
+include_subdomains: false
+extract_head: false
+query: null
+score_threshold: null
+max_urls: -1
+soft_404_detection: true
+```
+
+但 `soft_404_detection` 只作 runtime advisory，最终判定仍由平台 `host_validity_profile` 完成。
+
+`filter_nonsense_urls` 按 Source 内容类型编译：
+
+- 纯 HTML 博客可开启运行时 asset 过滤；
+- PDF-heavy / 文档型 Source 应关闭或绕过上游 blanket extension filter，由平台将 URL 分类为 `CONTENT_HTML` / `CONTENT_PDF` / `ASSET`；
+- Filter reason 必须可解释。
+
+### 8.3 独立 Authoritative/Historical Provider
+
+DomainMapper 不能替代：
+
+```text
+sitemap
+rss_atom
 common_crawl_gap
 wayback_gap
-soft404_probe
 ```
 
-其中 `domain_recon` 只用于接入期和周期性结构变化探测，不直接表示文章 Coverage。
+原因包括：cursor、分页、历史窗口、Provider Evidence、恢复、CC URL 级行为、Wayback 10k 单查询边界和 DomainMapper timeout。
 
-### 7.2 新增 Host Candidate / Approved Host 边界
+### 8.4 URL Identity 增强
 
-建议模型：
+新增规则：
 
 ```text
-host_candidate
-- id
-- source_id
-- hostname
-- discovered_by
-- evidence_object_key
-- state  # DISCOVERED/APPROVED/REJECTED
-- first_seen_at
-- reviewed_at
-
-source_host_scope
-- source_id
-- hostname
-- scope_type  # CONTENT/ASSET/EXCLUDED
-- enabled
-- release_id
+lowercase only scheme/host
+preserve path/query case by default
+runtime_normalized_url != platform_normalized_url
+query normalization requires Source-specific release
 ```
 
-只有 `APPROVED + CONTENT` host 才能进入主动 Fetch。
+并把大小写敏感 URL 对加入 Golden Fixture。
 
-### 7.3 新增 Soft-404 Profile
+### 8.5 Host Candidate 安全边界
+
+子域 discovery 分两步：
 
 ```text
-host_validity_profile
-- source_id
-- hostname
-- probe_release_id
-- status_behavior
-- signature_object_key
-- confidence
-- captured_at
-- expires_at
+Metadata-only CT/Archive/DNS evidence
+ -> host_candidate
+ -> approval
+ -> active DomainMapper exact-host scan
 ```
 
-URL 验证结果：
+不要在未批准根域上直接用 DomainMapper 自动发现后 active validate 所有子域。
+
+### 8.6 URL Validity 与 runtime status 分离
+
+新增平台约束：
 
 ```text
-url_validity_observation
-- url_id
-- artifact_id
-- decision
-- similarity
-- reason_code
-- profile_id
+DomainMapper status=valid
+!=
+url_validity_observation.decision=VALID
 ```
 
-### 7.4 接入流程优化
+Wayback、Sitemap、Feed、Homepage 结果统一走平台 Validity Gate。
 
-原接入流程升级为：
+### 8.7 Worker 执行层
 
 ```text
-1. Exact-host robots/sitemap/feed probe
-2. CMS / archive pattern probe
-3. Safe content-path homepage probe
-4. Optional metadata-only subdomain discovery
-5. Human approve content hosts
-6. Common Crawl + Wayback historical gap inventory
-7. Soft-404 baseline
-8. URL pattern / query policy sampling
-9. HTTP vs Browser route sampling
-10. Publish Source Profile Release
+平台 bounded slice
+ -> DomainMapper / arun_many
+ -> Worker local semaphore / MemoryAdaptiveDispatcher
+ -> result-by-result durable commit
 ```
 
-### 7.5 Backfill 优化
-
-推荐新顺序：
-
-```text
-Authoritative Providers
-    CMS/API + Sitemap + Feed
- -> Historical Gap Providers
-    Archive + Common Crawl + Wayback
- -> Safe Domain Recon Gap
- -> Deep Crawl Prefetch Gap
- -> Coverage Reconcile
-```
-
-Common Crawl / Wayback 发现的 URL 先进入 Observation/Inventory，再进行 live Fetch 验证。
-
-### 7.6 Worker 执行层优化
-
-浏览器 Worker 采用：
-
-```text
-平台 Slice
- -> arun_many(stream=true)
- -> MemoryAdaptiveDispatcher
- -> max_session_permit 按容器内存标定
- -> 每个 result 立即写 Artifact/状态
-```
-
-不要等整批结果结束后再持久化。
-
-Worker 退出、stream close、cancel 时必须验证：
-
-- 活跃 task 已 cancel/await；
-- Browser page/context 没有泄漏；
-- lease 未完成任务回到 RETRY/READY；
-- 本地 dispatcher queue 不作为恢复依据。
+不把百万 URL 一次交给 `asyncio.gather()` 或 `arun_many()`。
 
 ---
 
-## 8. 安全与合规注意事项
+## 9. 安全与合规
 
-Crawl4AI v0.8.7 的发布记录集中修复了 Docker API 的 RCE、SSRF、认证绕过、任意文件写入、XSS、硬编码 JWT secret 等问题。这说明把 crawler 作为网络服务暴露时，**请求体本身必须被视为不可信输入**。
+Crawl4AI v0.8.7 发布记录包含 Docker API 的多项安全加固，后续 v0.9.x 又进一步强化 secure-by-default。对本方案的含义是：Crawler runtime 必须被当作高权限网络执行组件，而不是普通无状态 SDK。
 
-平台建议：
+要求：
 
-1. Crawl4AI 版本必须 pin 到经过验证的 immutable runtime release，不使用浮动 `latest`；
-2. Docker API 只放内网，优先通过内部 Worker 调用，不对公网开放；
-3. Source URL 必须先通过平台 SSRF 校验，再交给 Crawl4AI；
-4. 禁止访问 loopback、RFC1918、link-local、云 metadata、Unix/file URL；
-5. JS hook、execute-js、下载路径、webhook 等能力默认关闭，确需启用时按 Recipe allowlist；
-6. UI 用户不能直接传任意 CrawlerRunConfig 到 Worker；必须引用已发布的配置 release；
-7. `robots.txt Disallow` 只做拒绝，不作为 probe 候选；
-8. 子域 discovery 只生成候选，未经批准不得主动抓取。
+1. Runtime 版本 pin 到经过测试的 immutable release；
+2. Crawler API 只在受控内网使用，不直接暴露公网；
+3. Web 用户不能透传任意 Domain、URL、CrawlerRunConfig、JS hook；
+4. 所有目标先做 approved scope + SSRF destination validation；
+5. 禁止 loopback、RFC1918、link-local、云 metadata、`file://` 等未授权目的地；
+6. Redirect 每一跳都重新校验目的地和 approved scope；
+7. `robots.txt Disallow` 只作约束，不变成 Probe 候选；
+8. CT/DNS/Wayback 发现的 host 未批准前不做主动正文抓取；
+9. Probe path 使用内容型 allowlist，不允许管理/登录/调试/健康检查类默认路径；
+10. Browser、下载、execute-js、webhook 等高风险能力按 Recipe allowlist 最小化启用。
 
 ---
 
-## 9. 最终建议
+## 10. 必须增加的 Golden / Regression Tests
 
-DomainMapper 不应该取代现有的 Source Provider、Persistent Frontier 和 Coverage Ledger，而应该被放在两个位置：
+针对 DomainMapper Adapter 至少覆盖：
+
+```text
+1. /Docs/A 与 /docs/a 不被错误合并
+2. query 大小写/顺序在未发布 Query Policy 前不被改写
+3. Wayback result status=valid 不绕过平台 Validity Gate
+4. Common Crawl 独立 Provider 能产生 URL-level Observation
+5. 未批准 CT 子域不会触发 active HTTP probe
+6. robots Disallow 不进入 Probe
+7. Soft-404 动态 request-id 仍能被模板相似度识别
+8. 合法页面同 title 不因 title 相同直接判 Soft-404
+9. Sitemap Soft-404 批次保留全部 Observation
+10. HTTP-only origin 不因 DomainMapper HTTPS 默认路径静默丢失
+11. PDF-heavy Source 不被 blanket nonsense filter 丢掉内容文档
+12. extract_head=false 时不把 runtime status 当当前有效性
+13. max_urls / score_threshold 只允许 focused job，不进入 Backfill Profile
+14. hits_per_sec 不作为严格 RPS 验收指标
+15. 大量 host/probe path 时外层 Slice 能限制并发
+16. source_timeout 产生 PARTIAL/TIMED_OUT，而不是 COMPLETE
+17. runtime release 升级后 use_browser_for_homepage 等关键配置做行为回归
+```
+
+---
+
+## 11. 最终建议
+
+DomainMapper 在最终架构中放两个位置最合适：
 
 ```text
 A. Source Onboarding Recon
-   帮助发现 Sitemap / Feed / 内容子域 / Soft-404 行为
+   exact-host Sitemap / Feed / Homepage / Safe Probe / Soft-404 baseline
+   metadata-only host candidate 由独立 Adapter 先完成
 
-B. Coverage Gap Provider
-   用 Common Crawl / Wayback / Homepage 等补权威 Provider 的盲区
+B. Coverage Gap Recon
+   在 approved scope 内补站点结构盲区
+   不能替代独立 Common Crawl / Wayback / Sitemap / Feed Provider
 ```
 
-真正的生产链仍然是：
+生产主链保持：
 
 ```text
-DomainMapper / Provider Runtime
- -> 原始发现证据
+Provider / DomainRecon Runtime
+ -> Raw Discovery Evidence
  -> PostgreSQL URL Observation
- -> URL Identity
- -> Admission / Persistent Frontier
+ -> Platform URL Normalization / Identity
+ -> Approved Scope
+ -> URL Validity Gate
+ -> Persistent Frontier / Admission
  -> HTTP First / Browser Slow Path
  -> Immutable Artifact
  -> Extraction Portfolio
@@ -684,6 +813,6 @@ DomainMapper / Provider Runtime
  -> Markdown Projection
 ```
 
-本次调研最重要的方案增强是：
+本次调研对技术方案的核心增强可以概括为：
 
-> **把“域名级多源发现”和“Soft-404 基线”正式纳入 Source 接入与 Coverage Gap 流程；把 Crawl4AI MemoryAdaptiveDispatcher 下沉为 Worker 本地资源控制；同时进一步强化 approved host、robots policy、全局限流和 PostgreSQL 业务真相边界。**
+> **把 Domain Mapping 定位为受控 Recon，而不是 Coverage Truth；把 Soft-404 变成版本化的主机有效性模型；把上游 dedup、status、score、limit、timeout、cache、rate 参数全部降级为运行时提示；URL Identity、当前有效性、跨 Worker 限流、Coverage 和恢复全部由平台持久化模型负责。特别需要防止完整 URL lower-case 去重、Wayback “valid” 误解、Common Crawl URL-level 覆盖假设以及未批准子域的主动探测。**
