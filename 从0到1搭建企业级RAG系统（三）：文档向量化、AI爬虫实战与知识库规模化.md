@@ -425,6 +425,51 @@ API/类名
 
 用 Recall@K、MRR、nDCG@K、HitRate@K、Reranker gain、p95/p99 延迟和 GPU seconds/query 做发布门禁。
 
+### 9.1 RRF、向量相似度与 Reranker 分数不能横向比较
+
+文章明确观察到 RRF 分数可能只有约 `0.03`，而 Reranker 输出可以是数值更大的另一套 score。这个现象不是“精排把分数提高了”，而是因为不同阶段的分数语义完全不同：
+
+```text
+BM25 score          = 关键词统计相关度
+COSINE similarity   = 向量空间相似度
+RRF score           = 基于 rank 的融合分数
+Reranker score      = Cross Encoder 对 query-passage 的相关性打分
+```
+
+生产系统不能把它们塞进同一个 `score` 字段后直接比较大小，也不能用“Reranker score > RRF score”作为效果提升证据。正确做法是保存阶段化 Trace：
+
+```text
+query_id
+chunk_id
+stage
+rank
+score_type
+raw_score
+normalized_score_optional
+release_id
+candidate_source
+```
+
+效果判断使用同一阶段内的 rank、Recall@K、MRR、nDCG 等指标；跨阶段重点观察 rank movement、命中变化和最终回答质量。Web 调试台也应明确标注 score type，避免运营人员误读。
+
+### 9.2 模型本地化应升级为不可变 Model Artifact
+
+文章为了离线运行预先下载 `BAAI/bge-reranker-base`，这一实践值得保留，但生产系统不应只约定“某个目录里有模型”。模型文件、tokenizer、配置和推理依赖应纳入 `reranker_release + runtime_artifact_release`：
+
+```text
+model_name
+model_revision
+model_digest
+tokenizer_digest
+max_length
+precision
+runtime_image_digest
+local_artifact_ref
+smoke_test_result
+```
+
+模型下载发生在镜像/制品构建阶段，生产实例启动时只加载已校验的本地 artifact；外部模型仓库不可用时不应导致线上 Worker 在运行中随机下载、换 revision 或阻塞请求。
+
 ---
 
 ## 10. 文章方案与 1000 站点知识库的主要差距
@@ -480,7 +525,30 @@ Snapshot -> Extraction -> Canonical IR -> Document Version -> Projection
 7. Crawl4AI Markdown 降级为 Extraction Candidate，Snapshot/IR 保持真相层；
 8. Playwright/Chromium/lxml 兼容性归入 Runtime Artifact Release 与 CI smoke test；
 9. Reranker/Hybrid 参数升级必须经过固定 judgment set 的发布门禁；
-10. Web 增加 Vector Index Generation、Reranker 前后排名和 Recall/Latency 对比视图。
+10. Web 增加 Vector Index Generation、Reranker 前后排名和 Recall/Latency 对比视图；
+11. 新增 Vector Payload Contract，在写入向量引擎前校验维度、数值类型、NaN/Inf、归一化约束、Embedding Release 与目标 Generation 一致性；
+12. Retrieval Trace 按阶段保存 `score_type + raw_score + rank`，禁止直接横向比较 BM25/COSINE/RRF/Reranker 分值；
+13. Embedding/Reranker 模型必须以不可变本地 Model Artifact 发布，生产运行时不得临时联网下载或静默换 revision。
+
+### 11.1 Vector Payload Contract：把文章里的向量类型故障前移成数据契约
+
+文章遇到过 Milvus 写入时向量数值类型不符合客户端预期的问题，并通过显式转换解决。这类错误在百万级批处理里如果等到数据库写入才暴露，会导致整批 retry、错误难定位，甚至让同一批部分成功部分失败。
+
+因此在 Vector Index Adapter 前加入统一校验层：
+
+```text
+VectorPayloadValidator
+  -> embedding_release_id matches generation
+  -> dimension == expected_dimension
+  -> numeric values only
+  -> no NaN / Inf
+  -> canonical dtype / serialization for target engine
+  -> normalization invariant if release requires it
+  -> chunk_id / embedding_id present
+  -> per-item validation result
+```
+
+失败按单条记录 `VECTOR_PAYLOAD_INVALID`，保留错误原因和样本，不让一条坏向量拖垮整个 batch。需要强调的是，“canonical dtype”是 Adapter 的接口契约，不应在业务层硬编码某个向量数据库客户端的偶然实现细节。
 
 ---
 
@@ -488,4 +556,4 @@ Snapshot -> Extraction -> Canonical IR -> Document Version -> Projection
 
 文章是一篇很好的“小规模 RAG 工程串联案例”，其最值得借鉴的不是具体参数，而是它暴露出的组件边界和真实故障：抓取器与浏览器依赖必须可复现，中文全文检索需要专门分词，向量检索不能替代关键词检索，Reranker 需要放在粗召回之后。
 
-但对于 1000 个技术博客、全历史抓取、长期增量同步的目标，不能采用文章里的目录全量扫描、一次性 Embedding、进程内 BM25 pickle、`source + chunk_index` 身份和 drop/recreate Collection。最终方案应继续采用“事实层与投影层分离、Release/Generation、流式批处理、可恢复任务、Coverage Evidence、HTTP First / Browser Last”的平台化架构，并吸收文章中的索引调优、Recursive fallback、Runtime 兼容性和 Reranker 量化评测经验。
+但对于 1000 个技术博客、全历史抓取、长期增量同步的目标，不能采用文章里的目录全量扫描、一次性 Embedding、进程内 BM25 pickle、`source + chunk_index` 身份和 drop/recreate Collection。最终方案应继续采用“事实层与投影层分离、Release/Generation、流式批处理、可恢复任务、Coverage Evidence、HTTP First / Browser Last”的平台化架构，并吸收文章中的索引调优、Recursive fallback、Runtime 兼容性、Vector Payload Contract、阶段化 Retrieval Trace、不可变 Model Artifact 和 Reranker 量化评测经验。
