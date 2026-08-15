@@ -1,4 +1,4 @@
-# 使用 Python、FastAPI、Haystack 和 ChromaDB 构建基于 URL 的 RAG 流程：实现细节与技术原理分析
+# 使用 Python、FastAPI、Haystack 和 ChromaDB 构建基于 URL 的 RAG 流程
 
 ## 1. 调研对象
 
@@ -6,1059 +6,637 @@
 - 索引名称：使用 Python、FastAPI、Haystack 和 ChromaDB 构建基于 URL 的 RAG 流程
 - 原文标题：Building a RAG Pipeline with FastAPI, Haystack, and ChromaDB for URLs in Python
 - 原文地址：https://medium.com/@pwaykos1/building-a-rag-pipeline-with-fastapi-haystack-and-chromadb-for-urls-in-python-631575f3888b
-- 可访问镜像：https://www.aihello.com/resources/blog/building-a-rag-pipeline-with-fastapi-haystack-and-chromadb-for-urls-in-python/
+- 同内容页面：https://www.aihello.com/resources/blog/building-a-rag-pipeline-with-fastapi-haystack-and-chromadb-for-urls-in-python/
 - 调研日期：2026-08-15
+- 相关官方资料：
+  - Haystack ChromaDocumentStore：https://docs.haystack.deepset.ai/docs/chromadocumentstore
+  - Haystack ChromaEmbeddingRetriever：https://docs.haystack.deepset.ai/docs/chromaembeddingretriever
+  - Haystack FileTypeRouter：https://docs.haystack.deepset.ai/docs/filetyperouter
+  - Haystack DocumentSplitter：https://docs.haystack.deepset.ai/docs/documentsplitter
+  - Haystack DocumentWriter：https://docs.haystack.deepset.ai/docs/documentwriter
+  - Haystack OllamaDocumentEmbedder：https://docs.haystack.deepset.ai/docs/ollamadocumentembedder
+  - Haystack OllamaTextEmbedder：https://docs.haystack.deepset.ai/docs/ollamatextembedder
+  - Haystack OllamaGenerator：https://docs.haystack.deepset.ai/docs/ollamagenerator
+  - Chroma Metadata Filtering：https://docs.trychroma.com/docs/querying-collections/metadata-filtering
+  - Crawl4AI Markdown Generation：https://docs.crawl4ai.com/core/markdown-generation/
 
-本文的价值不在于它给出了一个可以直接支撑 1000 个站点的生产架构，而在于它把“任意 URL 输入”拆成了一个很清晰的产品路径：**URL 类型识别 → 抓取/文件解析 → 文档入库 → Embedding → 检索 → LLM 生成 → 异步任务化**。对博客知识库方案最有启发的部分是“按资源类型路由”和“把手工 URL 导入、RAG 查询做成 API 能力”。
+## 2. 结论
 
----
+这篇文章最有价值的不是“FastAPI + Haystack + ChromaDB”这一组具体依赖，而是它把**单 URL 摄取、资源类型路由、索引流水线、向量检索和问答 API**串成了一个完整的可运行闭环。对博客知识库尤其有参考价值的是：用户可以提交任意 URL，系统自行判断网页还是文件，完成摄取后再对指定内容问答。
 
-## 2. 原方案的端到端流程
+但文章是面向教程和单机 PoC 的实现，不能直接扩展到 1000 个技术博客的历史全量抓取与长期增量同步。主要生产问题包括：
 
-文章实现的逻辑可以抽象为：
+1. URL 类型判断仍混合了 HEAD、URL 后缀和同步 `requests`，缺少 redirect 后最终响应、证据置信度、预算与 SSRF 边界。
+2. FastAPI `async` endpoint 内调用同步 `requests`，会阻塞 event loop。
+3. HTML 与文件分别进入 `url-index`、`file-index`，把“输入形态”错误地变成了长期检索边界。
+4. 查询时仍以 URL 为外部业务标识，并可能再次识别 URL 类型；这会让已入库查询依赖源站当前状态。
+5. “对某个 URL 提问”若只通过选 collection 实现，并不能保证只召回该 URL 的 chunk。
+6. 固定 `2000 words + 500 overlap` 适合作为教程参数，不适合作为代码、表格、长技术文档和多语言语料的生产默认值。
+7. Haystack Pipeline、DocumentStore、Retriever、Embedder、Generator 在函数内反复构造，会增加连接、模型与对象初始化开销。
+8. 没有完整的 Document/Version/Chunk/Embedding 稳定身份、幂等写、重复策略、索引 generation 和回滚模型。
+9. Chroma 本地持久化适合 PoC，但不能成为百万文档平台的事实层。
+10. Celery + Redis 作为可选异步化示例是合理的教学方向，但若平台已有 durable task/outbox，再增加一套 Celery 任务真相会造成状态分裂。
 
-```text
-Client
-  │
-  ├─ POST /ingest(url)
-  │      │
-  │      ▼
-  │   URL 类型判断
-  │      ├─ HTML/article ──> Crawl4AI AsyncWebCrawler
-  │      │                         │
-  │      │                         ▼
-  │      │                  LLMExtractionStrategy
-  │      │                         │
-  │      └─ PDF/TXT/MD ──> 文件解析器
-  │                                │
-  │                                ▼
-  │                       Haystack Document
-  │                                │
-  │                                ▼
-  │                         Embedding Pipeline
-  │                                │
-  │                                ▼
-  │                         ChromaDocumentStore
-  │
-  └─ POST /generate(url, question)
-         │
-         ▼
-      查询 Embedding
-         │
-         ▼
-      Retriever Top-K
-         │
-         ▼
-      Prompt + Context
-         │
-         ▼
-      Ollama Chat Model
-         │
-         ▼
-      Answer
-```
-
-文章还给出一个可选的异步版本：把 `/ingest` 的长任务交给 Celery Worker，Redis 作为 broker，从而避免 API 请求线程一直等待抓取、解析和索引完成。
-
-这套设计本质上已经形成两个平面：
-
-1. **Ingestion Plane**：负责把 URL 转成可检索文档；
-2. **Query Plane**：负责把问题转成向量、召回文档并生成答案。
-
-这个拆分方向是正确的，但文章实现仍然是教程级单机 RAG，缺少大型知识库所需的事实层、版本、增量同步、幂等、覆盖率和运营能力。
+因此当前博客知识库技术方案不应退回文章的架构，而应吸收文章的“单 URL RAG 闭环”，同时坚持 Snapshot First、Ingress-neutral Corpus、Stable Query Target、Hard Scope Filter、Compiled Query Runtime 和 One Durable Task System。
 
 ---
 
-## 3. URL 类型识别：真正值得吸收的第一层路由
+## 3. 文章的端到端实现链路
 
-文章首先把 URL 分成两类：
-
-```text
-1. Web page / article
-2. File: PDF / TXT / MD / ...
-```
-
-其实现思路是利用 HTTP 请求结果、MIME type 和文件扩展名判断资源类型。这个思想非常重要，因为“URL”不是“HTML 页面”的同义词。技术博客经常直接链接：
-
-- PDF 白皮书；
-- Markdown 原文；
-- `.txt` / `llms.txt`；
-- JSON API；
-- RSS / Atom；
-- 附件、代码压缩包；
-- 没有扩展名但响应 `application/pdf` 的下载地址；
-- 有 `.html` 外观但经过重定向后实际返回 PDF 的地址。
-
-### 3.1 教程实现的问题
-
-若只根据 URL suffix 判断会出现大量误分类，例如：
+文章实现的逻辑可概括为：
 
 ```text
-/download?id=123        -> 实际是 PDF
-/report.pdf?token=...   -> suffix 解析可能错误
-/article/123            -> HTML
-/api/post/123           -> JSON
-/file.pdf               -> 302 -> HTML 登录页
+POST /ingest(url)
+  -> identify_url(url)
+      -> article / pdf / txt / md ...
+  -> article: Crawl4AI 抓取
+  -> file: requests 下载临时文件
+  -> Haystack indexing pipeline
+      -> converter
+      -> cleaner
+      -> splitter
+      -> document embedder
+      -> Chroma DocumentStore
+
+POST /generate(question, url)
+  -> 根据 URL 类型选择 url-index / file-index
+  -> text embedder
+  -> ChromaEmbeddingRetriever
+  -> PromptBuilder
+  -> OllamaGenerator
+  -> answer
 ```
 
-只发 `HEAD` 也不可靠：有些服务器不支持 HEAD，或者 HEAD 与 GET 返回的 `Content-Type` 不一致。
+文章又给出 Celery + Redis 作为可选增强，把长时间 ingestion 从 FastAPI 请求中移到后台任务。
 
-### 3.2 生产级改造：Resource Probe
+这个闭环在 PoC 中很清楚：**写路径负责把 URL 变成可检索向量，读路径负责把问题变成 query embedding，再检索上下文给 LLM。**
 
-博客知识库应增加一个轻量的 **Resource Probe** 阶段，位置在 URL Resolution 之后、正式 Fetch Route 之前：
+---
+
+## 4. URL 类型判断：文章做对了什么，以及生产上还缺什么
+
+文章通过 `identify_url(url)` 把 URL 分成网页文章与文件。其思路大致是：
+
+1. 请求目标 URL；
+2. 查看 Content-Type；
+3. 查看 URL path 的扩展名；
+4. 不确定时下载少量字节，用 `filetype` 猜测文件类型。
+
+这个思路比只看 `.pdf`、`.txt` 后缀可靠，因为真实网络中经常存在：
+
+```text
+/download?id=123          -> application/pdf
+/report.pdf               -> 302 -> HTML 登录页
+/file                     -> Content-Disposition: attachment; filename=x.pdf
+/api/article/1            -> application/json
+```
+
+但生产 Resource Probe 必须更严格。
+
+### 4.1 HEAD 只是 Hint，不是真相
+
+服务器可能：
+
+- 不支持 HEAD；
+- HEAD 与 GET 返回不同 Content-Type；
+- CDN/WAF 对 HEAD 使用不同路径；
+- HEAD 不返回完整 redirect 行为；
+- 动态下载链接只有 GET 才能确认资源。
+
+因此推荐：
+
+```text
+HEAD
+ -> 若证据足够则结束
+ -> 否则 small Range GET
+ -> 再不确定则 bounded GET
+```
+
+每一步都记录状态码、最终 URL、Content-Type、Content-Disposition、prefix magic bytes、响应大小和冲突信息。
+
+### 4.2 URL 后缀必须降级为弱证据
+
+扩展名适合做 Route Hint，例如 `*.pdf` 可以让系统倾向 PDF Probe，但最终 parser 必须由最终响应证据决定。否则 `.pdf -> HTML` 会把 HTML 错送进 PDF parser，而无扩展名 PDF 又会漏掉。
+
+### 4.3 Redirect 后最终响应最重要
+
+文章教程没有把 Resolution 独立成一层。生产中应先建立：
 
 ```text
 Observed URL
- -> Normalize
- -> Redirect / Wrapper Resolution
+ -> Normalized Candidate
+ -> Redirect / Wrapper / Meta Refresh
+ -> Resolved Fetch Target
  -> Resource Probe
- -> Content-kind Classification
- -> Fetch Route
 ```
 
-建议识别：
-
-```text
-HTML_DOCUMENT
-PDF_DOCUMENT
-TEXT_DOCUMENT
-MARKDOWN_DOCUMENT
-JSON_API
-XML_FEED
-SITEMAP
-IMAGE_ASSET
-ARCHIVE_FILE
-BINARY_UNSUPPORTED
-UNKNOWN
-```
-
-判断证据优先级：
-
-```text
-1. Redirect 后最终响应
-2. Content-Type
-3. Magic bytes / 文件签名
-4. Content-Disposition filename
-5. 站点 Profile 规则
-6. URL extension（弱证据）
-```
-
-Probe 结果应持久化，不能只是 Worker 内临时变量：
-
-```text
-resource_probe_attempt
-  id
-  url_id
-  final_url
-  http_status
-  content_type_header
-  detected_mime
-  content_kind
-  confidence
-  content_length
-  etag
-  last_modified
-  accept_ranges
-  content_disposition
-  prefix_hash
-  route_hint
-  evidence_json
-  created_at
-```
-
-这样不仅可以给 PDF/HTML 选择不同 extractor，也能在增量同步时用 ETag、Last-Modified、长度变化等低成本信号判断是否需要完整抓取。
+这样 URL alias、最终抓取地址、canonical identity 和 query scope 才能分开治理。
 
 ---
 
-## 4. Crawl4AI 抓网页：文章思路正确，但 API 与生产用法需要升级
+## 5. FastAPI：API 异步不等于内部调用自动非阻塞
 
-文章使用 `AsyncWebCrawler` 抓取网页，并通过 `LLMExtractionStrategy` 把网页转换为更适合 RAG 的文本。文章示例中的核心思想是：
-
-```text
-AsyncWebCrawler
- + LLMExtractionStrategy
- + local Ollama
- + instruction
- -> extracted content
-```
-
-文章使用本地 Ollama 的意义是避免把网页正文发送给外部模型，也方便本地实验。
-
-### 4.1 当前 Crawl4AI API 已发生变化
-
-文章所描述的旧式 `LLMExtractionStrategy(provider=..., base_url=..., api_token=...)` 在当前 Crawl4AI 中已经不是推荐接口。官方在后续版本引入了统一 `LLMConfig`，并移除了旧参数。当前模式应类似：
-
-```python
-llm_strategy = LLMExtractionStrategy(
-    llm_config=LLMConfig(
-        provider="ollama/model-name",
-        base_url="http://ollama:11434"
-    ),
-    schema=..., 
-    instruction="..."
-)
-
-config = CrawlerRunConfig(
-    extraction_strategy=llm_strategy
-)
-
-result = await crawler.arun(url=url, config=config)
-```
-
-这说明生产系统不能把第三方库当前参数直接写死在 Site Profile 中，而要通过 `runtime_artifact_release_id`、`extractor_release_id` 绑定具体 Crawl4AI/Playwright 版本。
-
-### 4.2 为什么不能把 LLM Extraction 当 canonical 正文
-
-教程把 LLM extraction 放在网页摄取主路径上，对单篇问答体验很好，但不适合百万篇历史文章：
-
-- LLM 输出有随机性；
-- Prompt/模型升级会改变结果；
-- 长文会产生 chunk token 成本；
-- 模型可能遗漏代码、表格或细节；
-- LLM 可能改写原文而不是忠实抽取；
-- 大规模回填速度受模型吞吐限制；
-- 模型不可用时会阻塞 Source Sync。
-
-因此生产方案应坚持：
+文章使用 FastAPI `async def`，但部分下载逻辑调用同步 `requests.get()`。这在小规模测试里通常能工作，但在并发 API 中会阻塞 event loop：
 
 ```text
-Snapshot
- -> Deterministic Extraction Candidate
+async endpoint
+  -> requests.get()
+  -> 当前 event-loop thread 等待网络 I/O
+  -> 同进程其它协程被拖慢
+```
+
+生产建议：
+
+- HTTP 使用 `httpx.AsyncClient` / `aiohttp`；
+- Browser 使用独立 Browser Worker；
+- PDF/OCR/Embedding 等长任务不在 API request 中同步完成；
+- `POST /ingestions` 只创建 durable command，返回 `202 + ingestion_id`；
+- 前端通过状态查询/SSE/WebSocket 观察阶段推进。
+
+文章最后引入 Celery 的动机是对的：长任务不应阻塞 HTTP 请求。但具体实现应服从平台统一任务模型。
+
+---
+
+## 6. Crawl4AI 在这个流程中的正确定位
+
+文章用 Crawl4AI 抓网页文章，再进入 RAG。这说明 Crawl4AI 很适合作为**网页到正文候选/Markdown 候选**的执行层。
+
+Crawl4AI 官方文档明确区分 raw markdown 与经过内容过滤的 fit markdown。对博客知识库来说：
+
+```text
+Network Response / Rendered DOM
+ -> Snapshot
+ -> Extraction Candidate
+    - Crawl4AI raw markdown
+    - Crawl4AI cleaned HTML
+    - Trafilatura
+    - Readability
+    - Site selector
+ -> Quality Selection
  -> Canonical IR
  -> Canonical Markdown
-
-Canonical IR / Markdown
- -> optional LLM Extraction Projection
- -> Summary / Entity / QA View
 ```
 
-LLMExtractionStrategy 可以作为：
-
-1. 结构未知站点的低置信度 fallback；
-2. Schema 生成辅助；
-3. 非 canonical 的摘要/实体/知识图谱 Projection；
-4. 少量复杂页面的人工审核候选。
-
-不能让它决定 Document Identity 或正文版本。
+不能把 `fit_markdown` 当成唯一事实，因为 pruning/BM25/LLM filter 都可能丢掉对未来查询有价值的内容。文章用 Crawl4AI 作为 RAG 前处理是合理的，但生产知识库还必须保留 Snapshot 与可重建 canonical 层。
 
 ---
 
-## 5. 文件类 URL：应从“特殊分支”升级为统一 Document Ingress
+## 7. Haystack Indexing Pipeline 的技术原理
 
-文章支持 PDF、TXT 等文件，并对 URL 与文件分开处理。这个思路适合扩展成统一的 `Document Ingress`：
-
-```text
-Ingress
-  origin = SOURCE_CRAWL | MANUAL_URL | FILE_UPLOAD | ARCHIVE_RECOVERY
-  locator
-  detected_content_kind
-  source_id(optional)
-  requested_scope
-```
-
-再根据 `content_kind` 路由：
-
-```text
-HTML_DOCUMENT     -> HTML extractor stack
-PDF_DOCUMENT      -> PDF extractor stack
-TEXT_DOCUMENT     -> text decoder
-MARKDOWN_DOCUMENT -> markdown parser
-JSON_API          -> JSON/schema extractor
-XML_FEED          -> feed parser
-```
-
-### 5.1 PDF 处理原则
-
-博客知识库中的 PDF 不能只做 `pypdf.extract_text()` 后直接 Embedding。至少需要保存：
-
-```text
-page_no
-text blocks
-heading candidate
-code/table signal
-image refs
-page bbox（若解析器支持）
-source file hash
-parser release
-OCR flag
-```
-
-文本型 PDF 优先确定性解析；扫描型 PDF 才进入 OCR fallback。OCR 结果是 Extraction Candidate，不覆盖原始 PDF Snapshot。
-
-### 5.2 Markdown/TXT
-
-对 `.md` 不应该经过 HTML Readability，而应保留：
-
-- fenced code；
-- heading tree；
-- tables；
-- links；
-- frontmatter；
-- 原始换行语义。
-
-这与技术博客知识库的 structure-aware chunking 直接相关。
-
----
-
-## 6. Haystack + Chroma：教程的 RAG 机制
-
-文章把经过处理的文档交给 Haystack，并使用 ChromaDB 保存 Embedding。RAG 需要两个模型：
-
-```text
-Embedding model -> 把文档和 query 映射到向量空间
-Chat model      -> 利用召回的 context 生成答案
-```
-
-文章示例使用：
-
-- Chat：`llama3.2`；
-- Embedding：`nomic-embed-text`；
-- Vector Store：ChromaDB；
-- Orchestration：Haystack。
-
-正确的查询链路是：
-
-```text
-question
- -> query embedder
- -> ChromaEmbeddingRetriever / vector query
- -> top_k documents
- -> prompt builder
- -> chat generator
- -> answer
-```
-
-Haystack 的 Chroma retriever 支持 metadata filters，这一点对博客知识库尤其重要，因为“向某个 URL 提问”不应该在整个知识库中无约束召回。
-
-### 6.1 应吸收：Retrieval Scope
-
-文章 `/generate` 同时接收 URL 和 question，实际上隐含了一个重要概念：**查询作用域**。
-
-生产系统应显式建模：
-
-```text
-retrieval_scope
-  ALL
-  SOURCE(source_id)
-  DOCUMENT(document_id)
-  DOCUMENT_VERSION(document_version_id)
-  URL(resolved_url)
-  TAG(tag)
-```
-
-查询时把 scope 转成 metadata filter：
-
-```text
-WHERE source_id = ...
-WHERE document_id = ...
-WHERE version_id = ...
-```
-
-Web 管理台可以直接提供：
-
-- 向单篇文章提问；
-- 向一个博客站点提问；
-- 向全部知识库提问；
-- 在某个版本时间点做检索回放。
-
-### 6.2 为什么不建议把 Chroma 直接作为生产 Truth
-
-Chroma 很适合教程、PoC 和中小规模独立 RAG，但对于本项目的事实层，应保持：
-
-```text
-PostgreSQL + Object Storage = Truth
-Vector DB                  = Projection
-```
-
-原因不是 Chroma “不能用”，而是：
-
-- Embedding 可以重算；
-- Vector index 参数会升级；
-- Chunk release 会变化；
-- 模型维度会变化；
-- 需要双 Generation 构建和切换；
-- 删除/更新必须与 Document Version 精确关联；
-- 生产需要 BM25 + Vector + RRF，而不是仅向量召回。
-
-因此 Chroma 可以保留为开发/单机 Adapter：
-
-```text
-VectorEngineAdapter
-  ├─ ChromaAdapter      # dev / local
-  ├─ PgVectorAdapter    # initial production option
-  ├─ OpenSearchKNN
-  ├─ QdrantAdapter
-  └─ MilvusAdapter
-```
-
-但 `document_version_id / chunk_id / embedding_release_id` 的稳定身份必须由平台事实层维护。
-
----
-
-## 7. Embedding 的核心问题不是“调用模型”，而是稳定身份和版本
-
-文章的教程流程通常是“抓到文档 → 切块 → embedding → 写入 Chroma”。对于增量知识库，必须进一步回答：
-
-1. 同一篇文章没变化，为什么又生成了一批向量？
-2. 文章只增加一段，能否复用旧 Chunk？
-3. 模型从 768 维换到 1024 维时旧向量怎么办？
-4. 删除文章后旧向量如何准确 tombstone？
-5. 查询是否误召回旧版本 Chunk？
-
-建议稳定键：
-
-```text
-chunk_id = hash(
-  document_version_id
-  + chunk_release_id
-  + logical_block_range
-  + normalized_text_hash
-)
-
-embedding_id = hash(
-  chunk_id
-  + embedding_release_id
-)
-```
-
-Vector Store 写入使用 deterministic ID + upsert。Chroma 官方同样支持 `upsert`，但业务主键不能由 Chroma 自己生成随机 UUID，否则重放和去重很难保证一致。
-
----
-
-## 8. `/ingest` API：应增加为博客知识库的 Web 管理能力
-
-这是本次调研对现有方案最明确的功能优化。
-
-现有系统主要围绕 Source 的自动发现、全量回填、增量同步运行，但运营过程中一定会出现：
-
-- 临时补一篇遗漏文章；
-- 用户粘贴一个 URL 要立即入库；
-- 新站正式建 Source 之前先验证单 URL；
-- 一个站点的某个 PDF 需要补采；
-- 对失败 URL 手工重试；
-- 外部系统通过 API 推送待收录 URL。
-
-因此建议增加统一 Manual Ingestion API：
-
-```http
-POST /api/v1/ingestions
-Idempotency-Key: <client-generated-key>
-
-{
-  "url": "https://example.com/post/1",
-  "source_id": "optional",
-  "mode": "AUTO",
-  "priority": "NORMAL",
-  "requested_projections": ["CLEAN_MARKDOWN", "FULLTEXT", "EMBEDDING"]
-}
-```
-
-返回：
-
-```http
-HTTP/1.1 202 Accepted
-
-{
-  "ingestion_id": "...",
-  "run_id": "...",
-  "state": "QUEUED"
-}
-```
-
-状态接口：
-
-```http
-GET /api/v1/ingestions/{id}
-```
-
-返回阶段状态：
-
-```text
-QUEUED
-PROBING
-FETCHING
-SNAPSHOT_READY
-EXTRACTING
-CANONICAL_READY
-MARKDOWN_READY
-INDEXING
-READY
-PARTIAL_READY
-FAILED
-```
-
-### 8.1 为什么必须返回 202，而不是等待完成
-
-抓取网页、启动 Browser、下载 PDF、生成 Embedding 都可能是长任务。FastAPI 官方也明确建议，重计算/多进程后台任务应由外部队列/Worker 承担。
-
-本项目已经采用 PostgreSQL + Outbox + Redis Streams + Worker，因此**不需要为了吸收文章经验而改成 Celery**。正确做法是吸收“API 与后台任务解耦”的思想，并保留现有 durable scheduler。
-
----
-
-## 9. Celery + Redis：文章方案的价值和不足
-
-文章可选章节把 ingest 改为 Celery 异步任务：
-
-```text
-FastAPI
- -> enqueue task
- -> Redis broker
- -> Celery Worker
- -> crawl / parse / embed
-```
-
-它解决了三个问题：
-
-1. HTTP 请求不需要等待；
-2. Worker 可以独立扩容；
-3. 长任务失败后可以重试。
-
-但对于我们的系统，直接采用 Celery 仍缺少关键能力：
-
-- 业务状态与消息发布的事务一致；
-- per-URL lease/fencing；
-- Provider cursor；
-- Run DAG；
-- 多阶段 partial success；
-- `Retry-After` 持久化；
-- 消费者崩溃后的业务级重放证据；
-- Source/domain 的全局限流；
-- Projection 与 Source Sync 优先级隔离。
-
-因此结论是：
-
-> 不引入 Celery 作为新的第二套任务系统，继续使用 PostgreSQL durable state + Transactional Outbox + Redis Streams；在 API 设计上采用 Celery 教程体现的“异步接受、任务状态查询、Worker 独立扩容”模型。
-
----
-
-## 10. Ingestion 状态与 Projection Readiness
-
-文章把“入库成功”看成一个动作，但生产系统应区分“事实已经抓到”和“所有检索 Projection 已经准备好”。
-
-建议为每个 `document_version` 维护 readiness：
-
-```text
-canonical_state = READY | FAILED
-markdown_state  = READY | PENDING | FAILED
-fulltext_state  = READY | PENDING | FAILED
-chunk_state     = READY | PENDING | FAILED
-embedding_state = READY | PENDING | FAILED
-vector_state    = READY | PENDING | FAILED
-summary_state   = READY | PENDING | FAILED
-```
-
-于是 API 可以出现合理的：
-
-```text
-PARTIAL_READY
-```
-
-例如文章已经抓取并生成 Markdown，但 Embedding 服务积压，此时 Source Sync 仍然成功，全文检索可以先用，向量检索稍后补齐。
-
-这与现有“Source Sync 与 AI 解耦”原则完全一致，但应在 Web 和 API 上显式暴露。
-
----
-
-## 11. `/generate` API：不要直接和抓取耦合
-
-教程的 `/generate(url, question)` 会再次判断 URL 类型，然后走对应 query 逻辑。生产系统应避免 Query API 隐式触发昂贵的同步抓取。
-
-建议拆成：
-
-```http
-POST /api/v1/ingestions     # 摄取
-GET  /api/v1/ingestions/{id}
-POST /api/v1/search         # 检索
-POST /api/v1/ask            # RAG 问答
-```
-
-`/ask`：
-
-```json
-{
-  "question": "这篇文章如何处理异步任务？",
-  "scope": {
-    "type": "DOCUMENT",
-    "document_id": "..."
-  },
-  "retrieval_release": "active",
-  "max_context_tokens": 12000
-}
-```
-
-如果目标文档尚未入库，返回明确状态：
-
-```text
-DOCUMENT_NOT_READY
-```
-
-客户端可先调用 ingestion，而不是 Query API 在内部偷偷抓取网络资源。这能避免 SSRF、超时、重复抓取和不可审计的副作用。
-
----
-
-## 12. 安全：教程中最需要补齐的部分
-
-“任意 URL 输入”是 SSRF 的典型入口。生产系统必须在 Manual Ingestion API 前增加安全边界：
-
-```text
-parse URL
- -> scheme allowlist(http/https)
- -> DNS resolve
- -> block loopback/private/link-local/metadata IP
- -> connect
- -> each redirect re-check
- -> Browser navigation re-check
-```
-
-必须阻止：
-
-```text
-http://127.0.0.1
-http://localhost
-http://169.254.169.254
-http://10.0.0.0/8
-file://...
-gopher://...
-```
-
-同时：
-
-- 限制响应大小；
-- 限制 PDF/附件大小；
-- 限制 redirect 次数；
-- 限制 Browser wall-clock；
-- 限制解压比，防止压缩炸弹；
-- 不自动绕过登录、WAF、验证码；
-- API 需要 RBAC、审计、请求配额。
-
-手工 URL 导入不能绕开 Source Policy。
-
----
-
-## 13. 增量同步：文章没有解决，但必须补在同一模型中
-
-文章每次 `/ingest` 都更像“重新处理 URL”。博客知识库则需要低成本判变：
-
-```text
-Resource Probe
- -> ETag / Last-Modified / Content-Length
- -> Conditional GET
- -> 304: stop
- -> 200: compare body hash
- -> unchanged: stop
- -> changed: Snapshot -> Extract -> New Version
-```
-
-对于文件 URL 同样适用：
-
-```text
-PDF ETag / Last-Modified / length
- -> conditional request
- -> file hash
- -> parser replay only when needed
-```
-
-这意味着 Resource Probe 并不是单纯的文件类型判断器，而可以成为增量同步前置的 metadata probe。
-
----
-
-## 14. 对 Web 管理台的直接优化
-
-建议增加“手工摄取 / 单 URL 调试”页面：
-
-### 14.1 输入区
-
-- URL；
-- 可选 Source；
-- AUTO / HTTP_ONLY / BROWSER_ALLOWED；
-- 是否生成 Embedding；
-- 是否强制刷新；
-- Idempotency key 自动生成。
-
-### 14.2 执行时间线
-
-```text
-Normalize
-Resolution
-Resource Probe
-Route Match
-Fetch
-Snapshot
-Extraction
-Quality
-Identity
-Version
-Markdown
-Chunk
-Embedding
-Index
-```
-
-每一步展示：
-
-- 状态；
-- 耗时；
-- Release；
-- 输入/输出 hash；
-- 错误；
-- 重试次数；
-- evidence。
-
-### 14.3 结果区
-
-- detected MIME/content-kind；
-- 原始 Snapshot；
-- Canonical Markdown；
-- Extraction Candidate 对比；
-- Chunk；
-- scoped search；
-- “对本篇提问”。
-
-这样文章中的 FastAPI `/ingest` + `/generate` 被升级成真正可运营的知识库调试工具。
-
----
-
-## 15. Route Match 与 MIME Probe 的关系
-
-现有方案已经有 per-URL `CrawlerRunConfig` / Route Match Release，例如：
-
-```text
-PDF URL     -> PDF config
-Article URL -> article config
-Dynamic Hub -> interaction config
-```
-
-仅依赖 URL matcher 有一个隐患：URL pattern 是先验，MIME Probe 是运行时证据。
-
-建议最终路由采用两级：
-
-```text
-Route Hint（URL/Profile 静态规则）
-       +
-Resource Probe（响应证据）
-       ↓
-Resolved Route
-```
-
-冲突示例：
-
-```text
-URL matcher: *.pdf
-Probe: text/html
-```
-
-可能原因是：
-
-- 登录页；
-- WAF；
-- 失效下载；
-- HTML 错误页。
-
-此时不能按 PDF parser 强行处理，应记录：
-
-```text
-route_hint = PDF
-observed_content_kind = HTML_DOCUMENT
-route_conflict = true
-```
-
-并进入质量/错误策略。
-
----
-
-## 16. 测试与 Contract Test 增补
-
-根据本次调研，现有 Runtime Contract Test 应新增：
-
-```text
-无扩展名 PDF URL -> 正确识别 PDF
-.pdf URL -> 302 -> HTML -> 不进入 PDF parser
-HEAD 不支持 -> Range GET fallback
-Content-Type 错误 -> magic bytes 能纠正
-超大文件 -> size budget 拦截
-HTML / PDF / TXT / MD 相同 ingest API 路由正确
-重复 Idempotency-Key -> 不重复创建 Run
-重复 URL 未变化 -> 不重复建 Document Version
-Embedding 延迟 -> ingestion 返回 PARTIAL_READY
-按 document_id scope 查询 -> 不召回其他文档
-旧 version vector -> ACTIVE 查询不召回
-LLM extraction 失败 -> canonical extraction 不受影响
-manual URL redirect -> 每跳 SSRF 校验
-```
-
----
-
-## 17. 对当前博客知识库方案的修改结论
-
-本次调研不建议替换现有技术栈，而建议新增/强化以下能力：
-
-### 高优先级
-
-1. **Resource Probe / Content-kind Classification**：在 Resolution 与 Fetch Route 之间增加运行时 MIME/文件类型探测；
-2. **Manual Ingestion API**：Web/API 支持输入任意允许的 URL，异步返回 `202 + ingestion_id`；
-3. **Ingestion Status / Projection Readiness**：把 canonical、Markdown、全文、Embedding、Vector 的就绪状态分开；
-4. **Retrieval Scope**：支持按单文档、站点、版本过滤检索，支撑“对这篇文章提问”；
-5. **统一多类型 Document Ingress**：HTML/PDF/TXT/MD/JSON/Feed 共享同一事实和版本模型；
-6. **Route Hint + Probe Evidence**：URL matcher 不再是 PDF/HTML 类型判断的唯一依据。
-
-### 中优先级
-
-7. Chroma 作为开发 Adapter，而不是生产 Truth；
-8. LLMExtractionStrategy 仅作为版本化、可重建 Projection/fallback，不进入 canonical 主路径；
-9. 手工摄取 Web 调试台展示全链路证据；
-10. 对 MIME、redirect、文件大小、scope filter 增加 Contract Test。
-
-### 不采纳
-
-- 不新增 Celery 作为第二套任务系统；
-- 不用 Chroma 替代 PostgreSQL/Object Storage 事实层；
-- 不把教程中的同步 `/generate` 隐式抓取行为带入生产；
-- 不使用 LLM 抽取结果作为 canonical Markdown；
-- 不按 URL 扩展名直接决定资源类型。
-
----
-
-## 18. 方案新增的数据实体建议
-
-```text
-Resource Probe Attempt
-Manual Ingestion
-Ingestion Stage State
-Retrieval Scope
-Content-kind Classification Evidence
-```
-
-### 18.1 Manual Ingestion
-
-```text
-id
-requester
-url
-source_id
-mode
-idempotency_key
-requested_projection_types[]
-run_id
-state
-canonical_document_id
-error_code
-created_at
-updated_at
-```
-
-### 18.2 Ingestion Stage State
-
-```text
-ingestion_id
-stage
-state
-attempt_count
-release_id
-input_hash
-output_hash
-started_at
-finished_at
-error_code
-```
-
-这些实体让 Web/API 能明确回答“这一个 URL 到底处理到哪一步”，而不是只有一个模糊的成功/失败。
-
----
-
-## 19. 技术原理总结
-
-这篇文章最值得提炼的不是具体库组合，而是四个架构原理：
-
-### 19.1 URL 是资源定位符，不是 HTML 类型
-
-必须先识别资源类型，再选择解析器。这能把网页、PDF、Markdown、API 等统一纳入知识库。
-
-### 19.2 Ingestion 与 Query 是两个生命周期
-
-抓取/解析/建索引属于写路径，问答属于读路径。二者解耦之后才有异步、扩容、重试、缓存和版本治理空间。
-
-### 19.3 Vector Store 是检索投影，不是原始事实
-
-向量可以根据 Chunk/Model 重新构建，因此必须把原始 Snapshot、Canonical IR 和 Document Version 保存在独立事实层。
-
-### 19.4 长任务必须任务化
-
-HTTP API 只接受命令并返回 durable task id；真正的抓取、解析、Embedding 在 Worker 中执行。Celery 是一种实现，但本项目已有更适合全链路状态治理的 PostgreSQL + Outbox + Redis Streams 架构。
-
----
-
-## 20. 参考资料
-
-1. 原文：Building a RAG Pipeline with FastAPI, Haystack, and ChromaDB for URLs in Python  
-   https://medium.com/@pwaykos1/building-a-rag-pipeline-with-fastapi-haystack-and-chromadb-for-urls-in-python-631575f3888b
-2. 可访问镜像：  
-   https://www.aihello.com/resources/blog/building-a-rag-pipeline-with-fastapi-haystack-and-chromadb-for-urls-in-python/
-3. Crawl4AI LLM Strategies：  
-   https://docs.crawl4ai.com/extraction/llm-strategies/
-4. Crawl4AI v0.5.0 Release Notes（`LLMConfig` 迁移说明）：  
-   https://docs.crawl4ai.com/blog/releases/0.5.0/
-5. Crawl4AI Multi-Config / URL Matcher：  
-   https://docs.crawl4ai.com/blog/releases/0.7.3/
-6. FastAPI Background Tasks：  
-   https://fastapi.tiangolo.com/tutorial/background-tasks/
-7. Haystack ChromaEmbeddingRetriever：  
-   https://docs.haystack.deepset.ai/docs/chromaembeddingretriever
-8. Chroma Update / Upsert：  
-   https://docs.trychroma.com/docs/collections/update-data
-
----
-
-## 21. 代码级二次审计：集合分裂、Scope 泄漏与 Query Runtime
-
-进一步核对文章完整代码后，可以看到教程实现里有几个比“用什么向量库”更关键的生产问题，这些问题直接影响多文档知识库的正确性和吞吐。
-
-### 21.1 `identify_url()` 的真实判定链
-
-教程不是单纯按后缀判断，而是：
-
-```text
-HEAD allow_redirects
- -> Content-Type == text/html ? article
- -> MIME -> extension
- -> final URL path -> MIME/extension
- -> GET(stream=True) 读取前 2048 bytes
- -> filetype.guess()
-```
-
-这比纯 suffix 已经更可靠，但仍有生产缺口：HEAD 可能被禁用、Content-Type 可能错误、GET fallback 必须受响应大小/超时/SSRF 约束，而且 Query 路径不应该再次执行这个网络探测。正确演进仍然是将其提升为持久化、版本化的 Resource Probe。
-
-### 21.2 文件管线和 URL 管线实际上被拆成两个物理语料库
-
-教程的文件摄取使用：
+文章的文件路径采用典型 Haystack indexing pipeline：
 
 ```text
 FileTypeRouter
  -> PyPDFToDocument / TextFileToDocument / MarkdownToDocument
  -> DocumentJoiner
  -> DocumentCleaner
- -> DocumentSplitter(split_by="word", split_length=2000, split_overlap=500)
+ -> DocumentSplitter
  -> OllamaDocumentEmbedder
- -> Chroma collection: file-index
+ -> DocumentWriter(ChromaDocumentStore)
 ```
 
-URL 摄取则是：
+### 7.1 Router / Converter
+
+`FileTypeRouter` 根据 MIME 将文件分发给不同 converter。这个分层是对的：输入类型不同，解析器天然不同。
+
+但“解析路径不同”不等于“最终语料库不同”。正确抽象是：
 
 ```text
-Crawl4AI / LLM extraction
- -> concatenate_content()
- -> JSONConverter(extra_meta_fields=["tag", "url"])
- -> OllamaDocumentEmbedder
- -> Chroma collection: url-index
+PDF  -> PDF parser -----┐
+HTML -> HTML extractor -┤
+MD   -> MD parser ------┼-> Canonical IR -> unified Chunk contract
+TXT  -> decoder --------┘
 ```
 
-这意味着“输入是文件还是网页”被编码进了物理 Collection。对于教程演示很直观，但不适合长期知识库。摄取来源和资源类型应该是 metadata，而不是检索拓扑。HTML、PDF、Markdown、TXT 在进入 Canonical IR / Chunk 后应进入同一个逻辑 Corpus/Index Generation；只有 Embedding 维度/Release、租户或安全边界、容量分片等真正影响索引兼容性的因素才应该决定物理分区。
+### 7.2 Cleaner
 
-否则会出现：
+Cleaner 用于统一空白、噪声和文本格式，但生产系统必须保证它是版本化 Projection，而不能直接覆盖原始事实。任何会改变正文语义的清洗都需要 release 和 fixture。
 
-- 跨 HTML + PDF 的一次搜索必须查两个 Collection 再人工融合；
-- 新增 JSON/Feed/Office 文档会继续产生更多 Collection；
-- Collection 名称逐渐承担业务路由真相；
-- Resource Kind 变更或 URL 重定向到另一种类型时迁移困难；
-- Hybrid Search / Generation 切换需要维护多套并行索引。
+### 7.3 Splitter
 
-### 21.3 `/generate(url, question)` 存在真实的 Scope 泄漏风险
-
-教程的 generate 路径会重新调用 URL 类型识别，然后按类型选择 `get_url_result()` 或 `get_file_result()`。但两个 query 函数中的 Chroma retriever 都只选择 Collection，并没有按传入 URL 做 metadata filter。
-
-因此如果已经摄取：
+文章使用：
 
 ```text
-URL A -> url-index
-URL B -> url-index
+split_by = word
+split_length = 2000
+split_overlap = 500
 ```
 
-用户调用：
+技术上 overlap 的作用是降低语义在 chunk 边界被截断的概率，但代价也明显：
+
+- 向量数量增加；
+- embedding token 成本增加；
+- 相邻 chunk 高重复；
+- top-k 容易被同一段重复内容占满；
+- 代码块/表格可能被从中间切断。
+
+技术博客更适合 structure-aware chunk：heading/section 优先，段落、代码块、表格保持完整，过长 section 才 recursive fallback；长度用目标 embedding tokenizer 的 token 计算，而不是简单 word count。
+
+---
+
+## 8. Embedding：文档向量与查询向量必须处在同一语义空间
+
+文章使用 `OllamaDocumentEmbedder(nomic-embed-text)` 写入文档向量，查询时使用 `OllamaTextEmbedder` 生成 query embedding，再交给 `ChromaEmbeddingRetriever`。
+
+核心原理是：
 
 ```text
-/generate(url=A, question=...)
+E_doc(chunk)  ∈ R^d
+E_query(q)    ∈ R^d
+similarity(E_query, E_doc)
 ```
 
-实际语义只是“去 `url-index` 搜”，并不是“只在 A 中搜”。Retriever 完全可能返回 B 的 Chunk。文件集合也同样存在这一问题。
+文档和 query 必须使用兼容的 embedding 模型、维度、归一化和距离度量，否则向量距离没有可比意义。
 
-这说明生产系统不能把“URL 参数存在”误认为“检索已限定到该 URL”。必须执行稳定身份解析：
+因此生产系统必须显式版本化：
 
 ```text
-requested URL
- -> normalize only（无远程网络访问）
- -> URL Alias / Canonical Mapping
- -> document_id
- -> active document_version_id（或显式指定版本）
- -> metadata filter
- -> BM25 / Vector retrieval
+embedding_release_id
+model_digest
+dimension
+normalization
+metric
+max_tokens
 ```
 
-如果 URL alias 无法解析到已入库 Document，返回 `DOCUMENT_NOT_FOUND`，而不是重新访问远程 URL 来判断它属于 `file-index` 还是 `url-index`。
+向量写入前校验 dimension、NaN/Inf、normalization 和 target generation；embedding 升级时构建新 generation，而不是原地混写不同模型的向量。
 
-### 21.4 Query Path 不应依赖“此刻的远程资源类型”
+---
 
-教程在生成答案时再次执行 `identify_url(url)`，意味着一个纯读取请求仍可能发送 HEAD/GET。这样会导致：
+## 9. Chroma：适合 PoC，但最重要的启发是 metadata filter
 
-- 源站暂时不可用时，已经入库的数据也无法查询；
-- URL 从 PDF 改成 HTML 后查询被路由到另一 Collection；
-- 重定向变化导致历史文档的查询语义漂移；
-- Query API 获得不必要的 SSRF/网络权限；
-- 查询延迟受外部站点网络影响。
-
-生产系统必须坚持 Query Plane 的网络隔离：`search/ask` 只访问内部 Truth/Projection；远程 URL 只在 Ingestion/Sync Plane 中访问。
-
-### 21.5 Query Pipeline 不应每个请求重新构建
-
-教程的 `get_file_result()` 和 `get_url_result()` 每次调用都会重新创建：
+文章为文件和 URL 建两个 collection：
 
 ```text
-Haystack Pipeline
-OllamaTextEmbedder
-ChromaDocumentStore
-ChromaEmbeddingRetriever
-PromptBuilder
-OllamaGenerator
+file-index
+url-index
 ```
 
-功能上没问题，但服务化后会带来重复对象初始化、连接/客户端抖动、配置漂移和额外延迟。生产 Query Service 应把 Pipeline 视为 `retrieval_release_id` 对应的已编译运行图：
+这在教程里很直观，但会产生两个长期问题。
+
+### 9.1 输入类型不应该成为业务 Corpus 边界
+
+用户真正关心的是：
+
+- 全库；
+- 某个 Source；
+- 某篇 Document；
+- 某个 Version；
+- 某个 Tag；
+- 某种语言。
+
+并不关心文档最初是 HTML 还是 PDF。因此生产索引应统一 payload：
+
+```text
+source_id
+document_id
+document_version_id
+chunk_id
+content_kind
+ingress_origin
+language
+tags
+```
+
+HTML/PDF/MD/TXT 进入同一逻辑 corpus。
+
+### 9.2 “选择 collection”不能替代“只查这篇文章”
+
+如果 URL A 和 URL B 都写入 `url-index`，查询 A 时只选择 `url-index`，B 的 chunk 仍然可能被召回。
+
+Chroma 本身支持 metadata filtering，因此即使在开发 Adapter 中，也必须执行类似：
+
+```text
+where = {"document_id": requested_document_id}
+```
+
+而不是只切 collection。
+
+这条原则应提升为跨向量引擎契约：**任何 VectorEngineAdapter 如果不能在召回阶段执行 hard scope filter，就不能用于 DOCUMENT/URL scope 的生产查询。**
+
+---
+
+## 10. DocumentWriter 与幂等：教程里缺失的关键层
+
+Haystack `DocumentWriter` 支持重复策略，例如 SKIP、OVERWRITE、FAIL。教程没有把这个问题提升为平台 identity 设计，因此长期增量时容易出现：
+
+- 相同 URL 重复摄取；
+- 内容未变化却重复 embedding；
+- chunk 顺序改变导致全部 ID 变化；
+- 新模型向量覆盖旧模型向量；
+- retry 后重复插入。
+
+生产平台不能依赖 DocumentStore 默认 duplicate policy，而要先计算稳定身份：
+
+```text
+document_version_id
+chunk_id = hash(document_version_id + chunk_release + logical_block_range + text_hash)
+embedding_id = hash(chunk_id + embedding_release_id)
+```
+
+然后用 deterministic ID + upsert。DocumentWriter/VectorStore 的 duplicate policy 只是执行细节，不是业务身份真相。
+
+---
+
+## 11. Query Pipeline：文章链路正确，但对象生命周期不适合高 QPS
+
+文章的查询链路是：
+
+```text
+question
+ -> OllamaTextEmbedder
+ -> ChromaEmbeddingRetriever
+ -> PromptBuilder
+ -> OllamaGenerator
+```
+
+这是标准 RAG 执行图。
+
+问题在于教程函数中会反复创建：
+
+- Pipeline；
+- ChromaDocumentStore；
+- Retriever；
+- Text Embedder；
+- PromptBuilder；
+- Generator。
+
+在生产 Query Service 中，这些对象应按 Retrieval Release 长生命周期复用：
 
 ```text
 service startup / release activation
- -> build or load pipeline graph
- -> initialize long-lived model/store clients
- -> warm up
- -> cache by retrieval_release_id
+ -> init store clients
+ -> init model clients
+ -> compile pipeline graph
+ -> warmup
+ -> READY
 
 request
- -> resolve scope
- -> inject query / filters / top_k / token budget
+ -> inject query + hard scope filter + top_k
  -> execute cached pipeline
 ```
 
-Haystack/LlamaIndex 的职责是编排，不负责保存唯一业务状态。Release 切换时加载新 Pipeline 实例，验证后原子切 active pointer，旧实例在 in-flight 请求结束后回收。
+这样可以减少连接抖动、模型冷启动、对象构建和版本漂移。
 
-### 21.6 教程的 Chunk 策略不能直接迁移到技术博客
+---
 
-文件管线固定使用 `split_length=2000`、`split_overlap=500`，即 25% word overlap；URL 管线则依赖 Crawl4AI/LLM extraction 产生的 item 粒度，代码中没有统一的后置 splitter。
+## 12. URL 作为查询参数的隐藏问题：URL 是 locator，不是稳定 Query Target
 
-生产风险包括：
+文章 `/generate` 继续接收 URL，这是很自然的用户体验，但服务端不应该在每次问答时重新访问该 URL 判断类型。
 
-- 2000 words 可能超过部分 Embedding 模型有效窗口；
-- 500 words overlap 会显著放大存储和 Embedding 成本；
-- fenced code、表格和标题层级可能被切断；
-- URL 与 PDF 的 Chunk 粒度完全不一致；
-- LLM extraction item 太大时可能整块被模型截断。
+否则会出现：
 
-因此必须在 Canonical IR 后执行统一、版本化的 Structure-aware Chunk Release；资源解析器只负责产生结构块，不直接决定最终检索 Chunk。
+- 源站已下线，历史知识却无法查询；
+- URL 现在从 PDF 改成 HTML，历史索引身份发生漂移；
+- query path 拥有任意公网访问能力，扩大 SSRF 面；
+- URL redirect/canonical 变化导致查不到旧文档；
+- 同一个 document 有多个 alias 时行为不一致。
 
-### 21.7 对主方案的新增约束
+正确链路：
 
-在已有 Resource Probe、Manual Ingestion、Retrieval Scope 基础上，主方案还应明确增加以下约束：
+```text
+request URL
+ -> local normalization
+ -> URL Alias / Canonical Mapping
+ -> document_id
+ -> active document_version_id
+ -> hard metadata filter
+ -> retrieval
+```
 
-1. **Ingress-neutral Corpus**：`file-index` / `url-index` 这种按输入形态拆 Collection 的方式仅用于教程，不进入生产；
-2. **Stable Query Target**：URL scope 先解析成 `document_id/version_id`，Query 不访问远程 URL；
-3. **Hard Scope Filter**：scope 必须在 BM25/Vector 召回阶段执行，不能只靠选择 Collection 或写入 Prompt；
-4. **Compiled Query Runtime**：Haystack Query Pipeline 与 Store/Model Client 按 Retrieval Release 复用；
-5. **Unified Chunk Release**：HTML/PDF/MD/TXT 都在 Canonical IR 后使用统一 Chunk 契约；
-6. **Cross-resource Contract Test**：同时摄取多篇 HTML 与 PDF，验证 `DOCUMENT` scope 零泄漏，并验证 `ALL/SOURCE` 可以跨资源类型召回。
+若 alias 不存在，应返回 `DOCUMENT_NOT_FOUND`，而不是 Query API 暗中去抓 URL。
 
-这几条将教程中的“能跑通单 URL RAG”进一步升级为“多来源、多文档、可持续运行且不会串文档的知识库检索服务”。
+若产品希望“粘贴 URL 后立即问”，也应拆成显式两阶段：
+
+```text
+POST /ingestions -> 202 ingestion_id
+GET /ingestions/{id} -> READY / PARTIAL_READY
+POST /ask(scope=document_id)
+```
+
+Web 可以把两阶段组合成一个交互，但后端语义不能混在一起。
+
+---
+
+## 13. Prompt 不能承担检索隔离
+
+文章 Prompt 大致要求“根据提供的 documents 回答，不知道就说不知道”。这个方向可以降低幻觉，但它只作用于**已经召回的 context**。
+
+如果 Retriever 错误地把 B 文档召回给 A，Prompt 无法知道 B 不属于 A。
+
+因此 Scope 必须发生在：
+
+```text
+BM25 retrieval filter
+Vector retrieval filter
+```
+
+而不是：
+
+```text
+prompt: only answer from URL A
+```
+
+这也是为什么博客知识库必须把 `Retrieval Scope` 做成一等公民，并测 `ScopeLeakRate`。
+
+---
+
+## 14. Celery + Redis：为什么不能简单照搬
+
+文章把 Celery 作为可选异步增强，解决“摄取时间长，HTTP 请求不能一直等待”的问题，这个动机完全正确。
+
+但 1000 站平台还要处理：
+
+- discovery；
+- backfill；
+- incremental；
+- PDF；
+- Browser；
+- extraction；
+- embedding；
+- indexing；
+- retry；
+- cancellation；
+- partial success；
+- lease/fencing；
+- Web stage timeline。
+
+如果平台已有 PostgreSQL Task + Transactional Outbox + Redis Streams，再引入 Celery 作为另一套业务任务状态，会出现：
+
+```text
+DB 说 RUNNING
+Celery 说 RETRY
+Redis broker message 已丢/已 ack
+Web 无法判断哪个是真相
+```
+
+所以文章的“异步化”应吸收为原则，不应照搬为第二任务系统。
+
+---
+
+## 15. 对 1000 博客知识库的可落地改造
+
+把文章的 PoC 升级为生产闭环，推荐：
+
+```text
+Manual URL
+ -> POST /ingestions
+ -> Normalization
+ -> Resolution
+ -> Resource Probe
+ -> HTTP / Browser / File Fetch
+ -> immutable Snapshot
+ -> extractor candidates
+ -> Canonical IR
+ -> Document Version
+ -> Canonical Markdown
+ -> structure-aware Chunk
+ -> Embedding Release
+ -> BM25 / Vector Generation
+ -> READY / PARTIAL_READY
+ -> URL alias -> Document scope
+ -> Hybrid Retrieval
+ -> RAG Answer
+```
+
+### 15.1 单 URL 摄取与 Source Crawl 共用事实层
+
+`MANUAL_URL` 只表示 ingress origin，不应该有另一套 storage/indexing pipeline。这样用户手工提交的 URL、1000 站自动抓取的文章、PDF 文件都能共享版本、Chunk、Embedding 和 Search。
+
+### 15.2 明确 `ready_for`
+
+单一 `READY` 对用户体验太粗。建议 Web/API 可推导：
+
+```text
+ready_for.canonical = true/false
+ready_for.markdown  = true/false
+ready_for.fulltext  = true/false
+ready_for.semantic  = true/false
+ready_for.ask       = true/false
+```
+
+例如 Canonical Markdown 已生成但 embedding backlog 较长时，可以先开放 Markdown 与全文检索，而不是整个 ingestion 都显示“未完成”。
+
+### 15.3 VectorEngineAdapter 必须声明能力
+
+建议统一接口至少包括：
+
+```text
+upsert(records, generation_id)
+query(query_vector, scope_filter, top_k)
+delete_generation(generation_id)
+health()
+capabilities()
+```
+
+`capabilities()` 至少声明：
+
+```text
+hard_metadata_filter
+filter_operators
+max_filter_terms
+hybrid_support
+batch_upsert
+atomic_alias_or_generation_switch
+```
+
+DOCUMENT/URL scope 的生产 Adapter 必须支持 hard metadata filter；Chroma PoC Adapter 也要用 metadata `where` 实现同样语义，从开发阶段就避免“换引擎后才发现 scope 契约不同”。
+
+---
+
+## 16. 对当前技术方案的具体优化判断
+
+当前《博客知识库技术方案.md》已经覆盖并且优于文章的多数关键点：
+
+- 已有统一 Document Ingress；
+- 已有 Manual Ingestion API；
+- 已有 Resource Probe；
+- 已明确 URL 后缀只是弱证据；
+- 已有 Snapshot / Canonical IR / Markdown Projection；
+- 已拒绝 `url-index/file-index` 长期分裂；
+- 已有 Stable Query Target；
+- 已有 hard Retrieval Scope；
+- 已有 Structure-aware Chunk；
+- 已有 Embedding Release / Index Generation；
+- 已有 Compiled Query Runtime；
+- 已明确 Query API 不隐式抓远程 URL；
+- 已明确不增加 Celery 作为第二套平台任务真相。
+
+这次文章仍带来三个值得补强的点：
+
+1. **把“Query 不隐式摄取”提升为核心原则**：用户提供 URL 可以是 UI 输入，但 read path 必须先解析成内部稳定身份；不存在时显式要求 ingestion。
+2. **增加 VectorEngineAdapter 的 hard-scope capability contract**：不仅架构上说“要过滤”，还要求每个向量引擎 Adapter 声明并通过 scope conformance test。
+3. **把单 URL RAG 的 readiness 变成面向用户的能力状态**：canonical、markdown、fulltext、semantic、ask 分别可用，避免 embedding/LLM backlog 阻塞其它功能。
+
+---
+
+## 17. 建议的验收用例
+
+除现有测试外，针对这篇文章暴露的问题应增加：
+
+```text
+1. ingest HTML URL A + HTML URL B
+   ask scope=A
+   -> 任何阶段不得召回 B
+
+2. ingest PDF A + HTML B
+   ALL scope
+   -> 可跨 content-kind 召回
+
+3. query URL A 时源站已 404
+   -> 仍通过本地 alias 查询历史 Active Version
+
+4. query 未入库 URL
+   -> DOCUMENT_NOT_FOUND
+   -> 不发出公网 HEAD/GET
+
+5. Chroma dev adapter DOCUMENT scope
+   -> 必须使用 metadata where 过滤
+
+6. Vector adapter 不支持 hard filter
+   -> capability check 阻止其激活为 scoped retrieval backend
+
+7. 相同 URL + 相同 Idempotency-Key 重复 ingest
+   -> 不创建重复 Run/Document/Embedding
+
+8. 内容不变但重新抓取
+   -> 不重复创建 Document Version
+
+9. Embedding PENDING
+   -> canonical/markdown/fulltext readiness 可独立 READY
+
+10. Query Service 连续请求
+    -> Pipeline/DocumentStore/Model client 不按请求重建
+```
+
+---
+
+## 18. 最终判断
+
+文章非常适合用作“URL -> RAG”最小闭环参考，但它的最佳用途是帮助明确产品行为和组件责任，而不是直接作为 1000 站生产架构。
+
+应保留的思想：
+
+- FastAPI 暴露 ingestion / generation 能力；
+- Crawl4AI 负责网页抓取；
+- 不同文件类型经过不同 converter；
+- Haystack 用 Pipeline 编排 indexing 和 query；
+- 文档 embedding 与 query embedding 对齐；
+- vector retrieval 后再生成答案；
+- 长 ingestion 应异步执行。
+
+必须升级的部分：
+
+- Resource Probe 替代简单 URL 类型判断；
+- async HTTP 替代 event-loop 中同步 requests；
+- Snapshot/IR/Version 替代“一抓即写向量库”；
+- ingress-neutral corpus 替代 `url-index/file-index`；
+- stable document identity 替代 query 时重新识别 URL；
+- hard metadata scope 替代 collection 粗隔离；
+- structure-aware chunk 替代固定 2000/500；
+- deterministic ID + release 替代默认 duplicate behavior；
+- compiled query runtime 替代每请求创建 Pipeline；
+- durable task/outbox 替代第二套 Celery 业务状态；
+- production vector/search generation 替代单机 Chroma 作为唯一存储。
+
+对当前博客知识库方案而言，这篇文章不是推翻现有设计，而是进一步强化“**显式摄取、稳定身份、统一语料、硬 Scope、可复用 RAG Runtime**”这一条从单 URL 用户体验到百万文档生产系统的连续架构路线。
