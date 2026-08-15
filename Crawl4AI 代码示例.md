@@ -1,23 +1,146 @@
 # Crawl4AI 代码示例
 
-## 1. 调研对象
+## 1. 调研对象与证据边界
 
 - 编号：30
 - 名称：Crawl4AI 代码示例
 - 来源标题：Crawl4Ai code example
 - 原始地址：https://www.reddit.com/r/DataHoarder/comments/1iknxwj
-- 索引地址：https://incorporated-jail-assigned-figure.trycloudflare.com/
-- 索引摘要：CNN Sitemap → AsyncWebCrawler → PruningContentFilter → clean Markdown；包含并发、延迟、重试与链接继续入队。
+- 调研状态：仅读取为“调研中”，未修改状态文件
 
-当前环境无法稳定直接读取原 Reddit 正文，因此本文不伪造原帖代码细节。实现分析以索引中已归档的摘要为起点，并用 Crawl4AI 当前官方源码、官方 `arun_many()` 文档、Multi-URL Crawling 文档、URL Seeder 示例、Dispatcher 示例和 Browser Optimization 示例交叉验证其技术模式。
+原 Reddit 页面在当前抓取环境中无法稳定直接读取，因此本文不伪造原帖全文或不可核验的代码。可以确认的材料有三类：
 
-这篇实践最有价值的不是“用 Crawl4AI 抓 CNN”本身，而是它把一个生产采集系统最关键的几件事串在了一条链路里：**先从可枚举入口发现 URL，再进行有界并发抓取，按结果流式处理，做内容裁剪/Markdown 生成，同时把页面新发现的链接重新送回发现队列**。如果把这套做法直接放大到 1000 个站点，仍然会遇到状态丢失、内存膨胀、浏览器成本、重复抓取、无法证明历史覆盖率等问题；但其执行层模式非常适合成为平台 Fetch Worker 的内部实现。
+1. 一篇 2025-02-24 发布的 Medium 文章《Custom web scraper for Amazon Bedrock KB with metadata》直接链接该 Reddit 帖，并复现了其中关键 Crawl4AI 调用片段；
+2. 当前 Crawl4AI 官方仓库源码与官方文档，核验提交为 `7e801521428ee12509994d39151006f64055ebe3`；
+3. 已归档索引摘要描述了“Sitemap/Seed URL → AsyncWebCrawler → PruningContentFilter → Markdown，并带并发、延迟、重试和链接继续入队”的整体模式。
+
+因此以下分析将“可直接核验的代码事实”和“根据摘要还原的系统模式”分开，不把后者冒充为原帖逐行代码。
+
+这篇实践真正有价值的部分不是某个单站脚本，而是它暴露出生产采集平台的几个关键执行问题：**如何批量发现 URL、如何有界并发、如何复用浏览器、如何按结果流式提交、如何把有损 Markdown 与归档真相分离，以及如何把新发现链接重新送回可审计的发现链路。**
 
 ---
 
-## 2. 核心流程还原
+## 2. 可核验代码、API 演进与版本兼容
 
-可以把该实践抽象为：
+### 2.1 2025 年代码片段使用旧版 `markdown_v2`
+
+Medium 文章引用该 Reddit 示例时，复现了如下调用形态：
+
+```python
+async with AsyncWebCrawler() as crawler:
+    result = await crawler.arun(url=url, config=run_config)
+    if result.success:
+        data = {
+            "url": result.url,
+            "title": result.markdown_v2.raw_markdown.split("\n")[0]
+                     if result.markdown_v2.raw_markdown else "No Title",
+            "content": result.markdown_v2.fit_markdown,
+        }
+```
+
+这至少确认了几个事实：
+
+- 使用 `AsyncWebCrawler` 的异步生命周期；
+- 单 URL 执行入口是 `arun()`；
+- 成功与失败通过 `result.success` 分支；
+- 结果同时消费完整 Markdown 与过滤后的 Fit Markdown；
+- 脚本把抓取结果直接写成下游知识库文件。
+
+### 2.2 当前官方 API 已统一到 `result.markdown`
+
+当前 Crawl4AI 官方 `CrawlResult` 文档中，Markdown 入口是：
+
+```python
+result.markdown.raw_markdown
+result.markdown.markdown_with_citations
+result.markdown.references_markdown
+result.markdown.fit_markdown
+result.markdown.fit_html
+```
+
+而不是旧示例中的 `result.markdown_v2`。
+
+官方源码的 HTML 处理链路也表明：
+
+```text
+raw HTML
+ -> scraping_strategy.scrap()
+ -> cleaned_html
+ -> choose markdown content_source
+ -> MarkdownGenerationStrategy.generate_markdown()
+ -> MarkdownGenerationResult
+```
+
+其中 Markdown 的输入源可以是：
+
+```text
+raw_html
+cleaned_html
+fit_html
+```
+
+这个版本漂移非常重要。一个需要运行多年的 1000 站知识库平台，不能让业务层、数据库模型或导出逻辑直接依赖某一版 Crawl4AI 的 DTO 字段名。
+
+### 2.3 正确做法：Crawler Adapter 输出内部稳定契约
+
+Crawl4AI 只能是 Fetch/Browser Adapter。Adapter 内部吸收版本差异，对平台只暴露稳定结果：
+
+```text
+FetchAdapterResult
+- requested_url
+- final_url
+- success
+- status_code
+- response_headers
+- raw_body_ref / raw_html
+- cleaned_html nullable
+- raw_markdown nullable
+- fit_markdown nullable
+- links[]
+- media[]
+- extracted_content nullable
+- error_class nullable
+- error_message nullable
+- dispatch_metrics nullable
+- runtime_release_id
+- adapter_release_id
+```
+
+旧版：
+
+```text
+result.markdown_v2.raw_markdown
+```
+
+新版：
+
+```text
+result.markdown.raw_markdown
+```
+
+都只在 Adapter 内转换成：
+
+```text
+FetchAdapterResult.raw_markdown
+```
+
+因此 Crawl4AI 升级时，只需要：
+
+1. 升级 Runtime Artifact Release；
+2. 更新 Adapter；
+3. 跑固定 fixture/regression；
+4. canary；
+5. 再切换 active runtime。
+
+不应该修改下游 Snapshot、Document、Markdown、Chunk、Export 的核心数据契约。
+
+现有《博客知识库技术方案》已经包含 Crawl4AI Adapter、Runtime Artifact Release、Release Everything 和固定 fixture/canary 的治理原则，因此这次版本核验不需要再新增主架构组件，但实现时必须把“第三方返回对象归一化”作为 Adapter 的硬边界。
+
+---
+
+## 3. 核心流程还原
+
+根据归档摘要和当前官方能力，可以把该实践抽象为：
 
 ```text
 Sitemap / Seed URLs
@@ -31,194 +154,306 @@ Bounded URL Frontier
         ▼
 AsyncWebCrawler.arun_many(stream=True)
         │
-        ├─ Memory/Semaphore Dispatcher
+        ├─ MemoryAdaptiveDispatcher / SemaphoreDispatcher
         ├─ RateLimiter / Retry
         └─ Browser Instance Reuse
         │
         ▼
 Result-by-result processing
         │
-        ├─ raw response / snapshot
-        ├─ extraction
-        ├─ raw markdown / fit markdown
+        ├─ Snapshot
+        ├─ raw / cleaned HTML
+        ├─ raw Markdown
+        ├─ fit Markdown
         ├─ quality check
         └─ discovered links
         │
         ▼
-Durable persistence + links re-enter discovery
+Durable persistence
+        │
+        └─ links re-enter Discovery Plane
 ```
 
-关键点是“**流式、逐 URL 提交、资源复用、有界队列**”，而不是一次性把所有 URL 装进数组后 `gather()` 到结束。
+关键不是“并发越高越好”，而是：
+
+- URL 发现流式化；
+- 执行窗口有界；
+- 每个 URL 单独提交；
+- 浏览器进程复用；
+- Session 隔离；
+- 下游慢时能背压；
+- 任何新链接都重新经过平台规则；
+- 有损内容不能覆盖事实层。
 
 ---
 
-## 3. Sitemap 发现：为什么它适合作为历史抓取入口
+## 4. Sitemap/Seeder：高价值历史入口，但不是完整性证明
 
-### 3.1 Sitemap 是高价值 Provider，不是唯一真相
+### 4.1 为什么 Sitemap 适合技术博客历史回填
 
-对于新闻、技术博客和文档站，Sitemap 往往比从首页递归爬链接更接近站点维护者提供的文章清单，尤其是 Sitemap Index + 分片 Sitemap 可以覆盖大量历史页面。
+技术博客、新闻站、文档站经常暴露：
 
-但 Sitemap 只能作为一个 Coverage Provider：
+```text
+/sitemap.xml
+/sitemap_index.xml
+/post-sitemap.xml
+/news-sitemap.xml
+```
 
-- 站点可能只保留近期 URL；
-- 某些文章从未进入 Sitemap；
-- 删除、迁移、canonical 合并可能造成清单与真实历史不一致；
-- `<lastmod>` 可能缺失、粗粒度甚至不可信。
+相比从首页递归爬，Sitemap 的优势是：
 
-因此生产系统不能把“读完 Sitemap”直接等价为“抓完历史”。正确做法是保存 Provider evidence、cursor、分片状态和 exhaustion reason，再用 Feed、CMS API、Archive、Category/Tag、Common Crawl 或受控 Deep Crawl 做缺口核对。
+- 枚举效率高；
+- URL 通常由站点维护者主动声明；
+- Sitemap Index 可以按 child sitemap 分片；
+- `<lastmod>` 可作为增量候选信号；
+- 不必先加载正文页面才能发现文章。
 
-### 3.2 Sitemap Index 必须分片执行
+### 4.2 Sitemap 不是历史真相
 
-1000 个站点中，少数大站的 Sitemap 可能包含几十万乃至更多 URL。应把每个 child sitemap 当作独立工作单元：
+不能把“读完 Sitemap”等价为“历史抓全”。常见缺口：
+
+- 只保留近期文章；
+- 老文章已迁移但未保留；
+- 某些栏目或静态页不进 Sitemap；
+- `<lastmod>` 不准确；
+- CMS 插件生成规则改变；
+- 删除页面与历史页面不可见。
+
+因此 Sitemap 必须只是 `Coverage Provider` 之一，与以下入口交叉：
+
+```text
+CMS/API
+RSS/Atom/JSON Feed
+Archive
+Category/Tag/Author
+Docs TOC
+Common Crawl
+受控 Deep Crawl
+```
+
+### 4.3 大 Sitemap 必须按 shard checkpoint
+
+对于几十万 URL 的站点：
 
 ```text
 sitemap index
-  ├─ child sitemap A -> cursor/checkpoint A
-  ├─ child sitemap B -> cursor/checkpoint B
-  └─ child sitemap C -> cursor/checkpoint C
+  ├─ shard A -> cursor/checkpoint A
+  ├─ shard B -> cursor/checkpoint B
+  └─ shard C -> cursor/checkpoint C
 ```
 
-每个分片独立：
+每个 shard 独立：
 
 1. Conditional GET；
-2. 解压/解析；
-3. URL Observation 按小批次提交；
-4. 生成 Fetch Task；
-5. 保存分片 hash、ETag、Last-Modified；
-6. 提交 durable checkpoint。
+2. 解压和流式 XML 解析；
+3. 小批写 `url_observation`；
+4. normalization/filter/classification；
+5. 生成 durable Fetch Task；
+6. 保存 ETag/Last-Modified/body hash；
+7. 提交 checkpoint。
 
-这样某个 50 万 URL 的站点不会因为单进程崩溃而从头开始，也不会要求在内存中同时保留全部 URL。
-
-### 3.3 “发现”和“抓取”必须解耦
-
-官方 URL Seeder 示例展示了 `discover -> filter -> crawl` 的自然链路，但平台中不能把 Seeder 返回值当作唯一状态。每发现一个 URL，先落 `url_observation`，再进行 normalization/filter/classification，最终生成持久化 Task。
-
-好处是：
-
-- 过滤规则升级后可以重放 Observation；
-- 可以解释一个 URL 为什么没抓；
-- Source 暂停后 frontier 不丢；
-- Worker 崩溃不影响 Coverage 事实；
-- 新抓取器版本可以复用历史 URL 清单。
+这样 worker 重启不会从整个站点头部重新开始，也不会把几十万 URL 全部放进进程内数组。
 
 ---
 
-## 4. AsyncWebCrawler 生命周期与浏览器复用
+## 5. Discovery 和 Fetch 必须解耦
 
-Crawl4AI 官方 Browser Optimization 示例强调一个很重要的工程原则：**不要为每个 URL 创建新的浏览器实例**。浏览器冷启动、Chromium 进程、上下文初始化和页面资源会远比 HTML 解析昂贵。
+无论 URL 来自 Sitemap、Seeder 还是页面内链接，首先应该形成 Observation：
 
-### 4.1 推荐的 Worker 生命周期
+```text
+url_observation
+- source_id
+- observed_url
+- provider_type
+- provider_ref
+- parent_url nullable
+- anchor_text nullable
+- depth nullable
+- observed_at
+- evidence
+```
+
+然后再进入：
+
+```text
+Observation
+ -> Normalize
+ -> Scope Check
+ -> Filter
+ -> Classification
+ -> Dedupe
+ -> Priority/Budget
+ -> Durable Task
+```
+
+这比“发现一个链接马上递归 `arun()`”可靠得多，因为：
+
+- Worker 崩溃不丢 frontier；
+- Filter 升级可重放；
+- 每个 URL 为什么没抓可以解释；
+- Source 暂停后任务仍存在；
+- 多 Provider 发现同一 URL 可以合并证据；
+- Deep Crawl 可以严格受预算控制。
+
+---
+
+## 6. `AsyncWebCrawler` 生命周期与 Browser Pool
+
+### 6.1 不要每 URL 启一个浏览器
+
+浏览器成本主要来自：
+
+- Chromium 冷启动；
+- browser/context 初始化；
+- JS runtime；
+- renderer process；
+- 字体、图片、脚本和网络资源；
+- 页面关闭不干净导致的内存残留。
+
+因此推荐：
 
 ```text
 Browser Worker process
-  └─ BrowserPool
-       ├─ crawler/browser instance 1
-       │    ├─ context/session A
-       │    └─ context/session B
-       └─ crawler/browser instance 2
+  └─ Browser Pool
+       ├─ long-lived crawler/browser 1
+       │    ├─ context A
+       │    └─ context B
+       └─ long-lived crawler/browser 2
 ```
 
-Worker 启动时创建长期存活的 `AsyncWebCrawler`/浏览器实例，批次之间复用；达到以下条件之一再回收：
+Crawler/Browser 跨批次复用，但达到以下条件应 recycle：
 
-- 已处理页面数达到阈值；
-- RSS/浏览器内存超过阈值；
-- 页面崩溃率上升；
-- Browser/Runtime Release 发生切换；
-- worker drain；
-- 超过最大存活时间。
+- 最大页面数；
+- 最大存活时间；
+- RSS soft/hard limit；
+- renderer crash 比例升高；
+- page/context 泄漏；
+- Runtime Release 切换；
+- worker drain。
 
-### 4.2 Browser Process 可以复用，Session 不能无条件复用
+### 6.2 Browser 可共享，Session 不可无条件共享
 
-“复用浏览器”与“共享登录态/Cookie”必须分开。
+可复用：
 
-可以复用：
-
-- Chromium 进程；
+- Browser process；
 - browser binary；
-- browser context pool 的基础设施；
-- 静态资源缓存（按安全策略）；
-- 同一 Source 且明确允许的会话。
+- worker 内池基础设施。
 
-不应跨 Source/租户随意复用：
+不能跨租户/Source/安全域随意共享：
 
 - Cookie；
 - LocalStorage；
-- 登录态；
-- service worker；
-- 站点特定 token；
-- 代理身份。
+- IndexedDB；
+- 登录 token；
+- Service Worker；
+- 代理身份；
+- 认证上下文。
 
-因此生产设计应为 `runtime_release + source/profile + proxy/security_scope` 建立池键，避免为了性能引入跨站状态污染。
-
-### 4.3 HTTP First，Browser Last 仍然成立
-
-文章示例选择 `AsyncWebCrawler` 并不意味着 1000 站全部应该用 Browser。对于 Sitemap、Feed、API、静态 HTML，HTTPX/aiohttp 更便宜、更快、更容易做 Conditional GET。Browser 只处理：
-
-- HTML 首屏没有正文，正文由 JS 请求生成；
-- Load More / Infinite Scroll；
-- 客户端路由；
-- 需要执行少量交互才能出现内容；
-- HTTP 抽取质量低于阈值。
-
-Crawl4AI 可以同时支持轻量抓取和浏览器抓取，但平台路由层必须先做资源探测和成本判断。
-
----
-
-## 5. `arun_many()`：批量并发的真正价值是“流式完成”
-
-官方 `arun_many()` 文档支持批量并发，并可配 `stream=True` 以异步生成器形式按完成顺序返回结果。对百万级 URL 来说，**streaming 比单纯并发更重要**。
-
-### 5.1 非流式批处理的问题
-
-如果一次把 20 万 URL 交给一个流程并等待全部结果：
-
-- URL 列表本身占内存；
-- 完成结果可能继续堆在内存；
-- 最慢的一批拖住整个批次提交；
-- 进程崩溃时难以判断哪些结果已真正持久化；
-- 下游解析/对象存储来不及消费时，没有自然背压。
-
-### 5.2 流式消费的正确姿势
-
-平台仍应由 Durable Task 负责真相，Worker 只在局部窗口内批量执行：
+推荐池键：
 
 ```text
-1. 从 durable task store lease N 个任务
-2. 取得 Source/Domain permit
-3. 将 N 个 URL 交给 arun_many(stream=True)
-4. 每完成一个 result：
-   a. 保存 Snapshot
-   b. 记录 Fetch Attempt
-   c. 成功则生成后续 Extract Task
-   d. 失败则分类并决定 retry / terminal
-   e. 持久化新发现 links 为 Observation
-   f. ACK 当前 URL，而不是等待整个 batch
-5. 当前窗口降到 low watermark 后再 lease 新任务
+(runtime_release, profile/security_scope, proxy_scope)
 ```
 
-这里的 N 是“小窗口”，可以是几十或数百，而不是整个站点 URL 总量。
+### 6.3 HTTP First，Browser Last
 
-### 5.3 为什么逐 URL Commit 很重要
+示例使用 Crawl4AI 不代表全平台都该走浏览器。以下应优先 HTTP：
 
-这本质上是一个 at-least-once 分布式任务系统。无法要求网络请求、对象存储和数据库更新组成一个跨系统原子事务，因此策略应是：
+```text
+Sitemap
+Feed
+CMS API
+JSON API
+静态 HTML
+Markdown/TXT
+文件下载
+```
 
-- URL Task 有稳定幂等键；
-- Snapshot 以 hash/attempt identity 去重；
-- 每个成功 URL 立即持久化；
-- batch 失败不回滚已经成功的 URL；
-- 重试重复执行时通过幂等键合并。
+只有在静态 HTTP 无法得到合格正文时，才升级 Browser：
 
-这与官方 `arun_many()` 每个 `CrawlResult` 独立成功/失败的模型天然吻合。
+- JS 客户端渲染；
+- Load More；
+- Infinite Scroll；
+- SPA route；
+- 必须交互后正文才出现；
+- HTTP 抽取质量不达标。
 
 ---
 
-## 6. Dispatcher、并发和背压：两层限流，而不是只靠 Semaphore
+## 7. `arun_many()`：价值不只是并发，而是流式完成
 
-官方 Multi-URL Crawling 文档提供 `MemoryAdaptiveDispatcher`、`SemaphoreDispatcher` 和 `RateLimiter`。生产系统应把它们定位为 **Worker 内部执行层限流器**，不能替代平台调度真相。
+当前官方 `arun_many()` 支持：
 
-### 6.1 第一层：平台级 Permit
+```text
+List[str] / task list
+single or per-URL CrawlerRunConfig
+custom dispatcher
+stream=True
+CrawlResult per URL
+```
 
-平台按层级预算：
+流式模式下结果按完成逐个消费：
+
+```python
+async for result in await crawler.arun_many(urls, config=stream_config):
+    process(result)
+```
+
+### 7.1 为什么不能把整个站点一次性交给 `arun_many()`
+
+即使库支持批量，也不能把 50 万 URL 一次性变成一个 batch：
+
+- 输入 URL 自身占内存；
+- 返回结果会形成大对象；
+- 最慢任务拖累整批；
+- 下游对象存储/数据库消费不及时会堆积；
+- 进程崩溃难以恢复精确进度；
+- 无法公平调度多个 Source。
+
+### 7.2 正确方式：bounded lease window
+
+```text
+1. lease N tasks
+2. 获取 domain/source/global permit
+3. 将本地窗口交给 arun_many(stream=True)
+4. 每个 result 完成：
+   - 保存 Fetch Attempt
+   - 保存 Snapshot
+   - 保存 links Observation
+   - 产生 Extract Task
+   - ACK 当前 Task
+5. 窗口下降到 low watermark 后 refill
+```
+
+N 是几十到数百的执行窗口，而不是站点总 URL 数。
+
+### 7.3 逐 URL Commit 与 partial success
+
+网络、对象存储、数据库无法做一个廉价的跨系统大事务。因此使用：
+
+- at-least-once delivery；
+- stable idempotency key；
+- snapshot/content hash；
+- per-URL commit；
+- retry item independently。
+
+某一 URL 失败不能回滚已经成功的 99 个 URL。
+
+---
+
+## 8. Dispatcher、RateLimiter 与两层并发
+
+当前官方文档提供：
+
+```text
+MemoryAdaptiveDispatcher
+SemaphoreDispatcher
+RateLimiter
+```
+
+它们非常适合做 **Worker-local execution control**，但不能成为平台调度真相。
+
+### 8.1 第一层：平台 Permit
 
 ```text
 Global
@@ -228,95 +463,102 @@ Global
  -> host
 ```
 
-例如同一公司可能配置多个 Source，但它们最终都访问 `engineering.example.com`，不能每个 Source 各自放满并发而把源站打爆。
+平台决定某 URL 是否有资格启动。
 
-平台 permit 决定“这批 URL 是否允许开始”。
+### 8.2 第二层：Worker Local Dispatcher
 
-### 6.2 第二层：Worker 本地 Adaptive Dispatcher
+Worker 再依据自身资源收缩：
 
-Worker 再根据自身资源动态收缩并发：
-
-- RSS / memory percent；
-- 当前 browser page 数；
+- memory/RSS；
+- browser pages；
 - event loop lag；
-- p95 fetch latency；
-- 429/503 比例；
-- 页面崩溃率；
-- 对象存储上传 backlog；
+- p95 latency；
+- 429/503；
+- browser crash；
+- snapshot upload backlog；
 - DB commit latency。
 
-例如平台给一个 Browser Worker 最多 20 个 permit，但当前内存升高时 `MemoryAdaptiveDispatcher` 可以只并行 6 个。**本地调低可以，不能绕过平台向上调高。**
+原则是：
 
-### 6.3 RateLimiter 的合理定位
+```text
+local concurrency <= platform permit ceiling
+```
 
-官方示例中的 `base_delay`、`max_delay`、`max_retries` 很适合单 Worker，但平台还要做统一策略：
+本地可以因为资源压力降并发，绝不能绕过平台配额提高并发。
 
-- 尊重 `Retry-After`；
-- 429/503：退避并降低 host concurrency；
-- timeout/connection reset：指数退避 + jitter；
-- 401/403/404/410：按原因分类，通常不盲重试；
-- robots/policy：直接策略终止；
-- Browser crash：可切换实例后重试；
-- extract quality failure：可触发 Browser fallback，但不能无限循环。
+### 8.3 Retry 必须 durable
 
-重试预算必须是 Task/Run 级 durable 字段，不能只存在于 Dispatcher 内存里。
+Crawl4AI 的 RateLimiter/重试只能算 Worker 内尝试。平台还必须持久化：
+
+```text
+attempt
+retry_budget
+next_retry_at
+last_error_class
+last_status_code
+```
+
+分类建议：
+
+- 429/503：尊重 `Retry-After`，降低 host concurrency；
+- timeout/reset：指数退避 + jitter；
+- 401/403：策略判断，不盲重试；
+- 404/410：记录 tombstone/缺失证据；
+- robots/policy：策略终止；
+- browser crash：换实例有限重试；
+- extract failure：优先离线重放 Snapshot。
 
 ---
 
-## 7. PruningContentFilter：适合“检索投影”，不适合当归档真相
+## 9. `PruningContentFilter` / `fit_markdown` 不能作为归档真相
 
-索引摘要提到 `PruningContentFilter`。官方示例中它会生成更精简的 `fit_markdown`。对 RAG 很方便，但对“全量历史文章知识库”有一个关键风险：**它是有损过滤**。
+原示例把 `fit_markdown` 直接写到下游知识库文件，这对 demo 很方便，但对长期历史知识库风险很高。
 
-### 7.1 为什么不能直接把 fit_markdown 当最终知识库
+`fit_markdown` 是有损结果，可能删除：
 
-可能被误删的内容包括：
-
-- 很短但重要的警告；
-- API 参数表；
-- 代码旁的简短说明；
+- 短警告；
+- API 参数说明；
+- 代码旁的短文本；
 - 脚注；
-- 版权/版本信息；
-- 小节标题与上下文；
-- 低文本密度但有语义的表格；
-- 某些特殊 DOM 结构。
+- 低文本密度表格；
+- 版本提示；
+- 某些导航层级但具有上下文意义的内容。
 
-一旦只保存 fit Markdown，未来更换过滤阈值、RAG 策略或模型时无法恢复被删内容，只能重新访问源站；而源站可能已经改变或消失。
-
-### 7.2 推荐三层内容模型
+正确分层：
 
 ```text
 Snapshot / Raw HTML          不可变网络事实
         │
         ▼
-Canonical IR                可重放结构事实
+Canonical IR                结构事实
         │
-        ├─ Canonical Markdown      完整、确定性、默认归档
-        └─ Filtered/Fit Markdown   有损、面向检索的 Projection
+        ├─ Canonical Markdown      完整默认归档
+        └─ Filtered/Fit Markdown   面向检索的有损 Projection
 ```
 
 因此：
 
-- `raw_markdown`/清洗 HTML 可做候选；
-- `PruningContentFilter` 的输出存为 `FILTERED_MARKDOWN`；
-- RAG 可优先索引过滤版；
-- 导出知识库默认导出 canonical Markdown；
-- Filter Release 升级时从旧 Snapshot/IR 离线重建，不重新抓源站。
-
-这是本次调研对现有方案最重要的一条确认和强化。
+- 保存原始响应/HTML；
+- 保存可回放 Canonical IR；
+- Canonical Markdown 不走 Pruning；
+- `fit_markdown` 作为 `FILTERED_MARKDOWN` Projection；
+- RAG 可以优先索引 fit 版本；
+- 导出归档默认 canonical；
+- Filter 升级从旧 Snapshot/IR 重建，不重新抓源站。
 
 ---
 
-## 8. 链接继续入队：必须回到 Discovery Plane，而不是递归抓取
+## 10. 页面链接继续入队：必须回 Discovery Plane
 
-实践脚本里“抓完页面后把新链接继续入队”很自然，但平台化时不能让 Fetch Worker 直接无限递归。
+页面抓完后继续处理 `result.links` 是合理的，但不能让 Fetch Worker 自己做无界递归。
 
-正确链路：
+推荐：
 
 ```text
-Fetch Result links
+result.links
  -> URL Observation
  -> Normalize
- -> Scope Check
+ -> SSRF/Scope
  -> Filter
  -> Classification
  -> Dedupe
@@ -324,258 +566,266 @@ Fetch Result links
  -> Durable Fetch Task
 ```
 
-每个 link 都要保留：
+每条 link 保存：
 
 - parent URL；
 - anchor text；
 - depth；
 - source snapshot；
 - observed_at；
-- provider type=`PAGE_LINK`；
-- filter decision 和 reason。
+- provider=`PAGE_LINK`；
+- filter decision/reason。
 
-这样可以避免：
+Deep Crawl 必须设置硬预算：
 
-- calendar trap；
-- tag/category 无限组合；
-- query permutation；
-- logout/login/cart 等业务 URL；
-- 外链扩散；
-- 同一 URL 由多个页面反复发现而重复抓取。
+```text
+max_depth
+max_urls
+max_bytes
+max_wall_clock
+max_browser_seconds
+max_duplicate_ratio
+```
 
-Deep Crawl 必须有 max depth、max URLs、duplicate ratio、wall clock、bytes 和 Browser seconds 预算。
+否则非常容易进入 calendar trap、tag/query permutation、登录/购物车 URL、无限分页或外链扩散。
 
 ---
 
-## 9. 多 URL 配置匹配：把“站点专用代码”降为声明式 Profile
+## 11. 多 URL Config 匹配与 Site Profile
 
-官方 `arun_many()` 支持针对 URL pattern 使用不同 `CrawlerRunConfig`。这正好对应平台的 Site Profile / Route Release。
+当前官方 `arun_many()` 支持针对不同 URL 配置不同 `CrawlerRunConfig`，并按 matcher 匹配。
 
-一个站点内部可能同时存在：
+这可以映射为平台声明式路由：
 
 ```text
-/blog/*          -> HTML article extractor
-/docs/*          -> docs extractor
-*.pdf            -> PDF parser
-/api/posts/*     -> JSON extractor
-/search/*        -> discovery only
-/account/*       -> hard reject
+/blog/*      -> HTML article extractor
+/docs/*      -> docs extractor
+*.pdf        -> PDF parser
+/api/*       -> JSON/API route
+/search/*    -> discovery only
+/account/*   -> hard reject
 ```
 
-生产系统应把这些做成版本化 matcher/recipe：
+平台不要把这些规则硬编码成一堆 `if site == ...`，而应放在版本化 Profile/Release：
 
 ```text
 fetch_route_rule
 - matcher
+- priority
 - resource_kind
 - fetch_route
 - extraction_policy
 - browser_recipe nullable
-- priority
 - release_id
 ```
 
-规则第一匹配或显式 priority，且必须有默认 fallback。新增第 1001 个站点时优先生成/审核 Profile，而不是新建一份 Python crawler。
+新增第 1001 个站点应优先：
+
+```text
+PROBE -> Profile Draft -> fixture -> 人工审核 -> Activate
+```
+
+而不是新增一份 Python crawler。
 
 ---
 
-## 10. 从脚本到 1000 站平台还缺什么
+## 12. 增量同步：不能每天重跑全量脚本
 
-单站脚本通常没有以下能力，而这些恰恰决定长期可维护性：
+全量历史回填完成后，增量应由多个高收益信号驱动：
 
-### 10.1 Coverage
+```text
+Feed/API cursor + overlap
+Sitemap Conditional GET
+ETag / Last-Modified
+high-yield surfaces
+recent archive pages
+periodic reconcile
+```
 
-脚本知道“队列空了”，但不知道“历史是否完整”。平台必须记录各 Provider 的 cursor、exhaustion reason、known gap 和 evidence。
+对文章 URL 再使用：
 
-### 10.2 Durable State
+```text
+If-None-Match
+If-Modified-Since
+```
 
-脚本的 `asyncio.Queue`、crawler frontier、进程内 `set()` 都不能当真相。平台必须把 Observation、Task、Attempt、Snapshot、Version 持久化。
+304 不产生新 Snapshot body；只有 canonical 内容真正变化时才产生新的 Document Version。
 
-### 10.3 Stable Identity
-
-同一文章可能经 redirect、canonical、Feed GUID、CMS ID、多 URL Alias 被发现。必须把 URL Locator 与 Document Identity 分开。
-
-### 10.4 Incremental Sync
-
-后续不能每天重抓全历史，需要：
-
-- Feed/API cursor；
-- Sitemap Conditional GET；
-- ETag/Last-Modified；
-- overlap window；
-- high-yield surface；
-- 周/月 Reconcile。
-
-### 10.5 Reprocess Without Refetch
-
-抽取器、Markdown、Chunk、Embedding、Graph、LLM 升级后，应从 Snapshot/Version 重放，不重新打源站。
-
-### 10.6 Web 管理
-
-运营人员需要看到：
-
-- Source、Profile、Coverage；
-- 当前 frontier/queue lag；
-- Browser Pool 活跃实例和内存；
-- adaptive concurrency 当前值/目标值；
-- 429/503/timeout；
-- 单 URL pipeline trace；
-- Raw / Canonical / Filtered Markdown diff；
-- quarantine/retry；
-- sitemap child shard checkpoint。
+对 `<lastmod>` 只能当候选信号，不能当唯一真相，因为部分站点会批量重写 lastmod。
 
 ---
 
-## 11. 建议的 Fetch Worker 执行契约
+## 13. 建议的 Fetch Worker 契约
 
-### 11.1 输入
+### 输入
 
 ```text
 FetchTask
 - task_id
 - source_id
 - normalized_url
-- route_release_id
 - profile_release_id
+- route_release_id
+- adapter_release_id
+- runtime_release_id
 - fetch_epoch
 - priority
 - retry_budget
-- deadline
-- lease/fencing_token
+- lease_until
+- fencing_token
 ```
 
-### 11.2 执行
+### 执行
 
 ```text
-lease tasks
+lease bounded window
  -> group by route/profile/domain
  -> acquire platform permits
- -> choose HTTP or Browser adapter
- -> process bounded window with streaming completion
+ -> select HTTP/Browser Adapter
+ -> Crawl4AI adapter normalizes library DTO
+ -> stream result
  -> persist each URL independently
+ -> emit new Observation/Extract Task
  -> release permit
 ```
 
-Browser Adapter 内部可以使用 Crawl4AI：
-
-```text
-long-lived AsyncWebCrawler
- + MemoryAdaptiveDispatcher
- + RateLimiter
- + per-URL CrawlerRunConfig matcher
- + stream=True
-```
-
-### 11.3 输出
+### 输出
 
 ```text
 FetchAttempt
 Snapshot
 New URL Observations
 Next-stage Tasks
-Metrics/Trace
+Metrics / Trace
 ```
 
-Worker 不直接创建 Document Version；Version 应在 Snapshot 经过 extraction + identity 后生成。
+Fetch Worker 不直接创建 Document Version。Version 应在 Snapshot 经过 Extraction、Quality、Identity 后生成。
 
 ---
 
-## 12. 背压模型
+## 14. 端到端 Backpressure
 
-背压不能只看“crawler 有没有空闲槽位”。建议同时观察：
+不能只看 crawler 内存，至少需要联动：
 
 ```text
-fetch queue lag
-snapshot upload lag
-extract queue lag
-DB commit p95
-object storage p95
-worker RSS
-browser RSS
-429/503 rate
-error rate
+fetch_queue_lag
+oldest_fetch_task_age
+snapshot_upload_lag
+extract_queue_lag
+DB_commit_p95
+object_store_p95
+worker_RSS
+browser_RSS
+browser_page_count
+429_503_rate
+fetch_error_rate
 ```
 
-简单控制逻辑：
+控制逻辑：
 
 ```text
 if memory high or downstream lag high:
-    shrink local concurrency
+    shrink worker-local concurrency
 elif 429/503 high:
-    shrink host/domain concurrency + backoff
-elif all healthy and queue lag high:
+    shrink host/domain permits + backoff
+elif healthy and queue lag high:
     grow local concurrency up to platform permit ceiling
 ```
 
-这相当于把 Crawl4AI 的 memory-adaptive 思路从“只看浏览器”扩展为“采集流水线闭环控制”。
+这把 Crawl4AI 的 memory-adaptive 思路提升为整条采集流水线的闭环控制。
 
 ---
 
-## 13. Web 管理新增建议
+## 15. Web 管理需要暴露的执行细节
 
-本次调研建议在现有 Web 管理中新增两个视图。
+### 15.1 Frontier/Streaming 视图
 
-### 13.1 Streaming / Frontier 视图
-
-展示：
-
-- discovery emitted URL/s；
-- durable Observation commit/s；
-- pending/leased/running task；
-- current batch window；
-- downstream extract lag；
-- provider checkpoint；
+- discovery URL/s；
+- Observation commit/s；
+- pending/leased/running；
+- current bounded window；
 - oldest task age；
+- provider checkpoint；
+- extract lag；
 - known gap。
 
-它能快速定位“发现过快、抓取跟不上”或“抓取很快、DB/对象存储跟不上”。
+### 15.2 Browser Pool 视图
 
-### 13.2 Browser Pool 视图
-
-展示：
-
-- worker 数；
-- browser instances；
-- active contexts/pages；
-- worker/browser RSS；
+- worker/browser 数；
+- active context/page；
+- RSS；
 - current adaptive concurrency；
-- browser restart/crash rate；
-- average pages per browser lifetime；
-- HTTP -> Browser fallback ratio；
-- Browser seconds/Source；
-- janitor recycle reason。
+- browser recycle reason；
+- browser crash rate；
+- pages per browser lifetime；
+- HTTP → Browser fallback ratio；
+- Browser seconds/Source。
 
-这样才能判断 Browser 是否被滥用，以及复用是否真的降低成本。
+### 15.3 Adapter/Runtime 视图
 
----
+本次版本核验建议额外观察：
 
-## 14. 本次对《博客知识库技术方案》的优化结论
+- active Crawl4AI/runtime release；
+- adapter release；
+- result normalization error；
+- unknown/missing field rate；
+- fixture pass rate；
+- old/new runtime canary diff；
+- raw Markdown hash diff；
+- fit Markdown hash diff。
 
-现有方案的总体方向正确：已经具备 Coverage、Snapshot、Canonical IR、Durable Task、HTTP First、Projection、增量同步、Web 管理等生产级骨架。本次文章没有推翻架构，而是把执行层进一步具体化，建议并已纳入最终方案的重点包括：
-
-1. **增加 Durable Streaming Frontier**：Provider/Seeder 不一次性物化全部 URL，Observation 小批提交并形成持久化 frontier；超大 Sitemap Index 按 child shard checkpoint。
-2. **明确 Fetch Worker 为 bounded-window streaming**：`arun_many(stream=True)` 只处理局部 lease 窗口，每个 URL 完成即提交，实现 bounded memory 和 partial success。
-3. **增加 Browser Pool 生命周期治理**：长期复用 browser/crawler，按 Source/Profile/安全域隔离 session，按页面数、RSS、寿命和 crash 自动 recycle。
-4. **明确两层并发控制**：平台全局/domain/source permit 是上限；`MemoryAdaptiveDispatcher`/Semaphore/RateLimiter 只做 Worker 内第二层自适应执行控制。
-5. **强化有损内容边界**：`PruningContentFilter/fit_markdown` 只能生成 `FILTERED_MARKDOWN` Projection，不能覆盖 Snapshot、Canonical IR 或 Canonical Markdown。
-6. **链接回流 Discovery Plane**：页面内部 links 必须经过 Observation → Normalize → Filter → Classify → Dedupe → Budget，禁止 Fetch Worker 无界递归。
-7. **Web 管理增加 Streaming/Frontier 与 Browser Pool 视图**，让 backpressure、adaptive concurrency、浏览器复用和队列水位可观测。
-
----
-
-## 15. 风险与边界
-
-- 遵守 robots、站点使用条款和抓取许可策略；不把反爬绕过作为默认能力。
-- Browser/Proxy 不能跨租户共享敏感状态。
-- 任何自动发现的外链都必须重新做 SSRF、DNS/IP、origin scope 校验。
-- Pruning/LLM/Embedding 等有损或模型派生能力不能成为唯一事实源。
-- 源站内容可能更新或消失，因此 Snapshot First 比“只保存 Markdown”更重要。
-- 大规模并发必须以源站友好为前提；吞吐最大化不是唯一目标，稳定、可恢复和可证明更重要。
+这样 Crawl4AI 升级造成字段或输出语义变化时，可以在切流前发现。
 
 ---
 
-## 16. 结论
+## 16. 对《博客知识库技术方案》的复核结论
 
-这篇实践证明了 Crawl4AI 在“批量 URL + 并发 + Markdown + 内容过滤 + 链接发现”执行层上的适配性。对 1000 个技术博客的方案而言，最合理的定位不是让 Crawl4AI 接管整个调度系统，而是把它作为 **可替换的 Fetch/Browser Execution Adapter**：平台负责 Coverage、持久化 frontier、幂等、版本、预算、增量与审计；Crawl4AI 负责单 Worker 内的高效页面执行、浏览器复用、流式多 URL 抓取和局部自适应并发。
+当前最终方案已经包含并正确吸收了这篇实践真正值得平台化的部分：
 
-这样既能利用 Crawl4AI 的工程能力，又不会把百万级长期知识库的可靠性绑定到 crawler 内存状态。
+1. Durable Streaming Frontier；
+2. bounded-window `arun_many(stream=True)`；
+3. per-URL commit / partial success；
+4. Browser Pool 与 session 隔离；
+5. 平台 Permit + Worker-local Dispatcher 两层并发；
+6. Snapshot First；
+7. Full Canonical Before Fit Markdown；
+8. 页面 links 回流 Discovery Plane；
+9. Site Profile/Route Release；
+10. Runtime Artifact Release、Adapter 边界与 fixture/canary。
+
+本次额外核验出的“`markdown_v2` → `markdown` API 演进”并不要求再增加新的主架构组件，因为当前方案已经把 Crawl4AI 定位为可替换 Adapter，并对 Runtime 版本化。实现阶段只需要把 **第三方 DTO 归一化契约**落实在 Adapter 内，并增加相关兼容 fixture 与监控即可。
+
+因此本次不重复改写《博客知识库技术方案.md》，避免在已经完整的最终方案中加入重复章节。
+
+---
+
+## 17. 风险与边界
+
+- 遵守 robots、站点条款、版权和抓取许可策略；
+- 不把反爬绕过作为平台默认能力；
+- Browser/Proxy/Session 不跨租户共享敏感状态；
+- 起始 URL、redirect、Browser navigation、页面新链接都重新执行 SSRF/DNS/IP/origin scope 校验；
+- `PruningContentFilter`、LLM、Embedding 都不能成为唯一事实源；
+- Crawl4AI 内存 frontier、Dispatcher 状态、session cache 都不能当 durable truth；
+- 第三方库升级必须固定版本、回归、canary 后再切换；
+- 吞吐最大化不是唯一目标，源站友好、可恢复、可审计、可回放优先。
+
+---
+
+## 18. 结论
+
+这篇 Crawl4AI 示例证明了 Crawl4AI 很适合承担“单 Worker 内高效页面执行”的职责：异步抓取、浏览器复用、批量 URL、流式返回、内容过滤、Markdown、链接发现和局部并发控制都能直接复用。
+
+但对 1000 个技术博客的长期知识库，Crawl4AI 不应该成为系统真相层。正确边界是：
+
+```text
+平台负责：
+Coverage / Durable Frontier / Task / Idempotency / Retry / Snapshot
+Identity / Version / Release / Incremental Sync / Audit / Web 管理
+
+Crawl4AI Adapter 负责：
+Browser Execution / arun_many / Dispatcher / Markdown candidate
+Structured candidate / Links / Runtime-local optimization
+```
+
+同时，通过 Adapter 输出稳定内部契约，把 `markdown_v2`、`markdown` 以及未来 Crawl4AI API/行为变化隔离在执行层。这样既能利用 Crawl4AI 的工程能力，又不会把百万级、长期运行的知识库可靠性绑定到某个第三方版本的对象模型或进程内状态。
