@@ -85,3 +85,4 @@
 | NeoTechPark 作者把这套流程用于其“每个要交付的客户 Landing Page”：先维护可复用的视觉参考库，再让 Claude Code 一次生成 5 个方向并要求每个候选都通过 Impeccable 的 slop 检查；确定方向后再用其精确设计词汇做局部强化，并配合开发态 tweak bar 继续调字体、强调色、间距和动效。文章还把图片优化、无障碍复核与开发控件隔离列为上线前要求，展示了 Impeccable 作为客户项目生产级审查与收尾层的可重复工作流。 | https://zenn.dev/neotechpark/articles/658d99a04844c1 |
 | Faizan Khan 明确反馈 Impeccable 已带来约 3 次客户转化，说明它并非只改善主观观感，而是在真实客户项目中被用于提升页面设计完成度，并被作者直接关联到可观察的转化结果。 | https://x.com/faizan10114/status/2052620908615917922 |
 | Michael Hedgpeth 表示团队从原型阶段一直到生产环境都在使用 Impeccable，并认为它显著提升了整体交付水平；这个记录体现了 Impeccable 已进入贯穿 prototyping→production 的持续设计工作流，而不是一次性的页面美化步骤。 | https://x.com/michaelhedgpeth/status/2045283339264028817 |
+| RicoDev 为在一个周末内验证希腊语学习产品 Speak Greek，把 Impeccable 用于真实品牌与 UI 落地：在完成十余个听说读写练习后，几分钟内生成间距、排版、配色和层级一致的界面，再用 Live Mode 点选局部并在三种变体中选择方案；最终将带交互练习、邮件收集和产品分析的 Demo 上线并获取首轮真实用户反馈。作者同时指出，AI 设计系统仍可能缺乏灵感或出现不一致，最终审美与一致性仍需要人工把关。 | https://www.indiehackers.com/post/bringing-an-idea-to-life-what-took-months-now-takes-a-weekend-528f088012 |
