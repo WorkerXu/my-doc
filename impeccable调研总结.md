@@ -77,3 +77,4 @@
 | Eelco Wiersma 将 Impeccable 实际用于公开站点 trevize.dev 的首页构建，并明确表示工具“帮助很大”，同时也指出 Landing Page 仍远未成为完全解决的问题、Agent 在设计上依旧会犯明显错误。这个案例的价值在于给出真实上线结果的同时保留了负面边界：Impeccable 能提高完成度，但并不能替代持续的人类设计判断。 | https://x.com/eelcodotdev/status/2080613915436667142 |
 | nILADRI 把 Impeccable 用于 withink.me 的真实 Landing Page，并在完成该页后继续推进产品的其他页面；发布记录同时展示了新 Landing Page 的实际视觉进展。该案例说明 Impeccable 不只适用于一次性的独立 Demo，也能作为真实产品多页面设计迭代的起点，逐步把同一视觉方向扩展到后续页面。 | https://x.com/dev_niladri/status/2087800124332474767 |
 | 产品设计师 Jashan Gupta 把 Impeccable 实际用于自己的个人 Portfolio，并在 Claude Code 中进行了多轮设计迭代，过程中几乎没有再依赖 Figma。这个案例展示了 Impeccable 可把设计语言和代码修改放在同一反馈循环里，让个人站点从方向调整到前端落地更多通过代码侧持续迭代完成。 | https://x.com/JASHANGUPTA15/status/2057568922443133188 |
+| Thomas “Ted” Davis 把 Impeccable 用在一个已有十年、历经十余次重设计的真实大型界面上，先运行 `/impeccable audit` 扫描数百个页面、视图和样式表，首轮就清理了字体与颜色不一致、遗漏的无障碍问题和响应式细节；随后按报告依次使用 `adapt`、`colorize`、`harden`、`optimize`、`extract` 等命令整改，再重复 audit，形成适合长期遗留前端的持续治理闭环。 | https://www.linkedin.com/in/thomasedavis |
