@@ -4,46 +4,60 @@
 
 - 项目：Browser Use
 - 地址：https://github.com/browser-use/browser-use
-- 本次源码基线：`main`，调研时 HEAD `f3298c559aabb327a61cf6a9caef5ea3462f45de`
-- 目标场景：1000+ 技术博客全历史回填、持续增量同步、Markdown 知识库、Web 管理，以及新增站点的低成本扩展。
-- 调研结论：Browser Use 不适合替代 HTTP/Crawl4AI/确定性 Playwright 抓取主链；最适合成为 **Agentic Browser Repair / Recipe Studio**，用于少量复杂站点的交互探索、诊断和 Recipe Candidate 生成。任何 Agent 运行结果都只能是候选和证据，不能直接成为 Coverage、Freshness、Document Version 或 canonical Markdown 的业务真相。
+- 源码基线：`main`，调研时 HEAD `f3298c559aabb327a61cf6a9caef5ea3462f45de`
+- 项目版本：`0.13.7`
+- Python：`>=3.11,<4.0`
+- 目标场景：1000+ 技术博客全历史回填、持续增量同步、Markdown 知识库、Web 管理、新增站点低成本扩展。
+
+结论：Browser Use 不适合替代 HTTP/Crawl4AI/确定性 Playwright 的批量抓取主链；它最适合作为 **Agentic Browser Repair / Recipe Studio**，用于少量复杂站点的交互探索、诊断和 Recipe Candidate 生成。其 Agent 产物必须经过平台的 Selector/Recipe Compiler 和确定性 Promotion Gate 后才可成为生产 Recipe。
+
+本次进一步确认一个容易被忽略的实现事实：**Browser Use 当前内置 Action Loop Detection 是 soft detection，只向 LLM 注入提示，不会真正阻止重复动作。** 因此生产平台必须在 Agent Loop 外部增加独立、版本化、不可被 prompt 修改的 **Agentic Progress Guard**，对循环、状态停滞、无新增 Observation 和预算耗尽进行硬终止。
 
 ---
 
 ## 2. 项目定位与适用边界
 
-Browser Use 的核心是让 LLM Agent 驱动真实 Chromium 浏览器完成多步骤网页任务。它把页面状态转换为适合模型理解的交互上下文，模型输出结构化动作，运行时执行动作，再基于新页面状态继续下一轮决策。
+Browser Use 的核心是让 LLM Agent 驱动真实 Chromium 浏览器完成多步骤网页任务。它把浏览器状态压缩为模型可理解的交互上下文，模型输出结构化动作，Runtime 执行动作，再重新观察状态进入下一轮。
 
-其优势是无需预先完整编码网站状态机，能处理“点击加载更多、展开年份、滚动到动态控件、切换分页、根据当前页面选择下一步”等开放式交互。
+典型优势：
 
-但对知识库采集，这个优势也带来四个根本限制：
+- 点击“加载更多”；
+- 展开年份/归档区；
+- 动态分页；
+- 滚动后才出现控件；
+- iframe/shadow DOM 场景；
+- 根据当前页面状态动态选择下一步。
 
-1. **吞吐低**：每一步都可能包含浏览器状态采集、模型调用和浏览器动作，无法与普通 HTTP GET 的 URL/s 相比；
-2. **成本高**：浏览器 CPU/内存 + LLM token/视觉输入成本叠加；
-3. **非确定性**：模型、prompt、截图、DOM 小改动都可能改变动作路径；
-4. **安全面大**：默认工具集合具备导航、JS、键盘、上传下载、文件读写等高能力，页面本身又是潜在 prompt-injection 输入。
+但大规模知识库抓取的主链要求高吞吐、低成本、确定性、可重放、可审计。Browser Use 每一步都可能包含页面状态采集、LLM round trip、浏览器动作和下一轮观察，因此：
 
-因此正确定位是：
+1. **吞吐低**：无法与普通 HTTP GET 相比；
+2. **成本高**：Browser CPU/内存 + LLM token/视觉输入；
+3. **非确定性**：模型、prompt、DOM、截图、A/B 都可能改变动作路径；
+4. **安全面大**：通用 Tool 能力远高于只读爬虫；
+5. **Agent 完成不等于 Coverage 完整**：找到一批 URL 不能证明全站已枚举。
+
+正确分层：
 
 ```text
-HTTP Fast Lane / Deterministic Browser Recipe
-                  |
-                  | 失败、长期 REPAIR、Onboarding 探索、Operator 诊断
-                  v
-       Agentic Browser Repair Sandbox
-                  |
-                  +--> immutable diagnostic evidence
-                  +--> URL Observation proposal
-                  `--> Recipe Candidate
-                           |
-                           v
-              Deterministic Promotion Gate
-                           |
-                           v
-              Production Browser Recipe
+HTTP Fast Lane
+      |
+      v
+Deterministic Browser Recipe
+      |
+      | hard cases only
+      v
+Agentic Browser Repair Sandbox
+      |
+      +--> Evidence / Observation proposal
+      +--> Selector Candidate
+      `--> Recipe Candidate
+               |
+               v
+      Deterministic Promotion Gate
+               |
+               v
+      Production Browser Recipe
 ```
-
-Browser Use 负责“找到一条可能可行的路”，平台负责把这条路编译、验证、版本化成“不再依赖 LLM 决策”的生产 Recipe。
 
 ---
 
@@ -51,57 +65,161 @@ Browser Use 负责“找到一条可能可行的路”，平台负责把这条�
 
 ### 3.1 Agent 主循环
 
-当前 `browser_use/agent/service.py` 的 Agent 由浏览器状态、MessageManager、LLM、Tools、AgentState 和 AgentHistory 共同驱动。一个 step 的核心逻辑可抽象为：
+`browser_use/agent/service.py` 中的 Agent 由 BrowserSession、MessageManager、LLM、Tools、AgentState、AgentHistory 协同驱动。一轮 step 可抽象为：
 
 ```text
-prepare current browser state
-        |
-        v
-build model messages/context
-        |
-        v
-LLM -> structured AgentOutput(actions[])
-        |
-        v
-execute actions
-        |
-        v
-post-process / history / cost / errors
-        |
-        v
-next step
+Browser State
+   -> build model context
+   -> LLM structured AgentOutput(actions[])
+   -> execute actions
+   -> collect results/errors/history/cost
+   -> next state
 ```
 
-Agent 参数中直接影响生产风险的包括：
+与生产风险直接相关的参数包括：
 
 - `max_actions_per_step`：默认 5；
 - `max_failures`：默认 5；
-- `llm_timeout`：按模型选择默认值；
 - `step_timeout`：默认 180 秒；
-- `max_history_items`：可限制送回模型的历史；
-- `use_vision`：控制截图是否进入模型上下文；
-- `output_model_schema`：用 Pydantic 约束最终结构化输出；
-- `fallback_llm`：主模型连续重试失败后可切换备用模型；
-- `calculate_cost`：可收集 token/费用统计；
-- `on_step_start` / `on_step_end` hooks：可在每一步前后采集平台证据或实施额外策略。
+- `llm_timeout`；
+- `max_history_items`；
+- `use_vision`；
+- `output_model_schema`；
+- `fallback_llm`；
+- `calculate_cost`；
+- `on_step_start/on_step_end` hooks；
+- `enable_planning`；
+- `planning_replan_on_stall`；
+- `planning_exploration_limit`；
+- `loop_detection_window`；
+- `loop_detection_enabled`；
+- `message_compaction`。
 
-`output_model_schema` 能约束“最终输出长什么样”，但不能让 Agent 推理过程变成确定性执行。对 Recipe Studio 来说，它适合约束 `RecipeCandidate` schema，不应被误解为生产一致性保证。
+`output_model_schema` 只能约束输出结构，不能把模型推理路径变成确定性流程。对平台最合理的用途是约束 `RecipeCandidate`/诊断结果 schema。
 
-### 3.2 一步多动作与 stale DOM 风险
+### 3.2 一步多动作与 stale DOM
 
-当前 Agent 支持一次模型响应返回多项 action。`multi_act()` 有两层保护：
+Browser Use 支持一个模型响应返回多个 action。`multi_act()` 会在导航/切 tab 等终止型动作后停止同批动作，并在每个动作后检查 URL 和 focus target 是否变化。
 
-1. 静态保护：被标记为 `terminates_sequence=True` 的导航、搜索、回退、切 tab 等动作执行后中止同批后续动作；
-2. 运行时保护：每项动作后比较 URL 和当前 focus target，若 URL/target 变化则中止剩余动作。
+这能减少“导航后继续点击旧页面 index”的风险，但无法覆盖：
 
-这能降低“导航后继续点击旧元素”的风险，但不能完全覆盖 **URL 不变、target 不变、DOM 局部重绘** 的 SPA/React 场景。例如点击“加载更多”后列表原地重建，后一个 index 可能已经指向不同元素。
+```text
+URL 未变
+focus target 未变
+React/Vue 原地重绘 DOM
+selector map 已重新编号
+```
 
-因此在知识库 Recipe Studio 中：
+例如点击“加载更多”后列表原地重建，后续 action 仍拿旧 index，就可能点击错误元素。
 
-- 探索模式可以保留 Browser Use 的 multi-action；
-- **录制/候选编译模式建议 `max_actions_per_step=1`，或至少所有 DOM-state-mutating 动作后强制重新采样 DOM 状态；**
-- Production Recipe Executor 必须把每个会改变页面状态的动作视为明确状态边界；
-- 不以“一次 Agent step”作为平台事务或幂等边界。
+因此：
+
+- 探索模式可允许 multi-action；
+- **候选录制/编译默认 `max_actions_per_step=1`**；
+- 任意改变 DOM/URL/focus target 的动作后强制重新采样 BrowserState；
+- Production Recipe 每个 mutating action 都是明确状态边界；
+- Agent step 不是平台事务或幂等边界。
+
+### 3.3 ActionLoopDetector：软检测，而不是硬终止
+
+本次重点核对了 `browser_use/agent/views.py` 中的 `ActionLoopDetector` 以及 `browser_use/agent/service.py` 的注入逻辑。
+
+源码对该类的定义明确说明：
+
+> 它是 soft detection system，只为 LLM 生成上下文提示，不阻止 action；Agent 仍然可以继续重复。
+
+其实现包含两类信号。
+
+#### 3.3.1 动作重复检测
+
+每个动作先被归一化，再计算稳定 hash。Detector 保存最近 `window_size` 个 action hash，默认窗口为 20，并计算某个动作在窗口内的最大重复次数。
+
+当前 nudge 分级大致为：
+
+```text
+>= 5  次类似动作 -> 第一级提醒
+>= 8  次类似动作 -> 更强提醒
+>= 12 次类似动作 -> 高强度提醒
+```
+
+`wait`、`done`、`go_back` 等动作会被排除或特殊处理，降低显然的误报。
+
+#### 3.3.2 页面停滞检测
+
+Detector 还记录页面 fingerprint。当前实现输入至少包括：
+
+```text
+current URL
+DOM 的 LLM representation
+selector_map 的元素数量
+```
+
+若连续页面 fingerprint 不变，会增加 `consecutive_stagnant_pages`；达到一定次数后向模型注入“页面没有变化”的提示。
+
+#### 3.3.3 注入发生在上下文层
+
+`_inject_loop_detection_nudge()` 取得 detector 的 nudge message，然后调用 MessageManager 向下一轮模型上下文追加消息；**它没有在 Browser Gateway、Task、Attempt 或 action dispatcher 层执行 hard stop。**
+
+同样，planning/replan 也主要通过提示模型完成：
+
+- 连续失败达到 `planning_replan_on_stall` 时，注入重新规划建议；
+- 探索步骤达到 `planning_exploration_limit` 且没有计划时，注入创建 plan/done 的建议。
+
+所以这些机制属于“提高 Agent 自我纠错概率”，不是生产平台的资源与正确性门禁。
+
+### 3.4 为什么知识库平台必须有独立 Progress Guard
+
+如果只依赖 Runtime 的 soft nudge：
+
+- 模型可能忽略提醒继续点击；
+- 页面可以通过 prompt injection 诱导 Agent 继续循环；
+- 无限滚动场景可能每次 DOM 有微小变化，从而绕过简单 stagnant fingerprint；
+- 找不到新 URL 但页面状态仍在变化时，Runtime 可能继续消耗 token/browser minute；
+- “预算还没用完”与“任务有进展”是两回事。
+
+因此平台需要独立 `Agentic Progress Guard`，运行在 LLM 决策之外。它的 hard-stop 决定不能被 prompt、model output 或页面内容覆盖。
+
+建议每一步计算：
+
+```text
+progress_fingerprint = hash(
+  normalized_url,
+  focus_target_id_hash,
+  dom_semantic_hash,
+  discovered_url_set_hash,
+  candidate_or_observation_hash,
+  normalized_action_signature
+)
+```
+
+同时维护：
+
+```text
+rolling action repetition
+consecutive stagnant state
+state fingerprint revisit count
+steps without new URL/Observation
+steps without useful artifact/candidate change
+page/tab count
+wall time
+token/cost
+```
+
+平台 hard stop 示例：
+
+```text
+AGENT_ACTION_LOOP
+AGENT_STATE_STAGNANT
+NO_NEW_OBSERVATION_PROGRESS
+REPEATED_STATE_CYCLE
+PLANNING_STALL
+MAX_STEPS
+WALL_TIME_EXHAUSTED
+TOKEN_BUDGET_EXHAUSTED
+COST_BUDGET_EXHAUSTED
+```
+
+Browser Use 内置 detector/replan 仍可保留为 advisory signal，并写 Evidence，帮助 Operator 理解 Agent 在 hard stop 前已经收到过哪些提示。
 
 ---
 
@@ -109,9 +227,9 @@ Agent 参数中直接影响生产风险的包括：
 
 ### 4.1 事件驱动控制层
 
-Browser Use 的 `BrowserSession` 并不是简单调用 Playwright API，而是围绕浏览器事件建立一层 EventBus。Watchdog 通过 `on_<EventType>` 命名约定注册事件处理器，分别负责浏览器生命周期、DOM、下载、弹窗、安全、截图、录制、权限、存储状态、崩溃等职责。
+BrowserSession 不是简单 Playwright wrapper，而是围绕 EventBus 建立浏览器事件层。不同 Watchdog 负责浏览器生命周期、DOM、安全、下载、弹窗、截图、录制、权限、Storage State、崩溃等。
 
-这种结构的工程价值是：
+抽象：
 
 ```text
 Agent / Tool intent
@@ -129,86 +247,71 @@ Browser Event
 CDP / Actor execution
 ```
 
-平台应借鉴这个分层：LLM 不直接拿任意 CDP/Playwright 对象，而只能调用平台允许的高层动作，由 Browser Gateway 在真正执行前再次做 Capability、Scope、预算和副作用校验。
+对平台最值得吸收的思想：**LLM 不拿任意 Playwright/CDP 对象，只调用平台批准的高层动作。** Browser Gateway 在执行前重新验证 Capability、Scope、预算、Progress Guard 和副作用。
 
 ### 4.2 Watchdog 恢复不等于业务恢复
 
-`BaseWatchdog` 在 CDP 断开时有 circuit-breaker 行为；若处于 reconnecting 状态会等待重连，事件处理异常时也会尝试重新取得 CDP session。这个机制解决的是“浏览器连接/会话层”的故障恢复。
+Browser/CDP reconnect 解决连接层恢复，不等于 durable task recovery：
 
-它**不等价于知识库平台的 durable task recovery**：
+- 连接恢复不代表 LLM 会走同样路径；
+- AgentHistory 不能替代 Task/Attempt/Lease/Fencing Token；
+- in-memory session/event/history 不能成为业务 checkpoint；
+- Agentic crash 应结束当前 Attempt，保存已晋升 Evidence，再按策略创建新的 Run；
+- 确定性 Recipe 才适合按平台 step checkpoint 重放。
 
-- 浏览器重新连上，不代表同一 LLM 下一步还会做同样决策；
-- AgentHistory 可以保存动作，但不能代替 Task/Attempt/Lease/Fencing Token；
-- Browser Use 的 session state、event history、内存 history 都不能成为业务 checkpoint；
-- Worker/Browser 崩溃后，平台应关闭当前 Attempt，保存已晋升的证据，再创建新的 Attempt；确定性 Recipe 可从明确 step checkpoint 重放，Agentic Run 则默认从受控入口重新探索，而不是宣称“继续了同一条业务事务”。
+### 4.3 Actor/CDP 能力面
 
-### 4.3 Actor/CDP 层
+Browser Use Actor/CDP 层可实现导航、元素定位、click/fill/hover/focus/select/drag、JavaScript evaluate、截图、键鼠、Prompt-based element lookup、结构化 content extract。
 
-`browser_use/actor` 提供 Page、Element、Mouse 等低层 CDP 抽象，可执行：
+能力上限很高，因此必须实施四层边界：
 
-- 页面导航/回退/刷新；
-- CSS selector 元素查询；
-- backend node id 元素定位；
-- click/fill/hover/focus/select/drag；
-- 页面和元素 JavaScript evaluate；
-- 截图、键盘、鼠标；
-- LLM 驱动的 `get_element_by_prompt` 和结构化 `extract_content`。
-
-这说明 Browser Use 的能力上限很高，所以平台不能仅用 prompt 约束它。生产安全边界必须在 Tool Registry、Browser Gateway、容器网络和 Source Policy 四层共同实施。
+```text
+Tool Registry
+Browser Gateway
+Container/Network Policy
+Source Policy
+```
 
 ---
 
 ## 5. DOM 表达与元素身份
 
-### 5.1 不是简单把 HTML 全量塞给模型
+### 5.1 DOM + Accessibility + 可见性
 
-Browser Use 的 DOM/页面状态面向 Agent 做过语义化处理，结合 DOM、Accessibility Tree、可交互元素、布局/可见性、iframe/shadow DOM、截图等信息，生成更适合模型行动的浏览器状态摘要。
+Browser Use 不只是把 HTML 全量塞给 LLM，而是结合 DOM、Accessibility Tree、可交互元素、布局/可见性、iframe/shadow DOM、截图等生成更适合行动的状态表示。
 
-这对复杂归档页很有价值，因为模型能看到“可操作元素”而不仅是正文文本。
+这使 Agent 能识别“下一页”“加载更多”“展开归档”等交互入口。
 
-### 5.2 highlight index 是观测内标识，不是 Recipe 标识
+### 5.2 highlight index 是临时标识
 
-Agent 常使用 `click(index=...)` 等动作。这个 index 来自当前 DOM 状态中的 selector map，本质上是**当前页面快照下的临时编号**。
+Agent 经常使用 `click(index=...)`。index 来源于当前 DOM selector map，只属于当前页面快照：
 
-它不具备长期稳定性：
+- 插广告会改变 index；
+- DOM 重绘会重建 selector map；
+- locale/A-B/cookie/login 状态会改变元素集合；
+- viewport/iframe/shadow DOM 也会改变观察结果。
 
-- 页面插入广告/导航元素后 index 会变化；
-- React/Vue 重渲染后 selector map 会重建；
-- A/B、登录态、locale、cookie 会改变元素集合；
-- iframe、shadow DOM、viewport 状态也会影响可交互元素视图。
+强约束：
 
-因此必须建立不变量：
+> Browser Use highlight index、CDP node id、backend node id 只能用于单次 Agent Run 的动作和证据关联，禁止直接进入 Production Recipe。
 
-> Browser Use 的 `highlight index`、CDP node id、backend node id 只能用于单次 Agent Run 内的定位与证据关联，**不得直接写入 Production Recipe 作为长期 selector**。
+### 5.3 History Replay 的启发式重定位
 
-### 5.3 History Replay 的五级元素重定位
+当前 Agent history replay 会尝试重新找到历史交互元素，常见匹配层级包括：
 
-当前 `Agent` 的 history replay 对历史交互元素并不是简单复用旧 index，而是尝试重新匹配当前 DOM，源码优先级为：
+```text
+EXACT
+STABLE
+XPATH
+AX_NAME
+ATTRIBUTE
+```
 
-1. `EXACT`：元素 hash 完全匹配；
-2. `STABLE`：过滤动态 CSS class 后的 stable hash；
-3. `XPATH`：历史 XPath 匹配；
-4. `AX_NAME`：节点类型 + Accessibility name；
-5. `ATTRIBUTE`：`name`、`id`、`aria-label` 等唯一属性回退。
+它适合调试与尽力复现，也适合收集 selector 候选，但不是长期 selector contract：hash/XPath/AX/name 都可能漂移、碰撞或出现歧义。
 
-匹配成功后才把历史 action 的 index 更新为当前 selector map 中的新 index。
+### 5.4 Selector Compiler
 
-这个设计说明 Browser Use 本身也承认 index 不稳定，并通过多层特征做“尽力重定位”。它很适合：
-
-- 调试一次失败 run；
-- 在页面变化不大的情况下 rerun history；
-- 为 Recipe Compiler 收集 selector 候选和稳定性证据。
-
-但它仍不能直接当生产 Recipe 机制，因为：
-
-- hash/XPath/AX/name 都可能碰撞或失效；
-- 多个元素同名时可能有歧义；
-- replay 是启发式重定位，不是业务层 selector contract；
-- live 页面长期变化需要可量化的多样本稳定性测试和 release 管理。
-
-### 5.4 推荐 Selector Compiler
-
-Agent 成功探索后，平台不要保存 index，而应把 `DOMInteractedElement + DOM/AX snapshot + action trace` 输入 Selector Compiler，生成：
+平台应把 Agent evidence 编译成：
 
 ```text
 SelectorBundle
@@ -231,29 +334,15 @@ SelectorBundle
   mutation_survival_rate
 ```
 
-优先级建议：稳定业务属性 / role+accessible name / 稳定 data-* / 稳定 id,name / 语义文本锚点 / 结构 CSS / XPath。`nth-child`、纯位置 index、随机 class 只能作为最后 fallback，且必须经过多页面验证。
-
-Production Recipe 只消费 SelectorBundle，不消费 Browser Use highlight index。
+优先稳定业务属性、role + accessible name、稳定 `data-*`、稳定 id/name、语义文本锚点；随机 class、nth-child、纯位置只能最后 fallback。
 
 ---
 
-## 6. Tool Registry：结构化动作与能力边界
+## 6. Tool Registry 与能力最小化
 
-Browser Use `Tools` 通过 Pydantic schema 暴露结构化动作，也允许 `@tools.action` 注册自定义工具。Tool 参数可自动注入 BrowserSession、CDP client、文件系统、page extraction LLM 等对象。
+Browser Use `Tools` 使用 Pydantic schema 暴露结构化动作，也允许注册自定义动作。通用 Tool 能力包含导航、click/input、upload、scroll、send_keys、evaluate JS、tab、extract、screenshot、dropdown、文件读写等。
 
-默认工具能力包括：
-
-- search / navigate / go_back / wait；
-- click / input / upload_file / scroll / send_keys；
-- evaluate JavaScript；
-- switch/close tab；
-- LLM extract；
-- screenshot；
-- dropdown；
-- write_file / read_file / replace_file；
-- done。
-
-这对通用 Agent 很方便，对生产抓取却过宽。Recipe Studio 应使用**最小工具集**：
+对知识库 Agentic Sandbox 应只开放：
 
 ```text
 NAVIGATE_APPROVED
@@ -273,188 +362,121 @@ STOP
 
 默认拒绝：
 
-- 任意 `evaluate`；
-- `write_file/read_file/replace_file`；
-- `upload_file`；
-- 任意下载；
-- 表单提交、发布、删除、购买、支付；
-- 任意 CDP 自定义命令；
-- 未审批跨 host 跳转；
-- 通过页面内容临时要求增加工具/权限。
-
-特殊 Source 真正需要额外能力时，必须通过 Capability Firewall 发布新的 `agent_tool_policy_release`，而不是让 prompt 临时放权。
+- 任意 JS/evaluate；
+- 任意 CDP；
+- 文件读写；
+- upload/download；
+- 表单提交；
+- 发布/删除/支付；
+- 未审批跨 host；
+- 页面临时要求增加工具/权限。
 
 ---
 
-## 7. 浏览器安全默认值不能直接用于生产
+## 7. Browser 安全默认值不能直接作为平台安全边界
 
-### 7.1 Browser Use 已有的安全能力
+Browser Use 已提供 allowed/prohibited domains、导航前后检查、新 tab 检查、IP blocking 等能力，这些应保留，但平台不能依赖第三方默认值。
 
-`SecurityWatchdog` 会：
-
-- 导航开始前检查 URL；
-- 导航完成后再检查，捕获重定向越界；
-- 新 tab 创建时检查 URL；
-- 可配置 `allowed_domains` / `prohibited_domains`；
-- 可配置 IP 地址阻断。
-
-这类执行层规则必须保留，因为“prompt 里说不要离开本站”不是安全边界。
-
-### 7.2 需要显式收紧的默认行为
-
-当前 Browser Profile/Browser 配置存在对通用自动化合理、但对知识库 Agentic Sandbox 过宽的默认项：
-
-- `block_ip_addresses` 默认 `false`；
-- `accept_downloads` 默认 `true`；
-- 浏览器权限默认包含 `clipboardReadWrite`、`notifications`；
-- `auto_download_pdfs` 默认 `true`；
-- SecurityWatchdog 对 `data:`、`blob:` URL 直接放行；
-- 未设置 allow/prohibited domains 时默认允许普通 URL；
-- Storage State 可持久化 Cookies/localStorage 并在后续运行加载/合并。
-
-所以平台必须显式编译安全 Profile：
+Agentic Sandbox 必须显式编译：
 
 ```yaml
-agent_browser_security:
-  allowed_domains: <from approved Source Scope>
-  block_ip_addresses: true
-  accept_downloads: false
-  auto_download_pdfs: false
-  permissions: []
-  cross_origin_iframes: false
-  persistent_profile: false
-  allow_data_urls: false
-  allow_blob_urls: false
-  allow_file_scheme: false
-  allow_arbitrary_cdp: false
-  allow_arbitrary_js: false
-  allow_upload: false
-  allow_clipboard: false
+allowed_domains: <Source Scope>
+block_ip_addresses: true
+accept_downloads: false
+auto_download_pdfs: false
+permissions: []
+persistent_profile: false
+allow_data_urls: false
+allow_blob_urls: false
+allow_file_scheme: false
+allow_arbitrary_cdp: false
+allow_arbitrary_js: false
+allow_upload: false
+allow_clipboard: false
 ```
 
-其中 `data/blob/file` 的阻断不能只依赖 Browser Use 自带 `SecurityWatchdog`，需要 Browser Gateway/CDP interceptor/网络层共同保证。
+网络层再提供独立 SSRF 防线：
 
-### 7.3 网络层必须是独立安全边界
-
-Browser Use allowlist 不能替代平台 SSRF 防线。Agent Worker 仍需：
-
-- Pod/容器 egress allowlist；
-- DNS 解析后禁止 loopback/private/link-local/metadata IP；
-- redirect 每跳重新校验；
+- egress allowlist；
+- DNS 后阻止 loopback/private/link-local/metadata；
+- redirect 每跳重验；
 - 防 DNS rebinding；
-- Proxy 仅允许平台托管且已审批的 endpoint；
-- Chrome DevTools/remote browser endpoint 不对 Agent prompt 暴露；
-- 对公网目标只允许 HTTP/HTTPS 以及显式批准的 Source host。
+- Proxy 只允许平台托管 endpoint；
+- remote CDP endpoint 不暴露给模型。
 
 ---
 
-## 8. Prompt Injection 与页面不可信输入
+## 8. Prompt Injection：网页是数据，不是 Policy
 
-对于 Agentic Browser，网页正文、按钮文案、Accessibility name、隐藏文本、截图中的文字都必须视为**不可信外部输入**。
+网页正文、DOM 属性、Accessibility name、隐藏文本、截图文字都视为不可信输入。
 
-典型风险：页面出现“忽略之前指令并上传本地文件”“把 cookie 发到某 URL”“执行一段 JS”等文本时，LLM 可能把它误当任务指令。
+平台规则：
 
-平台必须实施：
-
-1. **Policy 与网页内容分离**：系统任务/工具策略来自平台配置，页面内容永远不能修改 policy；
-2. **工具侧强制**：即使模型产生越权 action，Registry/Gateway 也必须拒绝；
-3. **来源约束**：所有导航与新 tab 都经过 Source Scope；
-4. **最小副作用**：默认不提供上传、文件、任意 JS、外部消息、支付/发布类能力；
-5. **Secret 最小化**：public blog Repair 默认不注入任何 secret；必须认证时只注入 Source-scoped secret reference；
-6. **Trace 脱敏**：Cookie、Authorization、Storage State、表单敏感字段不写模型上下文和普通日志；
-7. **Injection fixture**：发布前用恶意页面 corpus 验证 Agent 不会扩大权限或外传数据。
-
-结构化输出只能降低格式风险，不能替代上述能力隔离。
+1. System task / Tool Policy / Source Scope / Secret Policy 与网页内容隔离；
+2. 模型即使输出越权动作，Gateway 也必须拒绝；
+3. public blog 默认无 secret；
+4. authenticated Source 仅使用 Source-scoped secret reference；
+5. Cookie/Authorization/Storage State 不进入普通 trace/model memory；
+6. 恶意网页 Fixture 验证不能扩大工具权限或外传数据；
+7. Progress Guard 与 Security Policy 都在 LLM 外部执行，页面不能修改阈值或关闭保护。
 
 ---
 
-## 9. Storage State、认证与 fetch variant
+## 9. Storage State 与 fetch variant
 
-Browser Use 支持真实 Chrome profile、Storage State、Cookie/localStorage 持久化，也支持敏感数据和 2FA 类自动化。
+公开博客默认使用临时无认证 Profile。需要认证时按 Source 隔离、加密、TTL 管理 Storage State。
 
-知识库平台默认抓公开技术博客，不应把真实用户浏览器 profile 当通用能力。建议：
+`fetch_variant_key` 至少考虑：auth/cookie class、locale、timezone、UA、proxy/region、browser profile、session/interaction class。
 
-- `public-default`：全新临时 profile，无认证，无持久 Storage State；
-- `source-authenticated`：单 Source 专用、加密存储、TTL、单独审批；
-- 不共享跨 Source Cookie；
-- `fetch_variant_key` 必须包含 auth/cookie class、locale、UA、proxy/region、browser profile；
-- authenticated artifact 不能与 public artifact 交叉复用；
-- CAPTCHA、付费墙、明确反自动化控制默认不绕过，进入人工/合规审批。
-
-Agent 成功并不意味着生产 Recipe 可以在另一个 variant 下成功，因此 Agentic Run 与 Replay/Canary 必须绑定相同 `fetch_variant_key`。
+Agentic Run、Replay、Shadow、Canary 必须在兼容 variant 下比较，否则“Agent 成功、生产 Recipe 失败”难以解释。
 
 ---
 
-## 10. 历史、Replay 与可观测性
+## 10. Agentic Evidence 与可观测性
 
-### 10.1 AgentHistory 能保存什么
-
-`AgentHistoryList` 可提供：
-
-- visited URLs；
-- screenshots；
-- action names / model actions；
-- extracted content；
-- errors；
-- model outputs / thoughts；
-- action results；
-- step count / total duration；
-- structured output；
-- 使用 `calculate_cost` 时的 token/cost usage。
-
-这些非常适合诊断和 Recipe 生成，但平台不能把 Python 内存对象作为 durable evidence，必须把需要保留的字段晋升到 PostgreSQL + S3/MinIO。
-
-### 10.2 建议的 Agentic Evidence
+### 10.1 Run
 
 ```text
 agentic_repair_run
-  run_id
-  source_id
-  url_id
-  fetch_variant_key
+  run_id / source_id / url_id / fetch_variant_key
   trigger_reason
-  browser_use_release
-  browser_build_release
-  model_release
-  prompt_release
-  tool_policy_release
-  observation_schema_release
-  security_policy_release
-  max_steps / max_actions
-  wall_time_budget_ms
-  token_budget
-  cost_budget
+  browser_use_release / browser_build_release
+  model_release / prompt_release
+  tool_policy_release / observation_schema_release
+  security_policy_release / progress_guard_release
+  max_steps / max_actions / wall_time / token / cost
   started_at / finished_at
-  outcome
-  stop_reason
+  outcome / stop_reason
+```
 
+### 10.2 Step Evidence
+
+```text
 agentic_step_evidence
-  run_id
-  step_no
-  pre_state_hash
-  post_state_hash
-  current_url
-  focus_target_id_hash
+  run_id / step_no
+  pre_state_hash / post_state_hash
+  current_url / focus_target_id_hash
+  progress_fingerprint
+  new_observation_count
+  loop_repetition_count
+  stagnant_state_count
+  state_revisit_count
+  internal_loop_nudge_level
+  progress_guard_decision
   dom_snapshot_artifact_id
   accessibility_snapshot_artifact_id
   screenshot_artifact_id
   network_trace_artifact_id
-  model_action_schema_hash
   actions_redacted[]
   policy_decisions[]
   interacted_element_evidence[]
   action_results[]
   destination_urls[]
-  token_usage
-  estimated_cost
-  duration_ms
+  history_match_level
+  token_usage / estimated_cost / duration_ms
 ```
 
-如果使用 HAR/trace/video，必须先经过大小、敏感头、Cookie、query secret 脱敏策略，再晋升对象存储。
-
-### 10.3 Telemetry
-
-Browser Use 支持 OpenTelemetry 生态集成，也有匿名 telemetry 配置。企业/自托管环境建议显式设置 telemetry 策略，不依赖默认值；生产观测统一进入平台 OTEL，而不是把业务 trace 分散在第三方系统。
+DOM/AX/screenshot/HAR/trace/video 必须先经敏感字段、大小和身份校验后再晋升平台对象存储。
 
 ---
 
@@ -462,17 +484,17 @@ Browser Use 支持 OpenTelemetry 生态集成，也有匿名 telemetry 配置。
 
 ### 11.1 触发条件
 
-仅在以下情况下进入 Agentic Repair：
+只在以下情况进入 Agentic Repair：
 
-1. HTTP Fast Lane 失败，普通 Browser Recipe 也无法稳定获得合格内容；
-2. 归档 URL 必须经过多步骤交互才能暴露；
-3. Source 持续出现同类 REPAIR/REVIEW；
-4. 新 Source onboarding 需要自动探索少量样本；
-5. Operator 主动发起诊断。
+- HTTP 与确定性 Browser Recipe 都失败；
+- 归档 URL 需要多步骤交互才能暴露；
+- Source 长期出现同类 REPAIR/REVIEW；
+- onboarding 探索少量样本；
+- Operator 主动诊断。
 
-禁止对所有 URL 默认开启，也禁止用 Agentic Repair 的局部发现宣告历史 Provider 完成。
+禁止对全站 URL 默认开启。
 
-### 11.2 Recipe Candidate DSL
+### 11.2 Recipe Candidate
 
 ```yaml
 recipe_candidate:
@@ -496,178 +518,84 @@ recipe_candidate:
     - extract_links:
         selector_ref: article_links_v3
         scope: same_source
-  assertions:
-    - min_links: 50
-    - no_cross_scope_navigation: true
 ```
 
-核心是：Candidate 引用平台编译的 `selector_ref`，不保存 Browser Use 的临时 index。
+Agent action 先 Normalization，再把 ephemeral index 替换为 SelectorBundle，移除高风险动作，补全 wait/assert/loop bound，形成 Recipe Candidate + provenance。
 
-### 11.3 Recipe Compiler
-
-编译流程：
-
-```text
-Agent actions + DOM/AX evidence
-        |
-        v
-Normalize actions
-        |
-        v
-Replace ephemeral indices with SelectorBundle
-        |
-        v
-Remove unsupported/high-risk actions
-        |
-        v
-Infer explicit waits/assertions/loop bounds
-        |
-        v
-Recipe Candidate + provenance
-```
-
-如果某个动作无法从临时 index 编译成稳定 selector，Candidate 必须标记 `UNCOMPILABLE_ELEMENT_REFERENCE`，不能把 index 原样带入 Recipe。
-
-如果某一步必须再次询问 LLM“下一步点击哪个”，则该 Candidate 不能自动晋升生产，只能继续保留在 Agentic Repair 层。
-
-### 11.4 Deterministic Recipe Promotion Gate
+### 11.3 Promotion Gate
 
 ```text
 Recipe Candidate
-   -> Schema / Static Policy Validation
-   -> Selector Ambiguity Validation
-   -> Fixture Replay (no LLM)
-   -> Repeated Replay on same fixture
-   -> Multi-page / multi-variant sample replay
-   -> Shadow
-   -> Source Canary
-   -> Approval
-   -> recipe_release
+ -> Schema / Static Policy Validation
+ -> Security Validation
+ -> Selector Ambiguity Validation
+ -> Fixture Replay (no LLM)
+ -> Repeated Replay
+ -> Sampled Live Replay
+ -> Shadow
+ -> Source Canary
+ -> Approval
+ -> recipe_release
 ```
 
-门禁至少检查：
-
-- DSL 只包含 allowlist action；
-- 无越界 host/path；
-- 无任意 JS/CDP/file/upload/download side effect；
-- 所有 loop 有 hard bound；
-- 所有 wait 有 timeout；
-- selector `expected_cardinality` 合法且无歧义；
-- selector 在多页面样本命中率达到策略阈值；
-- DOM 局部重绘后 selector 不产生明显错误目标；
-- 同一 fixture 多次 replay 输出稳定；
-- URL discovery 与当前 Provider/Recipe 的差异可解释；
-- 由 Recipe 获取到的 HTML 仍进入平台正常 Raw Artifact → Cleaner → Candidate → IR → Markdown 管线；
-- Agent 的 `extracted_content`/final result 永远不直接成为 canonical Markdown。
+如果某一步仍需要“再问一次 LLM 下一步怎么做”，就不能自动晋升生产。
 
 ---
 
-## 12. Agentic Run 的任务恢复语义
+## 12. 任务恢复语义
 
-平台必须明确区分：
+必须区分：
 
 ```text
 Browser Use rerun_history  = 尽力复现历史交互
-Production Recipe replay   = 确定性动作 DSL 的可验证重放
-Platform Task recovery     = durable Task/Attempt/Lease/Fencing/Artifact 恢复
+Production Recipe replay   = 确定性 DSL 重放
+Platform Task recovery     = Task/Attempt/Lease/Fencing/Artifact 恢复
 ```
 
-三者不能混用。
-
-推荐：
-
-- Agentic Run 崩溃：保留已晋升证据，Attempt 失败；按预算/策略创建新 run；
-- Deterministic Recipe 崩溃：可从平台 step checkpoint 重放；
-- BrowserSession CDP reconnect：只记录为当前 Attempt 的 runtime recovery event，不自动推进业务状态；
-- replay history 匹配到 `STABLE/XPATH/AX/ATTRIBUTE` 时，把 match level 记录为诊断指标；不能因为“重放成功”自动提高 Recipe Release 信任等级。
+- Agentic crash：保存已晋升 Evidence，Attempt 失败，按策略新建 Run；
+- deterministic Recipe crash：可按 step checkpoint 重放；
+- CDP reconnect：只记 runtime recovery，不推进 Coverage/Freshness/Version；
+- history match level 只做诊断，不自动提高 Recipe 信任等级。
 
 ---
 
 ## 13. 成本与容量治理
 
-1000+ Source 平台不能让 Agentic Repair 抢占主抓取资源。建议独立资源池：
+资源池：
 
 ```text
-fetch-http            高吞吐主池
+fetch-http            高吞吐
 fetch-browser         确定性 Browser Slow Lane
-agentic-repair        低优先级、低并发、独立预算池
+agentic-repair        低优先级、低并发、独立预算
 ```
 
-Agentic Repair 至少限制：
+Agentic Repair 限制：steps、actions、wall time、token、cost、page/tab、artifact bytes、Source daily quota、global slots、无新 Observation 阈值、state revisit 阈值。
 
-- 单 run 最大 steps；
-- 单 step 最大 actions；
-- 浏览器 wall time；
-- 模型 token；
-- 总费用；
-- 页面/tab 数；
-- screenshot/trace 总大小；
-- Source 每日 Repair quota；
-- 全局并发槽位；
-- 连续无新 URL/无状态变化的停止阈值。
-
-Typed stop reason 示例：
-
-```text
-SUCCESS_CANDIDATE
-NO_NEW_URLS
-LOOP_DETECTED
-MAX_STEPS
-TOKEN_BUDGET_EXHAUSTED
-COST_BUDGET_EXHAUSTED
-WALL_TIME_EXHAUSTED
-POLICY_DENIED
-CROSS_SCOPE_BLOCKED
-SELECTOR_UNCOMPILABLE
-PROMPT_INJECTION_SUSPECTED
-BROWSER_CRASH
-MODEL_FAILURE
-```
-
-任何预算耗尽或部分成功都不能被误报为 Coverage Complete。
+Browser Use 内部 nudge 即使出现，也不能延长平台硬预算。
 
 ---
 
-## 14. Web 管理功能建议
+## 14. Web Recipe Studio
 
-Recipe Studio 页面需要同时解决“可观察、可编辑、可验证、可回滚”：
+后台需要展示：
 
-- 对 Source/URL 发起 Agentic Repair；
-- 实时展示 URL、截图、DOM/AX 摘要、每步 action/result；
-- 展示每个动作的 policy allow/deny；
-- 展示 Browser Use 临时 index 对应的元素证据；
-- 展示 history replay 的 match level；
-- 自动生成 SelectorBundle；
-- 展示 selector 在 fixture/live sample 的匹配率、歧义率、mutation survival；
-- 人工编辑 selector fallback 和 DSL；
-- 一键 deterministic replay；
-- 展示 shadow/canary 与旧 Recipe 的 URL、质量、成本 diff；
-- 审批、拒绝、发布、回滚 `recipe_release`；
-- 查看 token/browser minute/cost；
-- 查看 prompt-injection/policy-denied/cross-scope 事件；
-- 对 Agent trace 执行受控导出，默认隐藏 secret/cookie/header。
+- URL、截图、DOM/AX、每步 action/result；
+- 临时 index 对应元素证据；
+- history replay match level；
+- Browser Use 内部 loop/replan advisory nudge；
+- 平台 Progress Guard fingerprint；
+- action repetition / stagnant / state revisit / no-new-observation 计数；
+- hard-stop decision/reason；
+- Tool policy allow/deny；
+- cross-scope / prompt injection / egress deny；
+- token/browser minute/wall-time/cost；
+- SelectorBundle 多样本稳定性；
+- replay/shadow/canary；
+- 审批、发布、回滚。
 
 ---
 
-## 15. 数据模型补强
-
-现有平台建议新增/完善：
-
-```text
-agentic_repair_run
-agentic_step_evidence
-agentic_policy_decision
-agentic_runtime_event
-agentic_observation_artifact
-recipe_candidate
-recipe_candidate_step
-selector_bundle
-selector_validation_result
-recipe_validation_result
-recipe_shadow_result
-recipe_canary_result
-recipe_release
-```
+## 15. Release 模型
 
 影响 Agent 行为的对象必须版本化：
 
@@ -681,6 +609,7 @@ agent_observation_schema_release
 agent_trace_schema_release
 agent_security_policy_release
 agentic_repair_policy_release
+agentic_progress_guard_release
 browser_interaction_dsl_release
 selector_strategy_release
 recipe_candidate_schema_release
@@ -689,13 +618,13 @@ recipe_promotion_policy_release
 agent_replay_policy_release
 ```
 
-Browser Use package、Chromium build、模型、prompt、tool schema 任一变化，都可能改变探索行为，因此诊断 run 必须记录这些版本；但只有最终确定性 Recipe + 平台处理 Release 才能成为生产抓取行为的长期 contract。
+Browser Use/Chromium/model/prompt/tool/progress guard 任一变化都可能改变探索行为，必须进入 Contract Test；已发布 deterministic Recipe 不因 Agent Runtime 升级自动改变。
 
 ---
 
 ## 16. Metrics 与告警
 
-建议新增：
+新增：
 
 ```text
 agentic_repair_run_total
@@ -704,6 +633,10 @@ agentic_repair_budget_exhausted_total
 agentic_repair_browser_minutes
 agentic_repair_llm_tokens
 agentic_repair_estimated_cost
+agentic_internal_loop_nudge_total
+agentic_progress_guard_stop_total{reason}
+agentic_progress_fingerprint_revisit_total
+agentic_stagnant_step_total
 agentic_policy_denied_total
 agentic_cross_scope_block_total
 agentic_prompt_injection_block_total
@@ -722,95 +655,101 @@ recipe_rollback_total
 
 重点告警：
 
-- policy deny/cross-scope 尝试突然升高；
-- prompt injection fixture 回归；
-- Browser Use 升级后 selector replay 命中率下降；
-- Agentic Repair 成本激增；
-- Candidate 生成很多但 promotion pass ratio 很低；
-- 新 recipe canary 的 URL discovery/正文质量明显回归；
-- screenshot/HAR/trace 中检测到 secret 泄露。
+- Progress Guard hard stop 突增；
+- 同一 Source `NO_NEW_OBSERVATION_PROGRESS` 持续出现；
+- Browser Use 内部 nudge 大量出现但 hard guard 仍长时间未结束；
+- policy deny/cross-scope/injection 增长；
+- Browser Use 升级后 selector/history match 退化；
+- Agentic cost 激增；
+- Candidate 多但 promotion pass ratio 低；
+- canary URL/正文质量回归；
+- trace/HAR/screenshot secret 泄露。
 
 ---
 
 ## 17. Browser Use Runtime Contract Test
 
-每次升级 Browser Use / Chromium / 模型 / Agent prompt，至少执行：
+每次 Browser Use/Chromium/model/prompt/tool/observation/selector/progress guard 升级至少验证：
 
 ### 17.1 Agent/Action Contract
 
-- `max_actions_per_step=1` 时每步行为符合预期；
-- 多动作模式在 navigate/switch/URL change 后能中止剩余动作；
-- URL 不变但 DOM 重绘 fixture 能被平台强制重新采样，而不是复用旧 index；
-- output schema 校验失败能显式失败，不静默接受自由文本。
+- recording `max_actions_per_step=1`；
+- multi-action 在导航/URL/target/DOM 变化后重新采样；
+- output schema 失败显式失败；
+- step/action/page/tab/wall-time/token/cost 全部可硬中止；
+- **Runtime `ActionLoopDetector` 的 soft nudge 不被当作 hard stop；**
+- 重复相同动作 fixture 被平台 `AGENT_ACTION_LOOP` 强制结束；
+- 页面 fingerprint 长期不变 fixture 被 `AGENT_STATE_STAGNANT` 结束；
+- 页面不断微变但没有新 URL/Observation fixture 被 `NO_NEW_OBSERVATION_PROGRESS` 结束；
+- state A→B→A→B 循环被 `REPEATED_STATE_CYCLE` 结束；
+- hard-stop 后模型不能通过下一条 action 继续执行；
+- Evidence 包含 fingerprint/counter/decision。
 
 ### 17.2 Element/Replay Contract
 
-- highlight index 改变时 history replay 能尝试重新定位；
-- EXACT/STABLE/XPATH/AX_NAME/ATTRIBUTE match level 被正确记录；
-- 同名 AX 元素/重复 id/重复 aria-label fixture 不会被 Candidate Compiler 当唯一 selector；
-- `nth-child`/随机 class 不能在无稳定 fallback 时通过 Promotion Gate；
-- selector 在 DOM 插入广告、列表顺序变化、动态 class 变化后仍需符合策略阈值。
+- highlight index 改变时 history replay 只做诊断；
+- EXACT/STABLE/XPATH/AX_NAME/ATTRIBUTE 正确记录；
+- Production Recipe 不含 highlight index/node id；
+- 同名/重复 selector 不被错误当唯一定位；
+- nth-child/随机 class 无稳定 fallback 时 Promotion 失败；
+- 无法编译临时引用返回 `UNCOMPILABLE_ELEMENT_REFERENCE`。
 
 ### 17.3 Security Contract
 
 - approved domain 正常；
-- 直接跨域阻断；
-- redirect 跨域阻断；
-- popup/new tab 跨域阻断；
+- 直接/redirect/new tab 跨域阻断；
 - IP/localhost/private/link-local/metadata 阻断；
-- `data:`/`blob:`/`file:` 按平台策略阻断；
-- downloads/upload/file tools/evaluate/CDP 默认不可用；
-- clipboard/notification 权限为空；
-- Storage State 不跨 Source；
-- 恶意网页文本不能扩大工具权限或泄露 secret；
-- egress policy 能在 Browser Use 层失效时继续兜底。
+- data/blob/file 按平台策略阻断；
+- upload/download/file/evaluate/CDP/clipboard 默认不可用；
+- Storage State 不跨 Source/variant；
+- 恶意网页不能扩大 Tool/Scope/Secret；
+- egress policy 在 Runtime 层失效时仍兜底。
 
-### 17.4 Recovery Contract
+### 17.4 Recovery / Artifact Contract
 
-- CDP disconnect/reconnect 被记录但不错误推进 Task 状态；
-- Browser crash 后当前 Attempt 可终止并保存 evidence；
-- Agentic rerun 不被标记成 deterministic resume；
-- Production Recipe 可从平台 checkpoint 重放。
-
-### 17.5 Artifact Contract
-
-- DOM/AX/screenshot/trace 与 `run_id/step_no/source_id/fetch_variant_key` 强关联；
-- action params、HAR headers、Storage State 经过脱敏；
-- Agent extracted content 不绕过 Raw Artifact pipeline；
-- Recipe 获取的最终 HTML 仍生成正常 Raw Artifact 并走现有质量门禁。
+- CDP reconnect 不错误推进 Task/Freshness/Coverage；
+- crash 保存已晋升 Evidence；
+- Agent rerun 不标 deterministic resume；
+- Agent extract/final text 不绕过 Raw Artifact pipeline。
 
 ---
 
-## 18. 对现有博客知识库方案的最终优化结论
+## 18. 对博客知识库方案的优化结论
 
-本次源码级调研在既有 “Agentic Repair Is Proposal, Not Truth” 基础上，建议再明确以下不变量：
+本次源码级调研确认并固化以下不变量：
 
-1. **Ephemeral Element Identity**：Browser Use highlight index / CDP node identity 只在当前观测中有效，Production Recipe 必须通过 Selector Compiler 生成稳定 SelectorBundle；
-2. **Agent Replay Is Diagnostic**：Browser Use history replay 是启发式元素重定位和调试能力，不等价于确定性 Recipe replay，更不等价于平台 Task recovery；
-3. **One Mutating Action, One State Boundary**：候选录制时每个会改变 DOM/URL/target 的动作后必须重新采样页面状态，不能把 Agent 一次多动作当原子事务；
-4. **Web Content Is Untrusted Prompt Input**：网页文本、DOM、AX、截图永远不能修改工具策略，Capability 必须在执行层强制；
-5. **Explicit Hardening, Never Library Defaults**：Browser Use 通用默认权限不等于平台安全 Profile，Agentic Sandbox 必须显式关闭下载、文件、clipboard、任意 JS/CDP，并开启网络/IP/Scope 防线；
-6. **Agent Runtime Is Not Truth Store**：Browser Use session/history/watchdog 只属于执行与诊断平面，Task/Attempt/Artifact/Version/Coverage/Freshness 仍由平台 Truth Store 决定；
-7. **Agent Text Is Not Article Body**：Agent `extract`/final_result 只能用于诊断或候选生成，canonical Markdown 必须从平台权威 Raw Artifact 经确定性处理流水线生成；
-8. **Version Every Agent Contract**：Browser Use、Chromium、模型、prompt、tool policy、observation schema、selector strategy、recipe compiler 都要记录 release，升级先跑 Contract Test。
+1. **Browser Use 只进入 Agentic Repair Plane，不进入默认批量抓取主链；**
+2. **Agentic Repair Is Proposal, Not Truth；**
+3. **highlight index/node id 是临时元素身份，必须编译为 SelectorBundle；**
+4. **history replay 是启发式诊断，不是 Production Replay/Task Recovery；**
+5. **任何会改变页面状态的动作后重新采样；**
+6. **网页内容是不可信 prompt 输入，Capability 在执行层强制；**
+7. **第三方 Browser 默认值不是平台安全边界；**
+8. **Agent extract/final text 不是 canonical 文章正文；**
+9. **所有 Agent Contract 都版本化并过 Contract Test；**
+10. **新增：Soft Agent Heuristics Are Not Hard Limits。Browser Use 的 ActionLoopDetector、planning/replan 都只能作为 advisory signal，平台必须用 Agentic Progress Guard 在 LLM 外部硬终止循环、停滞、无进展与预算耗尽。**
 
 ---
 
 ## 19. 最终结论
 
-Browser Use 的价值不在于“替代爬虫”，而在于把过去需要工程师人工打开浏览器分析的长尾站点问题，转化成可审计的 Agentic 探索流程，再把探索结果编译为平台可控制的确定性 Recipe。
+Browser Use 的价值不是“替代爬虫”，而是把工程师手工分析长尾站点的过程转化为可审计的 Agentic 探索，再把成功探索编译成可确定性重放、可测试、可灰度、可回滚的 Production Recipe。
 
-推荐最终分层：
+推荐分层：
 
 ```text
-HTTP Fast Lane                         # 默认、大规模、低成本
+HTTP Fast Lane
     |
     v
-Deterministic Browser Slow Lane        # 已发布 Recipe
+Deterministic Browser Slow Lane
     |
-    | only on hard cases
+    | hard cases only
     v
-Agentic Browser Repair Sandbox         # Browser Use，探索/诊断
+Agentic Browser Repair Sandbox
+    |
+    +--> Browser Use advisory loop/planning signals
+    +--> Platform Agentic Progress Guard (hard stop)
+    +--> immutable evidence
     |
     v
 Selector Compiler + Recipe Compiler
@@ -825,6 +764,4 @@ Shadow -> Canary -> Approval
 Production Recipe Release
 ```
 
-这样可以利用 Browser Use 的 Agent 自适应、DOM/AX 交互语义、Tool Registry、history/replay 和 EventBus/Watchdog 设计，同时把其 LLM 非确定性、临时元素标识、高能力工具和浏览器状态不稳定性严格限制在 Repair Plane 内。
-
-对于 1000+ 技术博客、百万到千万 URL 的知识库平台，主链仍应坚持：**Coverage 可证明、Raw Artifact 不可变、Incremental 有强 Freshness 证据、Production Recipe 可确定性重放、Markdown 可从 Artifact 重建、Agent 永远不直接拥有业务真相。**
+对于 1000+ 技术博客、百万到千万 URL 的知识库，主链应坚持：**Coverage 可证明、Raw Artifact 不可变、Freshness 有强证据、Production Recipe 可确定性重放、Markdown 可从 Artifact 重建、Agent 永远不直接拥有业务真相，且 Agent 的循环/停滞由平台硬保护而不是等待模型自我纠错。**
