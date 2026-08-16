@@ -1,0 +1,54 @@
+name: Append Impeccable research
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/append-impeccable-research-20260816.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Append unique research rows
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('impeccable调研总结.md')
+          text = path.read_text(encoding='utf-8')
+          rows = [
+              ('HagiCode 团队在其 Web 与桌面 AI 编程助手项目中真实接入 Impeccable：以 npm skill 使用，并通过 Git submodule 固定上游版本；为团队建设了 Astro 驱动的中英双语命令文档站、自动目录生成、内容同步与 GitHub Actions 部署流程。实践中还发现上游同步后若不重新生成命令目录会导致生产内容不一致，因此将同步、校验与构建固化为标准化维护链路。', 'https://docs.hagicode.com/en-US/blog/2026-06-10-how-to-integrate-and-use-impeccable/'),
+              ('Jürgen Röhm 用 Claude Code + Impeccable 在一个月内完成德国护理等级计算器这一真实个人产品：应用以 React、TypeScript、Vite、Tailwind 构建并部署到 Cloudflare Pages，面向老人、照护者和专业人士提供七种语言、WCAG AA 无障碍、实时评分和完全本地计算。Impeccable 主要用于把界面质量推离通用 AI 模板，同时作者仍保留人工判断与同理心作为最终设计约束。', 'https://www.jroehm.com/work/care-level-calculator-for-germany/'),
+              ('Salvatore De Luca 在真实桌面个人财务应用 Boring Balance 的开发中，把 Impeccable 与 Codex、Claude Code 一起纳入约一个半月的晚间开发流程；应用采用 Angular + Electron + SQLite、坚持 local-first 与无账号设计。Impeccable 的 `/audit` 专门用于检查已实现 UI 的 UX 与无障碍问题，作为人工代码审查之外的界面质量检查层，而不是让 AI 直接承担架构决策。', 'https://blog.stackademic.com/boring-by-design-what-building-a-finance-app-taught-me-about-ai-constraints-and-simplicity-c5fc580879a8'),
+              ('Xingfan Xia 在创作者灵感/日记应用 ÉLAN 的真实设计与实现流程中使用 Impeccable：先用 Claude Design 一次生成六套视觉方向并收敛到 Film Stock，再把 `HANDOFF.md` 与参考组件写入仓库，后续通过 `impeccable:typeset`、`polish`、`animate` 处理字体、微交互和最后 20% 的视觉精修，并结合 Playwright 做多路由截图验证。该流程把设计探索、版本化交接和生产验证串成可重复的 code-first 交付链路。', 'https://blog.ax0x.ai/claude-design-pipeline'),
+              ('April Gittens 在第三次重做 Pretty Wired AI 官网时，把 Impeccable 接入 GitHub Copilot App 的真实站点迭代；首次 critique 只得到 65%，随后继续依据审查结果调整页面方向。她表示若在最初建站时就使用这套流程，可以节省大量时间与 token，最终也借助 Impeccable 从“半 AI slop”的旧版本收敛到自己满意的新版视觉方向。', 'https://www.linkedin.com/posts/aprilgittens_update-i-decided-to-dive-a-little-more-into-activity-7478556757473091584-y6Cc'),
+              ('Denis Epshteyn 用一下午完成并上线 deneps.com，实际工作流为 Claude Design 定设计系统、Claude Code/Next.js 实现、Impeccable 做发布前精修，再用 Playwright 在桌面和移动端截图回归。Impeccable 被单独放在 typography、spacing 与 interaction 的 polish pass，用于消除成品仍残留的“AI 生成感”；随后网站部署到 Vercel 或 Railway，形成从设计方向到真实上线的完整闭环。', 'https://www.linkedin.com/posts/deneps_ai-claude-claudecode-activity-7489349930122358784-XjQ0'),
+          ]
+
+          if text and not text.endswith('\n'):
+              text += '\n'
+          for summary, url in rows:
+              if url not in text:
+                  text += f'| {summary} | {url} |\n'
+          path.write_text(text, encoding='utf-8')
+          PY
+      - name: Commit and push
+        shell: bash
+        run: |
+          if git diff --quiet -- impeccable调研总结.md; then
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- impeccable调研总结.md
+          git commit -m '补充 Impeccable 实际落地案例'
+          git push origin HEAD:main
