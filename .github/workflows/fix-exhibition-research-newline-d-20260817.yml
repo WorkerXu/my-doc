@@ -1,0 +1,54 @@
+name: Fix exhibition research newline d 20260817
+
+on:
+  push:
+    paths:
+      - .github/workflows/fix-exhibition-research-newline-d-20260817.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix-newline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Repair table boundary only
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          main = Path('展会调研/展会文章调研.md')
+          text = main.read_text(encoding='utf-8')
+          text = text.replace(
+              '| https://zhuanlan.zhihu.com/p/630743355 || Booking Floor Plan App',
+              '| https://zhuanlan.zhihu.com/p/630743355 |\n| Booking Floor Plan App',
+              1,
+          )
+          if not text.endswith('\n'):
+              text += '\n'
+          main.write_text(text, encoding='utf-8')
+
+          history = Path('展会调研/展会文章历史调研.md')
+          text = history.read_text(encoding='utf-8')
+          text = text.replace(
+              '| https://zhuanlan.zhihu.com/p/630743355 || https://github.com/MUHAMMED-SHAIKH-ZAHID/Booth-booking |',
+              '| https://zhuanlan.zhihu.com/p/630743355 |\n| https://github.com/MUHAMMED-SHAIKH-ZAHID/Booth-booking |',
+              1,
+          )
+          if not text.endswith('\n'):
+              text += '\n'
+          history.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Commit repair and remove temporary workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'chatgpt-d'
+          git config user.email 'chatgpt-d@users.noreply.github.com'
+          rm -f .github/workflows/fix-exhibition-research-newline-d-20260817.yml
+          git add '展会调研/展会文章调研.md' '展会调研/展会文章历史调研.md' .github/workflows/fix-exhibition-research-newline-d-20260817.yml
+          git commit -m '修正展会调研表格换行'
+          git push origin HEAD:main
