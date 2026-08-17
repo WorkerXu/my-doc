@@ -1,0 +1,61 @@
+name: a append luxury research 20260817
+
+on:
+  push:
+    paths:
+      - '.github/workflows/a-append-luxury-research-20260817.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Append a luxury research rows
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          main = Path('奢侈品文章调研.md')
+          history = Path('奢侈品文章历史调研.md')
+          entries = [
+              ('两阶段多模态商品匹配项目采用 Qwen3-VL embedding 召回、cross-encoder 复核，并显式设置 Auto-MERGE / Human-REVIEW / Auto-REJECT 三段决策区间；特别适合借鉴“相似不等于同一实体”的分流思路，把自动合并进一步收紧到品牌内 canonical reference 完全一致。', 'https://github.com/Wijt/product-matching'),
+              ('真实跨 Chrono24、Bob’s Watches、Watchfinder 等来源的腕表聚合项目，专门按抽取出的 sub-reference 分组，避免近似子型号混入同一统计组；与二奢跨源 reference-first 对齐高度同构，可直接参考子型号抽取、规范化和跨源分组逻辑。', 'https://github.com/DataKazKN/watch-arbitrage-mcp'),
+              ('开放腕表数据库持续维护数万条、数百品牌的 reference，并直接提供 brand、family、reference、机芯、材质、尺寸和图片等字段；可建立 canonical reference 词典、品牌格式规则，并自动构造同系列不同 reference 的 hard negatives。', 'https://github.com/timepiecepedia/timepiecepedia-data'),
+              ('专门处理抓取/供应商目录里 identifier 缺失、错放字段和污染问题，可从结构字段与标题共同抽取 SKU、UPC、model/part number，再做编号类型分类与跨字段比较；很适合先判定 reference/平台 SKU 的角色，再决定是否允许跨源主键匹配。', 'https://www.npmjs.com/package/@factorypure/matching-engine'),
+              ('CVPR 2026 的多模态检索实现把生成式 matching objective 与表示学习结合，并显式利用 hard negatives 增强细粒度区分；可作为图片+标题的高召回候选层，重点拉开外观极近但 reference 不同的腕表近邻，最终仍由 reference 硬规则判同款。', 'https://github.com/FireRedTeam/ReMatch'),
+              ('将实体解析设计成“候选→证据→拒识/复核→审核后写入版本化 registry→运行时 exact replay”的确定性工作台，强调 provenance、矛盾隔离与 abstain；非常契合可漏不可错，可把腕表 reference 别名只在审核后提升为可重复的精确映射。', 'https://github.com/cmdrvl/canon'),
+              ('生产型实体解析项目覆盖 blocking、字段级评分、图聚类、主动学习与 incremental resolution，并可把高置信精确规则和歧义区间分开处理；适合百万级持续增量候选工程，但腕表场景应把 brand+canonical reference 冲突配置成不可被模糊分数覆盖的硬 veto。', 'https://github.com/arango-solutions/arango-entity-resolution'),
+              ('该匹配层实现直接包含 MPN/OEM/house-SKU 候选抽取、编号来源分层、hard-attribute contradiction veto 与 append-only resolution ledger；与“reference 可能埋标题且绝不能误合并”非常接近，可借鉴确定性阶梯匹配和冲突即否决的审计设计。', 'https://github.com/L3DigitalNet/hw-radar/pull/10'),
+          ]
+
+          main_text = main.read_text(encoding='utf-8')
+          history_text = history.read_text(encoding='utf-8')
+          rows = [(reason, url) for reason, url in entries if url not in history_text and url not in main_text]
+
+          if rows:
+              with main.open('a', encoding='utf-8') as f:
+                  if main_text and not main_text.endswith('\n'):
+                      f.write('\n')
+                  for reason, url in rows:
+                      f.write(f'| {reason} | {url} |\n')
+              with history.open('a', encoding='utf-8') as f:
+                  if history_text and not history_text.endswith('\n'):
+                      f.write('\n')
+                  for _, url in rows:
+                      f.write(f'| {url} |\n')
+          PY
+      - name: Commit changes
+        shell: bash
+        run: |
+          if git diff --quiet -- '奢侈品文章调研.md' '奢侈品文章历史调研.md'; then
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add '奢侈品文章调研.md' '奢侈品文章历史调研.md'
+          git commit -m 'a 追加本轮奢侈品文章调研'
+          git push
