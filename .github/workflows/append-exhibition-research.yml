@@ -1,0 +1,70 @@
+name: append exhibition research
+
+on:
+  push:
+    paths:
+      - '.github/workflows/append-exhibition-research.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Append deduplicated research rows
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          main = Path('展会调研/展会文章调研.md')
+          history = Path('展会调研/展会文章历史调研.md')
+          entries = [
+              (
+                  'react-mapdraw-navigator 是 MIT 开源的图片热区导航组件，支持 PNG/SVG/JPG 底图、可视化新增/编辑/删除热区、缩放平移、JSON 导入导出，且 x/y/width/height 原生按基准画布百分比保存；与“图片 + 相对坐标热区 + 运营人工校正 + 跨尺寸展示”高度贴合。',
+                  'https://github.com/otavioserra/react-mapdraw-navigator',
+              ),
+              (
+                  '@cloudimage/hotspot 是 MIT 开源且提供在线编辑器的图片热区组件，热区支持百分比坐标、点击弹窗、内置鼠标/触屏缩放平移和 React/原生 JS 接入；可直接参考用户端“缩放底图 + 点击展位 → 详情预览”以及移动端可访问交互层。',
+                  'https://github.com/scaleflex/cloudimage-hotspot',
+              ),
+              (
+                  'DocMark 是 2026 年 MIT 开源的浏览器图纸标注工具，可直接拖入 PDF/JPG/PNG，用 pdf.js + Konva 在原图上绘制矩形/多边形等覆盖层，支持缩放平移、顶点编辑、旋转后仍保持锚定并导出 JSON；适合参考 PDF 底图导入、人工热区修正与坐标持久化。',
+                  'https://github.com/brendangooden/docmark-app',
+              ),
+              (
+                  'react-konva-interactive-stage 是 MIT 开源的 React/Konva 大画布导航组件，封装了响应式缩放平移、边界约束、小地图和 zoomToElement 定位；可直接用于“搜索展位编号后自动聚焦高亮目标热区”和 PC/移动端大图交互。',
+                  'https://github.com/pierre-borckmans/react-konva-interactive-stage',
+              ),
+          ]
+
+          main_text = main.read_text(encoding='utf-8')
+          history_text = history.read_text(encoding='utf-8')
+          new_entries = [(reason, url) for reason, url in entries if url not in main_text and url not in history_text]
+
+          if new_entries:
+              with main.open('a', encoding='utf-8') as f:
+                  if main_text and not main_text.endswith('\n'):
+                      f.write('\n')
+                  for reason, url in new_entries:
+                      f.write(f'| {reason} | {url} |\n')
+
+              with history.open('a', encoding='utf-8') as f:
+                  if history_text and not history_text.endswith('\n'):
+                      f.write('\n')
+                  for _, url in new_entries:
+                      f.write(f'| {url} |\n')
+          PY
+      - name: Commit changes
+        shell: bash
+        run: |
+          if git diff --quiet -- '展会调研/展会文章调研.md' '展会调研/展会文章历史调研.md'; then
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add '展会调研/展会文章调研.md' '展会调研/展会文章历史调研.md'
+          git commit -m '追加本轮展会文章调研'
+          git push
