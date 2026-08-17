@@ -1,0 +1,49 @@
+name: c append exhibition research 20260817
+
+on:
+  push:
+    paths:
+      - '.github/workflows/c-append-exhibition-research-20260817.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Append c research rows
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          main = Path('展会调研/展会文章调研.md')
+          entries = [
+              ('Eurofurence Seat Reservation 是真实 convention 使用的 MIT 开源订座系统，浏览器端提供交互座位图与换座/取消，管理端可维护座位、布局和预订；服务端对被选座位行加事务锁并在冲突时重试，可直接参考“地图选位 + 管理员调整 + 并发防双订”。', 'https://github.com/eurofurence/seat-reservation'),
+              ('Office Desk Booking System 是公开的生产级工位预订实现：管理员上传楼层图并按百分比坐标放置/编辑工位，用户端按颜色查看空闲/占用/预留并直接选位，PostgreSQL 唯一约束和事务防止同一工位重复预订；与相对坐标热区、状态覆盖和并发控制高度一致。', 'https://github.com/Bilal-121/Office-Desk-Booking-System'),
+              ('Surya 是可自托管的开源 OCR/版面分析项目，可直接处理 PDF/图片并返回文字行的 bbox/polygon、识别文本和置信度；可把展位编号识别结果转换成候选热区坐标，再接人工复核与相对坐标归一化。', 'https://github.com/datalab-to/surya'),
+              ('floorplan-studio 是直接面向 trade show 的公开平面图编辑项目，已把活动、展商、展位和数据库跟踪放在同一系统中，并提供底图/展位编辑与编号管理；适合参考“运营维护展位几何 + 展商业务数据绑定 + 发布展示”的展会专用后台。', 'https://github.com/aheedtariq/floorplan-studio'),
+          ]
+
+          text = main.read_text(encoding='utf-8')
+          rows = [(reason, url) for reason, url in entries if url not in text]
+          if rows:
+              with main.open('a', encoding='utf-8') as f:
+                  if text and not text.endswith('\n'):
+                      f.write('\n')
+                  for reason, url in rows:
+                      f.write(f'| {reason} | {url} |\n')
+          PY
+      - name: Commit changes
+        shell: bash
+        run: |
+          if git diff --quiet -- '展会调研/展会文章调研.md'; then
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add '展会调研/展会文章调研.md'
+          git commit -m 'c 追加本轮展会文章调研'
+          git push
