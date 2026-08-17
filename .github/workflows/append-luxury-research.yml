@@ -1,0 +1,66 @@
+name: Append luxury research
+
+on:
+  push:
+    paths:
+      - '.github/workflows/append-luxury-research.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Append deduplicated research
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          research = Path('奢侈品文章调研.md')
+          history = Path('奢侈品文章历史调研.md')
+          items = [
+              ('VIT-Pro 针对真实电商商品图做视觉指令微调，说明通用 VLM 在商品图像域需要专门适配；可作为腕表图片侧品牌/型号/reference 候选抽取器的训练参考，但结果只用于补证，最终仍由标题/OCR/型号库中的 canonical reference 严格校验。', 'https://aclanthology.org/2025.naacl-industry.57/'),
+              ('Watch Scanner API 可从奢侈腕表图片直接返回品牌、型号/reference number 及相似型号；可作为文本缺 reference 时的外部视觉候选与交叉验证源，任何视觉结果和标题/OCR 冲突时都应拒绝自动合并。', 'https://www.aitex.org/docs'),
+              ('Shoptera MCP 直接提供从商品标题抽取 model/MPN、GTIN 校验、相似商品与重复扫描等工具；很适合作为“标题恢复 reference→候选召回→标识核验”的工程原型，再把自动合并收紧到品牌内 canonical reference 完全一致。', 'https://github.com/shoptera-ai/shoptera-mcp'),
+              ('Plytix MCP 的智能商品查找会自动区分 SKU、MPN、GTIN、label，并提供 identifier normalize、match score，且搜索顺序明确是 exact field 优先、模糊兜底；可直接借鉴编号角色识别和 exact-first 策略，避免平台 SKU 与制造商 reference 混淆。', 'https://github.com/Supplyline/plytix-mcp'),
+              ('ModelNumberSearch 专门比较型号串的语义检索与 Levenshtein 距离，可用来验证字母数字 reference 在近邻召回中的行为；适合只做 OCR/标题型号的候选生成与格式扰动测试，最终放行仍要求规范化 reference 精确一致。', 'https://github.com/nicholassolomon/ModelNumberSearch'),
+              ('该电商 Data Linkage 项目会从商品描述/标题用正则抽 model number、统一连字符，并明确指出“名称很像但型号不同”会造成 false positive，建议在两边都有型号时用低 model-number 相似度直接否决；与腕表相邻 reference 的硬冲突规则高度一致。', 'https://github.com/Lunalulululu/Data-Linkage-and-Classfication-System-for-Ecommerce-Website'),
+              ('Scrapinghub 的商品抽取基准专门区分站内 SKU、GTIN 与可能出现在商品名中的 MPN，并对标识格式规范化和错误抽取进行人工判定；可用于设计 reference/平台 SKU 的字段角色验收集，先判断“这串编号是什么”再跨源匹配。', 'https://github.com/scrapinghub/product-extraction-benchmark'),
+              ('这篇知乎文章把实体匹配从简单二分类扩展到关系发现，强调精确区分不同实体关系；腕表场景可显式区分“同一 reference”“同系列/相近变体”“仅相关”，只有第一类允许自动归并，从标签设计上压低 false positive。', 'https://zhuanlan.zhihu.com/p/689612767'),
+          ]
+
+          r = research.read_text(encoding='utf-8')
+          h = history.read_text(encoding='utf-8')
+          added = 0
+          for reason, url in items:
+              if url in h:
+                  continue
+              if url not in r:
+                  if not r.endswith('\n'):
+                      r += '\n'
+                  r += f'| {reason} | {url} |\n'
+              if not h.endswith('\n'):
+                  h += '\n'
+              h += f'| {url} |\n'
+              added += 1
+
+          research.write_text(r, encoding='utf-8')
+          history.write_text(h, encoding='utf-8')
+          print(f'added={added}')
+          PY
+      - name: Commit changes
+        shell: bash
+        run: |
+          git config user.name "chatgpt-research"
+          git config user.email "actions@users.noreply.github.com"
+          git add '奢侈品文章调研.md' '奢侈品文章历史调研.md'
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "docs: append new luxury matching research"
+          git push
