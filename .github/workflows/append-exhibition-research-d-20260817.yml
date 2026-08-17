@@ -1,0 +1,51 @@
+name: Append exhibition research d 20260817
+
+on:
+  push:
+    paths:
+      - .github/workflows/append-exhibition-research-d-20260817.yml
+
+permissions:
+  contents: write
+
+jobs:
+  append-research:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Append new research rows without duplicates
+        shell: bash
+        run: |
+          set -euo pipefail
+          main_file='展会调研/展会文章调研.md'
+          history_file='展会调研/展会文章历史调研.md'
+
+          append_row() {
+            local url="$1"
+            local reason="$2"
+            if ! grep -Fq "$url" "$history_file"; then
+              printf '| %s | %s |\n' "$reason" "$url" >> "$main_file"
+              printf '| %s |\n' "$url" >> "$history_file"
+            fi
+          }
+
+          append_row 'https://github.com/MUHAMMED-SHAIKH-ZAHID/Booth-booking' 'Booking Floor Plan App 是直接面向 booth/stall 的公开实现，交互式网格区分不同展位尺寸与类别，展示价格和可用状态，支持点选/取消及购物车实时汇总；适合参考“展位图点击预览 → 选位 → 价格/状态同步”的轻量前端闭环。'
+          append_row 'https://github.com/anabeatrizfig/ocr_floorplan' 'ocr_floorplan 是专门从平面图图片读取房间名称、尺寸并计算面积的 OCR 项目，输出结构化 room/side/size 数据；其“图中文字与空间位置关联 → 结构化区域属性”思路可迁移到展位编号、面积候选提取，再交由人工确认。'
+          append_row 'https://github.com/salgum1114/react-design-editor' 'React Design Editor 自带 Image Map Editor，支持上传底图、矩形/多边形绘制、拖拽缩放、撤销重做、画布 zoom、响应式/全屏预览以及 JSON 导入导出；很适合直接借鉴“识别结果叠加 → 人工新增/修正热区 → 保存坐标”的运营编辑器。'
+          append_row 'https://github.com/annotorious/annotorious-openseadragon' 'Annotorious OpenSeadragon 是 BSD 开源的高分辨率可缩放图片标注插件，可在 OpenSeadragon 大图上创建和显示可编辑标注并以 W3C Annotation 数据保存；非常适合展会高清底图的缩放平移、热区跟随和人工校正。'
+          append_row 'https://github.com/SizheHu/Raster-to-Graph' 'Raster-to-Graph 是 EG 2024 官方开源实现，可把栅格平面图自动识别为带结构和语义的矢量图结构，并在 1 万余张真实平面图数据上训练/验证；可作为纯 OCR 之外的“自动生成展位区域候选几何 → 人工复核”替代路线。'
+          append_row 'https://github.com/KartikPawade/Movie-Ticket-Booking-System' 'MovieNow 已把高并发选位防重做成完整后端：Redis 对单座位加原子锁，抢锁失败立即返回 unavailable，成功后再写 PostgreSQL；虽然它采用 6 分钟 TTL 临时锁而需求希望直接先到先得，但“同一资源只能一个请求成功、冲突明确返回并刷新”的并发目标完全一致。'
+
+      - name: Commit appended rows and remove temporary workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'chatgpt-d'
+          git config user.email 'chatgpt-d@users.noreply.github.com'
+          rm -f .github/workflows/append-exhibition-research-d-20260817.yml
+          git add '展会调研/展会文章调研.md' '展会调研/展会文章历史调研.md' .github/workflows/append-exhibition-research-d-20260817.yml
+          if ! git diff --cached --quiet; then
+            git commit -m '追加展会文章调研'
+            git push origin HEAD:main
+          fi
