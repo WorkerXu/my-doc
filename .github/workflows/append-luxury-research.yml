@@ -1,0 +1,86 @@
+name: append luxury research
+
+on:
+  push:
+    paths:
+      - '.github/workflows/append-luxury-research.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Append deduplicated research rows
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          main = Path('奢侈品文章调研.md')
+          history = Path('奢侈品文章历史调研.md')
+          entries = [
+              (
+                  '2026 年 CGEM 在多个真实商品实体匹配基准上强化难例判别；可用于品牌内相邻 reference 的 hard-negative 审计和少量疑难候选复核，但自动合并仍只接受 canonical reference 严格一致，模型只承担冲突发现与拒识。',
+                  'https://www.sciencedirect.com/science/article/pii/S0925231226003474',
+              ),
+              (
+                  '2026 年 EnsembleLink 研究无需训练数据的 record linkage 组合方法，适合让多个独立规则与相似证据交叉验证候选；腕表场景可让品牌、reference 规范化、标题与 OCR 证据只在一致时共同放行，证据分歧直接拒识。',
+                  'https://arxiv.org/abs/2601.21138',
+              ),
+              (
+                  'TIGER-FG 面向细粒度电商检索，显式构造图文错配 hard negatives 和多商品干扰场景，让模型依赖结构化文本而不是只看视觉相似；非常适合生成“同系列外观近但 reference 不同”的腕表候选，图片只做高召回与冲突验证。',
+                  'https://arxiv.org/abs/2605.18434',
+              ),
+              (
+                  'PUER 专门解决 few-shot 正例加大量未标注数据的实体解析，通过 Blocking、co-training 与迭代伪标签提升低资源匹配；可把几百条黄金标签集中到同品牌相邻 reference 的 hard negatives 与验收集，减少大规模人工配对。',
+                  'https://aclanthology.org/2025.findings-emnlp.1336/',
+              ),
+              (
+                  '文章从电商商品归一化实践讨论品牌/参数标准化、长尾商品相似性与图文联合；可借鉴把不同空格、连字符、别名写法的型号映射到 canonical reference，并将 CLIP/语义相似度限制为候选召回，最终只做严格 reference 等值判定。',
+                  'https://zhuanlan.zhihu.com/p/32500868637',
+              ),
+              (
+                  '用 Chinese-CLIP 做图片与商品文本/候选的零样本相似匹配，适合在标题缺 reference 或字段稀疏时从图片补充候选召回；对腕表应只把视觉结果用作辅助证据，并由 OCR/标题中的 canonical reference 严格一致后才自动合并。',
+                  'https://zhuanlan.zhihu.com/p/719750514',
+              ),
+              (
+                  'AWS Entity Resolution 的传递匹配最佳实践强调把最具体、最高置信规则放在前面；可直接映射为“品牌+canonical reference exact match 优先，模糊/模型规则后置”，并避免低置信边通过传递关系污染三源实体簇。',
+                  'https://docs.aws.amazon.com/entityresolution/latest/userguide/transitive-matching-best-practices.html',
+              ),
+              (
+                  '该项目公开 selective/listwise 商品实体匹配实现与重编 hard-negative 数据，把一个 query 与整个候选集联合选择而不是独立 pairwise 判定；很适合复现相邻 reference 候选集评测，并把“无唯一高置信候选”作为拒识结果来压低 false positive。',
+                  'https://github.com/quickhdsdc/LLM4EntityMatching',
+              ),
+          ]
+
+          main_text = main.read_text(encoding='utf-8')
+          history_text = history.read_text(encoding='utf-8')
+          new_entries = [(reason, url) for reason, url in entries if url not in main_text and url not in history_text]
+
+          if new_entries:
+              with main.open('a', encoding='utf-8') as f:
+                  if main_text and not main_text.endswith('\n'):
+                      f.write('\n')
+                  for reason, url in new_entries:
+                      f.write(f'| {reason} | {url} |\n')
+
+              with history.open('a', encoding='utf-8') as f:
+                  if history_text and not history_text.endswith('\n'):
+                      f.write('\n')
+                  for _, url in new_entries:
+                      f.write(f'| {url} |\n')
+          PY
+      - name: Commit changes
+        shell: bash
+        run: |
+          if git diff --quiet -- '奢侈品文章调研.md' '奢侈品文章历史调研.md'; then
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add '奢侈品文章调研.md' '奢侈品文章历史调研.md'
+          git commit -m '追加本轮奢侈品文章调研'
+          git push
