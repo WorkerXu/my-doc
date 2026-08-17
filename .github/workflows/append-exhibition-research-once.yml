@@ -1,0 +1,67 @@
+name: Append exhibition research once
+
+on:
+  push:
+    paths:
+      - '.github/workflows/append-exhibition-research-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Sync latest branch
+        run: git pull --rebase origin "${GITHUB_REF_NAME}"
+      - name: Append new research rows idempotently
+        shell: python
+        run: |
+          from pathlib import Path
+
+          target = Path('展会调研/展会文章调研.md')
+          history = Path('展会调研/展会文章历史调研.md')
+
+          rows = [
+              ('IWF Atlanta 是持续五届使用的真实大型展会案例：展商直接从实时平面图查找、选择并购买展位，在同一流程签约付款，展位销售数据再同步到 Salesforce；可参考“地图选位 → 交易落库 → CRM/运营数据一致”的完整业务闭环。', 'https://blog.mapyourshow.com/blog/mys-case-study-international-woodworking-fair-atlanta'),
+              ('ECOC Exhibition 每年有 300+ 国际展商，真实上线了嵌入官网的自助交互平面图，让大量潜在展商同时搜索展位、实时预留/排队并完成在线订位；虽用排队/预留实现并发控制，但最终目标与“多人抢同一展位、防重复占用、状态实时同步”一致。', 'https://www.coconnex.com/casestudydetails/449'),
+              ('Bay Area Apartment Association 的真实展会有 100+ 展商集中抢位，系统用实时可用状态、颜色库存和购物车预约计时器处理高峰并发，最终在数小时内售罄且未出现重复预订；非常适合对照“先到先得、第二请求冲突、实时占用”这一核心风险。', 'https://expo-genie.com/portfolio/bay-area-apartment-association/'),
+              ('第 65 届 Genoa International Boat Show 的实际项目把室内展馆、码头和水上船型展位统一成可交互平面图，并为非常规展位形状定制几何、支持跨区域分层导航；适合参考非矩形热区、复杂底图和可更新交互层的实现。', 'https://www.international-confex.com/news/mapping-land-sea-designing-interactive-floor-plan-complex-layout'),
+              ('Raster2Seq 是 SIGGRAPH 2026 官方开源实现，可把栅格平面图直接转换成带标签的多边形序列，实现“图片 → 结构化矢量区域”；可作为 OCR 文字定位之外的自动展位区域候选生成路线，再接人工确认与编号绑定。', 'https://github.com/Cornell-VAILab/Raster2Seq'),
+              ('Floor-Plan-Detection 是 MIT 开源的“超分辨率 + 平面图检测”项目，先增强低清平面图再识别房间/图标并输出多边形；很适合 PDF 转图片后字号小、线条细的展会图预处理与候选热区生成。', 'https://github.com/rbg-research/Floor-Plan-Detection'),
+              ('Label Studio 是 Apache-2.0 开源的人机协同标注平台，支持模型预标注矩形/多边形、人工移动/新增/删除修正、缩放检查，并以归一化坐标管理图像区域；可直接借鉴“自动候选 → 强制人工复核 → 百分比热区持久化”的后台工作流。', 'https://github.com/HumanSignal/label-studio'),
+              ('CubiCasa5K 不只是数据集，还提供开源多任务平面图分析模型与多边形/热图标注，可从栅格图恢复房间、墙体和图形结构；可用于训练或迁移“自动分割展位区域”的识别层，再将候选多边形交给运营人工确认。', 'https://github.com/CubiCasa/CubiCasa5k'),
+          ]
+
+          target_text = target.read_text(encoding='utf-8')
+          history_text = history.read_text(encoding='utf-8')
+
+          if not target_text.endswith('\n'):
+              target_text += '\n'
+          if not history_text.endswith('\n'):
+              history_text += '\n'
+
+          target_additions = []
+          history_additions = []
+          for reason, url in rows:
+              if url not in target_text:
+                  target_additions.append(f'| {reason} | {url} |\n')
+              if url not in history_text:
+                  history_additions.append(f'| {url} |\n')
+
+          if target_additions:
+              target.write_text(target_text + ''.join(target_additions), encoding='utf-8')
+          if history_additions:
+              history.write_text(history_text + ''.join(history_additions), encoding='utf-8')
+      - name: Commit appended research
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add '展会调研/展会文章调研.md' '展会调研/展会文章历史调研.md'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m '追加展会文章调研（2026-08-17）'
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
