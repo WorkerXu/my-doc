@@ -13,9 +13,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Repair table boundary only
         shell: bash
         run: |
+          set -euo pipefail
+          git pull --rebase origin main
           python - <<'PY'
           from pathlib import Path
 
@@ -51,4 +54,11 @@ jobs:
           rm -f .github/workflows/fix-exhibition-research-newline-d-20260817.yml
           git add '展会调研/展会文章调研.md' '展会调研/展会文章历史调研.md' .github/workflows/fix-exhibition-research-newline-d-20260817.yml
           git commit -m '修正展会调研表格换行'
+          for attempt in 1 2 3; do
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            git fetch origin main
+            git rebase origin/main
+          done
           git push origin HEAD:main
