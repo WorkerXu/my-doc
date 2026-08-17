@@ -1,0 +1,53 @@
+name: append-luxury-research
+
+on:
+  push:
+    paths:
+      - '.github/workflows/append-luxury-research.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    if: github.event.head_commit.message == '临时：追加奢侈品文章调研'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Append unique research rows
+        shell: bash
+        run: |
+          set -euo pipefail
+          research='奢侈品文章调研.md'
+          history='奢侈品文章历史调研.md'
+          append() {
+            reason="$1"
+            url="$2"
+            if ! grep -Fq "$url" "$history"; then
+              printf '\n| %s | %s |' "$reason" "$url" >> "$research"
+              printf '\n| %s |' "$url" >> "$history"
+            fi
+          }
+          append '这篇 2026 年自助式实体解析实践把 precision 与 recall 拆开治理：precision 依赖硬规则 veto，而不是只调一个共享阈值；还强调每次跨簇合并都应重新验证，直接适合把“品牌+canonical reference 冲突”设为绝对否决，避免一条错边通过传递性污染整簇。' 'https://arxiv.org/abs/2607.26298'
+          append 'ALER 针对标注稀缺和大规模候选池设计主动学习混合系统，用冻结 bi-encoder 复用静态 embedding、轻量分类器迭代，并同时采样 confused/confident pairs 修正高置信错误；非常适合只有几百对黄金标签时把人工预算集中到相邻 reference 的高风险边界。' 'https://arxiv.org/abs/2601.20664'
+          append 'UCL-Blocker 是 2026 年无监督对比学习 Blocking 方法，加入动态温度与 hard-negative 聚焦，并在包含 watches 的 WDC 商品数据上验证；适合千万级三源数据在几乎不耗人工标签的情况下生成高质量候选，再由 reference 严格一致做最终放行。' 'https://www.sciencedirect.com/science/article/pii/S1568494626002826'
+          append 'OntoDup 把实体匹配做成带证据、来源、状态和审核策略的治理流程，而不是模型一打分就直接 materialize；适合“可漏不可错”的腕表场景保存 reference/OCR/图片等证据链，把冲突候选置为 review，只有满足显式策略的结果才进入主实体关系。' 'https://www.mdpi.com/2078-2489/17/4/325'
+          append 'WDC-PAVE 同时评测商品属性抽取与规范化，目标属性直接包含 Part Number，并覆盖 string wrangling、名称展开等 canonicalization；非常适合拿来验证“标题中抽 reference → 去空格/连字符/大小写规范化 → 品牌内 exact match”的前置模块。' 'https://webdatacommons.org/structureddata/wdc-pave/'
+          append 'FAST-MEL 面向大规模图文实体链接，重点优化在线速度与存储效率；可把腕表图片与标题共同用于快速候选检索/辅助消歧，尤其在标题 reference 缺失时提供第二路证据，但最终自动合并仍应由已验证的 canonical reference 硬规则收口。' 'https://arxiv.org/abs/2606.11749'
+          append '这项工作专门把 OCR 扫描中带错误的商品名称链接回底层 SKU，用图划分式 ER 处理字符识别噪声；与表背、保卡、吊牌图片 OCR 出现 O/0、I/1、缺字符的 reference 场景高度同构，可借来设计 OCR 型号候选纠错与聚类复核。' 'https://www.sciencedirect.com/science/article/pii/S1877050924014236'
+          append 'Databricks 的 fuzzy-item-matching 项目面向 marketplace/supplier 的商品定义差异做可落地 ML 匹配，可作为“多源清洗→候选生成→相似度判别”的工程对照基线；在腕表场景应额外加入品牌内 reference exact/veto 规则，把模糊模型限制在召回和人工复核排序。' 'https://github.com/databricks-industry-solutions/fuzzy-item-matching'
+          append 'AWS 2026 年新增 ML Entity Resolution 的增量匹配工作流，避免每次新数据到来都全量重跑；与三源商品持续增量高度一致，可参考其增量索引/匹配工作方式，把新记录只和已有实体候选比较，并在 reference 冲突时拒绝更新旧簇。' 'https://aws.amazon.com/about-aws/whats-new/2026/05/aws-entity-resolution-ml/'
+          append 'AWS 的实体解析准确率实践专门讨论如何用标注 ground truth 测 precision、recall 与 false positive；适合把几百对黄金标签构造成长期固定验收集，把 precision 设为首要发布门槛，并按品牌/reference hard negatives 单独监控误合并。' 'https://aws.amazon.com/blogs/industries/measuring-the-accuracy-of-rule-or-ml-based-matching-in-aws-entity-resolution/'
+          append '该知乎回答清楚区分 MPN、GTIN 与商家内部 SKU，并指出 MPN 由制造商分配、SKU 可由供应商自行编码；可直接固化为编号角色分类规则，只有已确认属于制造商 reference/MPN 的字符串才能参与跨源主键匹配。' 'https://www.zhihu.com/question/456606115/answer/2543009849'
+          append '文章用型号/错误码说明向量检索对精确字母数字串并不可靠，而关键词/精确检索更擅长命中这类 token；适合把腕表 reference 先走 exact/BM25/字符索引召回，embedding 只补充语义候选，避免向量相似度掩盖一字符型号差异。' 'https://zhuanlan.zhihu.com/p/2069569599494960243'
+          rm -f .github/workflows/append-luxury-research.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add "$research" "$history" .github/workflows/append-luxury-research.yml
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m '追加奢侈品文章调研并更新历史去重记录'
+          git push
