@@ -1,0 +1,59 @@
+name: b append luxury research 20260818
+
+on:
+  push:
+    paths:
+      - '.github/workflows/b-append-luxury-research-20260818.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Append b luxury research rows
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          main = Path('奢侈品文章调研.md')
+          history = Path('奢侈品文章历史调研.md')
+          entries = [
+              ('Makaira 的 ProductNumber Search 将商品编号检索与普通全文检索彻底分离：EAN/SKU/article number 只走无模糊的精确式匹配，且只有唯一命中才直接采用，0 个或多于 1 个命中都不强行选；很适合把 brand+normalized reference 做唯一性 gate，格式差异只规范化，任何相邻编号都不靠 fuzzy 自动合并。', 'https://docs.makaira.io/docs/product-number-search'),
+              ('Delivery Hero 的生产级目录系统直接从供应商 title+image 抽结构化属性并标准化标题，采用可预测的预定义 Agent、Teacher/Student 蒸馏和 confidence scoring；适合百万级持续增量的 reference 候选抽取与低成本部署，低置信或证据冲突结果可直接拒识/人工复核。', 'https://tech.deliveryhero.com/blog/how-delivery-hero-uses-agentic-ai-for-building-a-product-knowledge-base/'),
+              ('MADIAVE 用多个多模态大模型 Agent 对电商属性值反复验证和更新，提升隐式属性抽取的鲁棒性；可迁移成 reference 候选的独立交叉复核层，让标题、图片/OCR 与多路抽取结论一致后才进入 canonical reference exact match，分歧时宁可拒识。', 'https://aclanthology.org/2026.findings-eacl.159/'),
+              ('Microsoft 的全局约束实体解析工作利用“单个来源通常不会无意义重复同一实体”等来源级约束显著提升跨站点解析准确率和稳健性，并可减少所需标注；三源腕表可加入同源唯一性、一对一/冲突约束，在 pairwise 分数很高时仍否决违反全局 reference 一致性的合并。', 'https://www.microsoft.com/en-us/research/publication/improving-entity-resolution-with-global-constraints/'),
+              ('2025 年电商检索研究用 taxonomy-based hard-negative sampling 自动挖掘“语境非常接近但实际不同”的难负例；可把品牌→系列→reference family 当作 taxonomy，批量生成同系列相邻 reference 的 hard negatives，专门训练候选召回/复核器区分一字符或后缀差异，最终仍由 exact reference 硬门槛收口。', 'https://arxiv.org/abs/2511.00694'),
+              ('这篇电商 Model 字典实践将品类、品牌与具体 SKU 型号整理成可复用的细粒度标准字典；可借鉴建立腕表品牌内 canonical reference 词典，把不同空格、连字符、大小写和别名写法先归一，再做严格 reference 等值匹配，也便于识别不在品牌型号字典中的可疑编号并拒识。', 'https://zhuanlan.zhihu.com/p/590488392'),
+          ]
+
+          main_text = main.read_text(encoding='utf-8')
+          hist_text = history.read_text(encoding='utf-8')
+          rows = [(reason, url) for reason, url in entries if url not in main_text and url not in hist_text]
+
+          if rows:
+              with main.open('a', encoding='utf-8') as f:
+                  if main_text and not main_text.endswith('\n'):
+                      f.write('\n')
+                  for reason, url in rows:
+                      f.write(f'| {reason} | {url} |\n')
+              with history.open('a', encoding='utf-8') as f:
+                  if hist_text and not hist_text.endswith('\n'):
+                      f.write('\n')
+                  for _, url in rows:
+                      f.write(f'| {url} |\n')
+          PY
+      - name: Commit changes
+        shell: bash
+        run: |
+          if git diff --quiet -- '奢侈品文章调研.md' '奢侈品文章历史调研.md'; then
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add '奢侈品文章调研.md' '奢侈品文章历史调研.md'
+          git commit -m 'b 追加本轮奢侈品文章调研'
+          git push
