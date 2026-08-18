@@ -25,31 +25,34 @@ jobs:
           from pathlib import Path
 
           items = [
-              ('Progressive Entity Resolution 将大规模 ER 拆成过滤、加权、调度、匹配四步并按收益逐步处理；适合 100万–1000万持续增量数据优先处理 brand+reference 强证据候选，把昂贵验证留给少量疑难项，同时允许未决记录不强行归并。', 'https://arxiv.org/abs/2503.08298'),
-              ('DynaHash 针对流式 record linkage 用 MinHash 表示 blocking key，再以 Hamming LSH 建候选结构，并给出次线性处理能力；适合持续新增商品只更新候选索引，先高召回缩小比较范围，最终仍由品牌作用域内 canonical reference exact gate 放行。', 'https://www.sciencedirect.com/science/article/pii/S0306437926000062'),
-              ('ALT/FNDATA 的腕表拍卖数据同时提供品牌、model、reference、图片和原始 lot URL，可作为独立的 reference 弱监督语料与外部核验源；特别适合从真实标题学习 reference 抽取格式，并按同品牌相邻 reference 自动构造高风险 hard negatives。', 'https://docs.altfndata.com/'),
-              ('2026 年 Omega reference 指南把 14 位六段式 PIC 拆成系列、材质、尺寸、机芯、盘面和序列段；可直接做品牌专属 parser/canonicalizer，在只差一段的近邻型号间设置硬冲突，避免把同系列视觉近似款误并。', 'https://hrockluxury.com/blogs/journal/omega-reference-number-guide-aqua-terra-teak'),
-              ('Minun 是面向实体匹配的模型无关反事实解释工具，可定位“哪些字段变化会让匹配结论翻转”；适合在几百对黄金标签上审计 false positive，验证 matcher 是否真正依赖 reference，而不是被标题或图片相似度带偏，并据此固化 veto 规则。', 'https://github.com/megagonlabs/minun'),
-              ('这篇欧米茄型号编码资料展示新旧 reference 的品牌专属分段规则及各段含义，可补充中文二手标题中的型号解析词典；对点号、分段、位数等格式做保守规范化后再 exact match，能减少把尺寸、机芯号或截断短号当完整 reference 的风险。', 'https://zhuanlan.zhihu.com/p/114978925'),
+              ('Khoji 提供文本、图像及混合模态检索的 LoRA 微调与迭代 hard-negative mining，并直接带跨品牌 SKU matching 示例；可用同品牌相邻 reference、外观极近但型号不同的腕表作为困难负例，把百万级候选召回器专门训练成“先找全、但不把相似当相同”，最终仍由 reference 硬规则收口。', 'https://github.com/suyashh94/khoji'),
+              ('Samesake 把电商搜索与实体解析放在同一工程框架中，支持 structured parse gates、分通道打分、可解释结果以及 confirm/decline 后的别名学习；很适合把 brand/reference 设为不可被语义相似度覆盖的硬门槛，同时保留标题、图片和别名作候选召回与人工复核辅助。', 'https://github.com/asyncdotengineering/samesake'),
+              ('SERF 是持续迭代的语义实体解析框架，包含 FAISS blocking、块级匹配、合并和评测闭环，并可多轮运行直至稳定；可借其“候选生成与匹配解耦”的工程结构处理三源持续增量，但在本需求中应把 LLM 合并权限降级，只允许 canonical reference 一致时自动归并。', 'https://github.com/Graphlet-AI/serf'),
+              ('Abstain-R1 专门学习校准后的拒答/拒识行为，并在不可判定输入上主动 abstain；可迁移到 precision-first 商品匹配，把 reference 缺失、OCR 字符不确定、品牌冲突或多候选并列等情况训练为明确“不自动匹配”，而不是被迫二分类产生 false positive。', 'https://aclanthology.org/2026.findings-acl.985/'),
+              ('这项多模态 LLM OCR 研究直接分析图像分辨率与视觉复杂度对字符级准确率的影响，结论强调精确字符任务对输入质量高度敏感；腕表 reference 常刻在表背且字母数字只差一位即可变成另一型号，可据此设置最小像素/清晰度门槛，达不到就拒识而非猜号。', 'https://arxiv.org/abs/2503.23667'),
+              ('该研究比较多模态 LLM 的直接 OCR 与 OCR post-correction，并显示后校正可显著改善转录；可在表背、保卡、吊牌 reference 提取中采用“双路 OCR + 受限候选库校正”，但仅当原始字符证据与品牌 reference 词典一致时放行，避免自由生成型号。', 'https://arxiv.org/abs/2504.00414'),
+              ('Breitling 官方 FAQ 明确说明 reference number 唯一标识一个腕表型号及其设计、机芯和特征，并指出 reference 可从保修资料或表背获得；这是与本需求定义高度一致的品牌一手证据，可用于制定“型号级 reference 与单表 serial number 分离”的字段规范和图像 OCR 取证位置。', 'https://www.breitling.com/us-en/service/faq/'),
+              ('阳采集团的工业品 AI 数据治理实践采用规则引擎加大模型，从混乱商品字段中拆解品牌、型号等关键属性，并针对“一物多码”做消歧；与三源二奢数据的字段稀疏、命名不统一场景同构，可借鉴品牌词典、型号结构化抽取和规则优先的治理分层。', 'https://zhuanlan.zhihu.com/p/1942151146182545569'),
           ]
 
           research = Path('奢侈品文章调研.md')
           history = Path('奢侈品文章历史调研.md')
 
           research_text = research.read_text(encoding='utf-8')
+          history_text = history.read_text(encoding='utf-8')
           if not research_text.endswith('\n'):
               research_text += '\n'
-          for reason, url in items:
-              if url not in research_text:
-                  research_text += f'| {reason} | {url} |\n'
-          research.write_text(research_text, encoding='utf-8')
-
-          history_text = history.read_text(encoding='utf-8')
           if not history_text.endswith('\n'):
               history_text += '\n'
-          for _, url in items:
-              if url not in history_text:
-                  history_text += f'| {url} |\n'
+
+          for reason, url in items:
+              if url in history_text:
+                  continue
+              if url not in research_text:
+                  research_text += f'| {reason} | {url} |\n'
+              history_text += f'| {url} |\n'
+
+          research.write_text(research_text, encoding='utf-8')
           history.write_text(history_text, encoding='utf-8')
           PY
 
