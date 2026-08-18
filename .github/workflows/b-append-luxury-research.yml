@@ -1,0 +1,38 @@
+name: b append luxury research
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/b-append-luxury-research.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Append new research rows
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('奢侈品文章调研.md')
+          text = p.read_text(encoding='utf-8')
+          rows = '''| Zingg 的生产级数据清洗文章强调 stopword、统一大小写/符号与领域化 normalization 会直接决定匹配分数可靠性；可把腕表 reference 单独走“保留字母数字身份字符、仅规范分隔符”的保守标准化，避免营销词干扰同时防止过度清洗把不同型号合并。 | https://www.zingg.ai/post/entity-resolution-at-scale-part-2-stopwords-normalization |
+          | Zingg 的 billion-scale blocking 文章把候选生成与昂贵匹配明确分层，并说明百万级以上必须把比较空间压到极小比例；适合按 canonical brand、reference 前缀/系列做高召回 blocking，再只对候选执行严格 reference 校验，支撑 100 万–1000 万持续增量数据。 | https://www.zingg.ai/post/entity-resolution-at-scale-part-3-blocking |
+          | Zingg 的阈值与主动学习文章说明决策边界应由少量人工标注迭代校准，并把高置信、待复核、低置信结果分流；很契合几百对黄金标签与 precision-first 约束，可优先标注同系列相邻 reference 等边界样本，自动合并只开放极高置信区。 | https://www.zingg.ai/post/entity-resolution-at-scale-part-4-thresholds-active-learning |
+          | Zingg 的增量实体解析文章系统覆盖新增/更新记录、簇 merge/split、人工反馈硬约束与稳定实体 ID；适合三源持续增量时避免每次全量重跑，并把人工确认的“不匹配”长期保留为硬约束，降低错误边经传递关系污染历史簇的风险。 | https://www.zingg.ai/post/entity-resolution-at-scale-part-5-incremental-flow |
+          | DataFunTalk 的电商知识图谱实践直接讨论文本与图片交叉验证、图文冲突和属性值消歧，并针对图片与标题只部分对齐设计非对称校验；可把表盘/表背/保卡图片作为 reference 的旁证与冲突否决信号，而不是用视觉相似度替代型号硬规则。 | https://zhuanlan.zhihu.com/p/703781820 |'''
+          if 'https://www.zingg.ai/post/entity-resolution-at-scale-part-2-stopwords-normalization' not in text:
+              p.write_text(text.rstrip('\n') + '\n' + rows + '\n', encoding='utf-8')
+          PY
+          git config user.name 'WorkerXu'
+          git config user.email '819972341@qq.com'
+          git add -- '奢侈品文章调研.md'
+          git diff --cached --quiet || git commit -m 'b 追加本轮奢侈品文章调研'
+          git push
