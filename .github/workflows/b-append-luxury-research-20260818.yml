@@ -22,12 +22,12 @@ jobs:
           main = Path('奢侈品文章调研.md')
           history = Path('奢侈品文章历史调研.md')
           entries = [
-              ('SIGIR 2026 把电商商品自由文本先转成类别感知属性图，再在结构化属性上重排候选，零样本平均精度提升且明显减少 token；可先从稀疏标题结构化品牌、系列与 reference 候选，再在受限候选内检索，减少纯语义向量把相邻型号混在一起。', 'https://arxiv.org/abs/2604.27410'),
-              ('LEMONADE 专门面向少量且有噪声标签的实体匹配，LLM 只在训练阶段生成困难样本并把知识迁移到轻量模型，论文还用近似产品版本说明易错边界；很适合用几百对黄金标签强化相邻 reference hard negatives，同时保持大规模推理成本可控。', 'https://www.sciencedirect.com/science/article/pii/S0950705125022725'),
-              ('ING 的 EntityMatchingModel 可在 Pandas/Spark 上做 millions×millions 候选匹配，组合字符/词 TF-IDF、余弦近邻、Sorted Neighbourhood 与置信度分类器；可作为千万级三源数据的 Blocking 工程参考，把候选压到极小集合后再由 brand+canonical reference 硬规则最终裁决。', 'https://github.com/ing-bank/EntityMatchingModel'),
-              ('腕表行业文章明确 reference number 标识精确型号与规格，而 serial number 标识单只腕表，并介绍不同品牌的编号结构及异常格式风险；可据此建立品牌作用域的 reference 解析、格式校验和序列号排除规则，降低把相邻型号或个体序列号误当跨源主键。', 'https://kigu.app/blog/watch-reference-numbers-explained'),
-              ('AWS Entity Resolution 2026 年 7 月把 Exact、ExactManyToMany 与 AND/OR 高级规则扩展到毫秒级实时匹配；适合持续增量三源商品用 brand+canonical reference 的确定性组合规则即时生成稳定 match ID，并让模糊证据无法单独触发自动合并。', 'https://aws.amazon.com/about-aws/whats-new/2026/07/aws-entity-resolution/'),
-              ('这篇实体消歧实战强调“大模型适合做提取器、不应做裁判”，身份判定应由可审计规则承担，相似度只能作线索，冲突项进入人工确认且原始记录保留；与“reference 严格一致、绝不能误匹配”的 precision-first 设计高度一致。', 'https://zhuanlan.zhihu.com/p/2058664296960222147'),
+              ('淘宝 WWW26 生成式检索实践把商品 Embedding 与 RQ-VAE Codebook 联合训练，并直接用“同款商品簇”作为监督信号；可借来让同 reference 商品在候选表示空间更稳定聚合，同时把相邻不同 reference 作为 hard negatives，最终仍由 canonical reference 严格一致收口。', 'https://zhuanlan.zhihu.com/p/2065491120172300172'),
+              ('阿里妈妈百亿级营销图实践直接包含“同款异常点检测”，把 SKU、同款边和模型 score 建图后用 1-hop/2-hop 邻域发现簇内异常；很适合三源 reference 聚类后的 false-positive 审计，及时发现误连边，避免错误关系在商品簇中继续传播。', 'https://www.nebula-graph.com.cn/posts/use-case-alimama'),
+              ('2026 年跨 Marketplace 商品匹配工程指南把 EAN/UPC/GTIN/model number 作为最高置信层，结构化属性次之，标题与图片只作为受控辅助，并明确强调 match precision 优先、歧义项交人工；与“可漏不可错”的 reference-first 流程高度一致。', 'https://www.actowizsolutions.com/product-matching-across-marketplaces.php'),
+              ('2026 年商品标识实践系统区分 GTIN、SKU、MPN 在跨店商品身份中的角色，并强调稳定标识应优先于标题语义做匹配/去重；可借来完善“制造商 reference/MPN 与平台 SKU 分角色”的数据治理，减少不同来源自有编号造成的错误合并。', 'https://blog.shopti.ai/posts/product-identifiers-gtin-sku-mpn-ai-shopping-agents-structured-data/'),
+              ('2026 年商品匹配评测指南要求从缺失标识、属性冲突、近似变体、替代品等高风险样本建标注集，并检查 calibrated confidence、证据、人工复核与可逆写回；很适合把几百对黄金标签集中到相邻 reference hard cases，以 precision 和误合并可追溯性作为上线门槛。', 'https://getclaro.ai/resources/guides/how-to-evaluate-product-matching-software/'),
+              ('2026 年“无共享 GTIN”商品匹配方案把 manufacturer identity、规范化 part number、规格、包装等多证据组合，并明确弱字段不能独立代表身份；可直接映射到腕表“品牌 + normalized reference”为强键、图片/标题仅补证，证据不足就拒识。', 'https://getclaro.ai/resources/guides/how-to-match-supplier-products-without-gtin/'),
           ]
 
           main_text = main.read_text(encoding='utf-8')
