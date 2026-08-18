@@ -31,12 +31,13 @@ jobs:
           main = Path('奢侈品文章调研.md')
           history = Path('奢侈品文章历史调研.md')
           entries = [
-              ('直接是腕表商品数据增强案例，跨多个外部来源主要依靠 reference number 与 brand+model 链接，并专门处理同一 reference 在不同站点格式不一致、缺失与来源冲突；可直接借鉴“品牌内 reference 规范化→多信号补证→冲突按来源优先级拒绝/择优”的生产链路。', 'https://scraping.pro/cases/watch-product-data-enrichment/'),
-              ('开源 WatchCharts MCP 把 free text（如 Daytona 116503）解析为 watch_id/uuid/brand/collection，并能返回 references、variation 与规格；可作为独立的腕表 canonical resolver/外部核验源，用于检查标题抽出的 reference 是否能在品牌目录中解析到唯一实体，而不是拿模糊搜索结果直接合并。', 'https://github.com/NiccoloSalvini/watchcharts-mcp'),
-              ('Product 360 官方实现明确用 exact Brand+MPN 自动合并，fuzzy title 只进入 steward 候选区，并保留 approve/reject/Unmerge 和审计历史；几乎对应本需求的“品牌+reference 硬门控、边界人工、误合并可回滚”治理模式。', 'https://documentation.cluedin.net/product360'),
-              ('腕表图像识别工具会同时读取品牌标识、盘面、表壳比例与可见 reference/serial/机芯文字，输出具体 reference；可作为表背、保卡、表盘图片侧的辅助 reference 候选和冲突检测信号，尤其适合文本字段缺失，但不应越过 canonical reference 硬校验。', 'https://curiosa.com/scan/watch-identifier'),
-              ('文章把 WatchBase 的 brand→family→reference 层级整理成“一 reference 一记录”的规范化 JSON，同时保留原始 specs 键值以避免过度清洗丢信息；适合构建 brand-scoped reference 词典与规格旁证，并用 raw+normalized 双轨数据审计解析器。', 'https://dev.to/liuhao04/turn-a-watch-reference-number-into-full-specs-caliber-case-dial-as-json-g0g'),
-              ('1688 图搜落地实践明确指出纯图搜只识别外观，可能“长得一样、货不一样”，高价值商品应保留候选并人工复核；可用来约束腕表图片只负责候选召回/辅助核验，不把视觉相似直接当同 reference 证据。', 'https://zhuanlan.zhihu.com/p/2070908403698996246'),
+              ('Galileo Protocol 的腕表 DPP 官方 JSON Schema 把 manufacturer referenceNumber 与 serialNumber、GTIN、caliber 等字段明确分层，并给出奢侈腕表示例；可直接借鉴为三源 canonical identity 数据模型，先判定编号角色再做 reference 严格等值，避免把平台 SKU、单表流水号或机芯号误当同款键。', 'https://www.galileoprotocol.io/specifications/schemas/dpp/dpp-watch.schema'),
+              ('GS1 的 Verified by GS1 官方说明把产品身份校验定义为确认“是不是你认为的那个产品”，并依赖全球唯一、可验证的 GTIN；腕表若能从来源补到 GTIN，可把它作为 reference 之外的强一致性或冲突证据，且对不存在或无法验证的标识符应拒绝猜测。', 'https://support.gs1.org/support/solutions/articles/43000734077-what-is-verified-by-gs1-'),
+              ('Longines 官方真伪证书申请页把 Watch reference 与 Serial Number 分成两个独立字段，并给出 L2.320.0.87.6 这类 reference 格式示例；非常适合建立“型号级 reference ≠ 单表 serial”的字段角色规则，并指导标题、保卡和图片 OCR 的格式校验。', 'https://www.longines.com/en-us/contact/certificate-of-authenticity'),
+              ('该研究把 LLM 实体匹配拆成匹配或不匹配 token、关键属性判断、实体级决策三个显式阶段，并用支持与反对论证提升稳健性；可用于 reference 抽取后的疑难候选做可解释冲突审计，但自动合并仍只允许 canonical reference 严格一致。', 'https://arxiv.org/abs/2511.22832'),
+              ('ACL 2026 的 DySECT 用持续扩张的知识库、概率知识和图推理反哺信息抽取器，形成随使用不断更新的闭环；适合三来源持续增量时沉淀品牌 reference 词典、别名和新格式，再用人工复核结果迭代抽取器，而不改变 precision-first 的硬匹配门槛。', 'https://aclanthology.org/2026.acl-demo.69/'),
+              ('ACL 2026 对数值和字母数字实体抽取做了系统误差诊断，显示编码式表达和字符级表达仍是 LLM 的稳定失败点，并验证 Error-Aware prompting 可改善抽取；腕表 reference 常是一位字符即决定不同型号，可据此加入字符级复核、格式词典和不稳定即拒识策略。', 'https://aclanthology.org/2026.acl-industry.132/'),
+              ('这篇 2026 年 Merchant Center 数据 Feed 实践把 brand、GTIN、MPN 单列为唯一产品标识符，并区分主 Feed 与补充 Feed；可借鉴为三源增量数据设计“原始来源字段 + 规范化 reference 或标识符补充层”，避免覆盖原证据，同时把后续纠错作为可追踪补充数据。', 'https://zhuanlan.zhihu.com/p/2000249156971823722'),
           ]
 
           main_text = main.read_text(encoding='utf-8')
