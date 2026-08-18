@@ -27,18 +27,21 @@ jobs:
           main = Path('奢侈品文章调研.md')
           history = Path('奢侈品文章历史调研.md')
           entries = [
-              ('异构、多模态工程部件的实体匹配实测显示 Random Forest/XGBoost 等轻量监督模型可接近 SOTA，LLM 成本高且混合方案增益有限；很适合先把品牌、规范化 reference、标题证据和图像校验信号做成可解释特征，用少量标注训练高精度 verifier，而不是让大模型直接决定合并。', 'https://www.cambridge.org/core/journals/proceedings-of-the-design-society/article/entity-matching-for-recurring-engineering-components-a-bottomup-enabler-for-reference-architecture-reconstruction/B5A60E41B7701424645B97FBEE0716A0'),
-              ('项目把 ASIN、Best Buy SKU、商品 URL 等多种输入统一解析到稳定 canonical product，并加入跨源合并、confidence gating 与别名缓存；可借鉴其“全局商品 ID + 多来源标识别名 + 低置信拒识”的工程模式，支撑三源持续增量且避免重复创建实体。', 'https://github.com/ask-poly/askpoly'),
-              ('Walmart 在约 2 亿商品索引上用 cross-batch negatives、cross-encoder 验证和元数据启发式挖掘高质量 hard negatives；可用于百万到千万级候选召回和“同品牌同系列但不同 reference”难负例构造，最终匹配仍由 reference 硬规则/高精度验证器裁决。', 'https://arxiv.org/abs/2607.10096'),
-              ('专门针对视觉-语言模型难以区分高语义相似 hard negatives 的问题设计负例采样与提示学习；可把同系列、外观近似但 reference 不同的腕表图文对作为困难负例训练辅助验证器，让图像只承担冲突否决和补强证据，降低视觉相似造成的误合并。', 'https://www.sciencedirect.com/science/article/pii/S0950705126003436'),
-              ('给出“有统一标识 / 无统一标识”的商品匹配实操流程，强调从页面完整采集标识、JSON-LD、图片和后台元数据再统一规范化；可直接迁移为 brand+reference 优先、字段缺失时多证据降级且允许不匹配的采集与判定管线。', 'https://groupbwt.com/blog/product-matching/'),
-              ('把“从图中识别部件 → 提取 part number → 回查精确 SKU 目录”做成端到端目录匹配流程；对腕表可类比用表背、保卡、吊牌图片提取 reference，再在品牌 reference 词典中精确确认，适合作为标题缺失型号时的辅助证据链。', 'https://opendrawing.ai/blog/ai-part-number-search-catalog-matching/'),
-              ('开源的聚类、清洗与外部 reconciliation 工具适合离线发现品牌别名、reference 分隔符/大小写/前后缀规范化规则，并可重放清洗操作到新批次；可作为规则和词典生产台，不作为千万级线上最终 matcher。', 'https://openrefine.org/'),
+              ('少标注可解释实体匹配：用未标注数据学习噪声属性表示，再用少量标注诱导关键属性决策树/可解释规则；很适合把 brand/reference 设为核心可审计特征，用几百对黄金样本学习保守判别，同时把相邻型号冲突固化为 hard veto。', 'https://aclanthology.org/2021.acl-long.215/'),
+              ('弱监督实体匹配可把 brand/reference 精确规则、OCR 一致、编号角色等写成 labeling functions，再结合少量黄金样本推断训练标签；论文还针对 EM 的传递性做约束，适合低标注成本扩充训练集，同时用冲突规则压低错误正例。', 'https://www.microsoft.com/en-us/research/publication/ground-truth-inference-for-weakly-supervised-entity-matching/'),
+              ('直接研究“非结构化商品 offer → 结构化产品目录”的匹配，把自由文本先生成强查询候选再用分类器复核；与 reference 埋标题的二奢数据高度同构，可借鉴“结构化 catalog 受限候选→严格验证”的两阶段流程，避免全量模糊匹配。', 'https://www.microsoft.com/en-us/research/publication/matching-unstructured-offers-to-structured-product-descriptions/'),
+              ('把商品属性值与商品 profile 做交叉校验，并用 MetaBridge 在少标注/未见品类下显式建模不确定性；很适合把从标题/OCR 抽出的 reference 作为待验证属性，只在与品牌/商品描述一致且不确定性低时提升为强身份键。', 'https://www.amazon.science/publications/automatic-validation-of-textual-attribute-values-in-e-commerce-catalog-by-learning-with-limited-labeled-data'),
+              ('把商品标题/品牌文本 grounding 到图片具体区域，并在大规模图文对上自监督训练；可用于确认标题中的 reference/品牌是否真的属于当前商品图，过滤配件、背景文字或错图，图片只做冲突验证而不替代 reference 硬判据。', 'https://www.amazon.science/publications/catalog-phrase-grounding-cpg-grounding-of-product-textual-attributes-in-product-images-for-e-commerce-vision-language-applications'),
+              ('WSDM 2026 用品牌知识库作为可信参照，让 LLM agent 同时检测目录错误并匹配/修复记录；可借鉴把品牌官方 reference 目录当外部证据源，只有抽取型号能在品牌知识库中唯一落点且无冲突时才进入自动匹配。', 'https://www.amazon.science/publications/using-brand-knowledge-bases-and-llm-agents-to-enhance-e-commerce-retailers-catalog-quality'),
+              ('OA-Mine 用弱监督处理电商中新品类/新属性持续出现，并从商品标题发现开放世界属性；适合持续增量腕表在缺少结构字段时从标题发现 reference/model 候选，再通过品牌 reference 词典和原文证据严格校验。', 'https://www.amazon.science/publications/oa-mine-open-world-attribute-mining-for-e-commerce-products-with-weak-supervision'),
+              ('AdaTag 从商品 profile 一次抽取多种属性，并用自适应解码在属性间共享知识又保留属性特异性；可让 Brand/Series/Reference 共用一个抽取器，尤其适合字段稀疏和品牌增长时低成本扩展 reference 抽取。', 'https://www.amazon.science/publications/adatag-multi-attribute-value-extraction-from-product-profiles-with-adaptive-decoding'),
+              ('OpenTag 用开放世界序列标注从商品标题/描述抽缺失属性，并结合主动学习显著降低人工标注量；可把已有高置信 reference 作为种子，从三源脏标题扩充型号抽取器，再把疑难字母数字串优先送人工标注。', 'https://www.amazon.science/publications/opentag-open-attribute-extraction-from-product-profiles'),
+              ('京东商品标题实体识别竞赛实践利用大规模未标注语料、伪标签和高置信过滤提升 NER；可迁移到 reference 埋标题的场景，用大量无标注二奢标题做领域预训练/伪标注，再把少量人工样本集中到型号 hard cases。', 'https://zhuanlan.zhihu.com/p/587929083'),
           ]
 
           main_text = main.read_text(encoding='utf-8')
           hist_text = history.read_text(encoding='utf-8')
-          main_rows = [(reason, url) for reason, url in entries if url not in main_text]
+          main_rows = [(reason, url) for reason, url in entries if url not in main_text and url not in hist_text]
           history_urls = [url for _, url in entries if url not in hist_text]
 
           if main_rows:
