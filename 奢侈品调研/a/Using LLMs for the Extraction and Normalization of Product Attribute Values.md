@@ -9,23 +9,21 @@
 - 官方代码：<https://github.com/wbsg-uni-mannheim/wdc-pave>
 - 当前需求：<https://app.notion.com/p/Spec-3bf7b2a8538b812fba00fb258024ff31>
 
-当前 Spec 的核心不是普通的“相似商品匹配”，而是一个非常明确、并且对误判极端敏感的实体链接问题：
+当前 Spec 的业务真值非常明确：**同一商品就是同一品牌下同一 reference number**，而且 precision 优先到极致，可以接受漏匹配。由此决定了最合适的架构并不是再训练一个“商品 A 与商品 B 是否相同”的黑盒 matcher，而是把每条商品独立解析并链接到一个可信的 Reference Entity。
 
-> **同一个商品 = 同一品牌下同一个 reference number；自动系统宁可漏掉，也绝不能把两个不同 reference 合并。**
+WDC-PAVE 最值得借鉴的是把电商脏文本处理拆为：
 
-WDC-PAVE 对这个问题最有价值的地方不是“用 GPT 替换正则”，而是把电商脏文本处理拆成了两个不同任务：
+1. **Extraction**：从 title / description 中提取属性值；
+2. **Normalization**：把不同表面写法规范到统一值。
 
-1. **Extraction**：从 title / description 中找出真正的属性值；
-2. **Normalization**：把不同写法映射成统一形式。
-
-论文示例中直接包含 `Part Number`，并展示了类似：
+论文示例直接包含 `Part Number`，并展示类似：
 
 ```text
 raw:        6280-59-B21
 normalized: 628059B21
 ```
 
-这与腕表 reference 的现实问题高度同构：
+这与腕表 reference 高度同构：
 
 ```text
 126610 LN
@@ -33,16 +31,16 @@ normalized: 628059B21
 126610LN
 ```
 
-可能是同一个 reference 的不同书写方式；但与此同时：
+可能只是书写差异；但：
 
 ```text
 126610LN
 126610LV
 ```
 
-只差两个字符，却绝不能合并。
+虽然非常相似，却绝不能合并。
 
-因此，本次建议不是把 WDC-PAVE 原方案原样搬到生产，而是把它改造成一个 **Precision-First Reference Resolver**：
+因此建议将论文方案改造成一个 **Precision-First Reference Resolver**：
 
 ```text
 雷小安 / 腕表之家 / 奢当家
@@ -51,7 +49,7 @@ normalized: 628059B21
    Source Adapter / 字段标准化
           │
           ▼
-      品牌 Canonicalization
+      Brand Canonicalization
           │
           ▼
  ┌──────────────────────────────┐
@@ -59,7 +57,7 @@ normalized: 628059B21
  │ 1. 独立 reference 字段        │
  │ 2. 规则 / 字典 / regex        │
  │ 3. LLM constrained extraction │
- │ 4. OCR（只作为辅助证据）       │
+ │ 4. OCR（辅助证据）             │
  └──────────────────────────────┘
           │
           ▼
@@ -86,38 +84,34 @@ normalized: 628059B21
 跨源记录按 exact key 聚合
 ```
 
-最终生产规则保持极其简单：
+最终自动匹配规则应保持非常简单：
 
-> **只有两条商品记录都拿到 `VERIFIED_REFERENCE`，并且 `(brand_id, canonical_reference)` 完全相同，且不存在任何冲突证据时，才允许自动匹配。**
+> **只有两条记录都处于 `VERIFIED_REFERENCE`，且 `(brand_id, canonical_reference)` 完全相同，并且没有冲突证据时，才允许自动匹配。**
 
-LLM、图片相似度、文本 embedding 都不能直接产生“同商品”结论；它们只能帮助找 reference、确认 reference，或者触发拒识。
-
-这比直接训练 pairwise matcher 更符合当前 Spec，因为“是否同款”的业务真值本来就由 reference 定义，没有必要让模型重新学习一个更模糊的代理目标。
+LLM、文本 embedding、图片相似度都不能直接产生“同商品”结论；它们只负责补充候选、证据或触发拒识。
 
 ---
 
-## 1. 为什么这篇论文适合当前需求
+## 1. 为什么 WDC-PAVE 正好击中当前问题
 
-### 1.1 当前问题的真正瓶颈在上游，不在 pairwise matcher
-
-如果三源数据每条记录都有准确的结构化字段：
+如果三源数据都稳定提供：
 
 ```text
 brand = Rolex
 reference = 126610LN
 ```
 
-那么匹配根本不需要神经网络：
+那么匹配只需要 exact key：
 
 ```sql
 WHERE brand_id = ?
   AND canonical_reference = ?
 ```
 
-问题在于现实数据通常是：
+真正困难的是上游数据经常类似：
 
 ```text
-标题：劳力士 潜航者 黑水鬼 41mm 126610 LN 全套 2023
+标题：劳力士 潜航者 黑水鬼 41mm 126610 LN 全套
 reference 字段：NULL
 平台货号：LX202408019338
 ```
@@ -125,54 +119,32 @@ reference 字段：NULL
 或者：
 
 ```text
-标题：Rolex 126610LN 原装表带 / 适配黑水鬼
+Rolex 126610LN 原装表带 / 适配黑水鬼
 ```
 
-又或者：
+或者：
 
 ```text
-标题：欧米茄 海马 210.30.42.20.01.001 现货
+欧米茄 海马 210.30.42.20.01.001 现货
 ```
 
-所以系统的难点实际上是：
+因此系统真正要解决的是：
 
-1. 从任意来源字段中找出 reference 候选；
-2. 不把平台 SKU、鉴定号、序列号等误认成 reference；
-3. 不把“兼容型号/提及型号”误认成当前商品 reference；
-4. 对合法格式做安全的规范化；
-5. 在无法确定时主动拒识。
+1. 从不同来源字段中找到 reference 候选；
+2. 不把平台 SKU、序列号、鉴定号误当成 reference；
+3. 不把“兼容型号、配件适配对象、对比对象”误当成当前商品 reference；
+4. 对合法格式做**无损且 collision-safe** 的规范化；
+5. 无法唯一确定时主动 `ABSTAIN`。
 
-WDC-PAVE 正好把 1 和 4 作为独立研究对象。
-
-### 1.2 论文不是只有 extraction，还显式研究 normalization
-
-论文把电商属性规范化分为多类操作，包括：
-
-- Name Expansion；
-- Generalization；
-- Unit Conversion；
-- String Wrangling；
-- 大小写与标点处理等。
-
-对于 reference，最相关的是 String Wrangling。
-
-不过这里有一个关键差异：
-
-> **WDC-PAVE 的属性规范化目标偏向语义等价；当前需求的 reference 规范化必须接近“无损、可证明等价”。**
-
-例如颜色属性把 `Neon Lime Green` 归一到 `Green` 是合理的；但 reference 绝不能做类似模糊泛化。任何规则只要存在把两个真实 reference 压成同一个值的可能，就不能进入自动匹配路径。
-
-因此我们应该借鉴它的“Extraction → Normalization”架构，而不是照搬所有 normalization 策略。
+WDC-PAVE 正好对 1 和 4 给出了完整方法与代码基线。
 
 ---
 
-## 2. WDC-PAVE 的技术实现与代码架构
+## 2. WDC-PAVE 的实际代码架构
 
-官方仓库：
+官方仓库：<https://github.com/wbsg-uni-mannheim/wdc-pave>
 
-<https://github.com/wbsg-uni-mannheim/wdc-pave>
-
-README 中给出的工程入口很清晰：
+README 中可以看到主要模块：
 
 ```text
 data/processed_datasets/
@@ -181,7 +153,7 @@ pieutils/
 scripts/
 ```
 
-主要实验脚本包括：
+相关实验入口包括：
 
 ```text
 scripts/01_run_example_values_prompts.sh
@@ -190,220 +162,187 @@ scripts/08_run_prompts_for_extraction_with_normalization.sh
 scripts/10_run_prompts_for_normalization_multiple_attributes.sh
 ```
 
-代码不是简单地拼一个 prompt 发给模型，而是已经形成了一个“数据预处理 → prompt 构造 → few-shot 检索 → LLM → 结构化校验 → 评估”的完整流水线。
-
-### 2.1 Prompt orchestration
-
-`prompts/08_extraction_with_normalization/8_few_shot_extraction_with_normalization.py` 的核心 prompt 大意是：
+这套代码并不是简单“拼 prompt -> 调模型”，而是：
 
 ```text
-Split the product {part} by whitespace.
-Extract the valid attribute values from the product {part}
-and normalize the attribute values according to the guidelines below.
-Respond in JSON format.
-Unknown attribute values should be marked as n/a.
-Do not explain your answer.
-Guidelines:
-{guidelines}
+Dataset Preprocessing
+       ↓
+Task / Attribute Schema
+       ↓
+Normalization Guidelines
+       ↓
+Category-aware Few-shot Retrieval
+       ↓
+Chat Prompt
+       ↓
+LLM
+       ↓
+JSON Parse + Pydantic Validation
+       ↓
+Evaluation / Cost Accounting
 ```
 
-它包含几个非常值得迁移的工程设计：
+### 2.1 Prompt Contract
 
-1. **输出被限定为 JSON**；
-2. **明确允许 `n/a`**，不是强迫模型一定给答案；
-3. **规范化规则作为 guideline 动态注入**；
-4. **按 category 使用不同 attribute schema**；
-5. `temperature=0`，减少不必要的随机性；
-6. 模型输出再通过 Pydantic 做 schema validation。
+`prompts/08_extraction_with_normalization/8_few_shot_extraction_with_normalization.py` 的核心任务约束大意为：
 
-这比“请帮我从标题抽型号”可靠得多。
-
-### 2.2 Pydantic 不是格式美化，而是一道故障隔离层
-
-代码会先按 category 创建对应的 Pydantic model：
-
-```python
-pydantic_models = create_pydanctic_models_from_known_attributes(
-    task_dict['known_attributes']
-)
+```text
+Extract valid attribute values from the product text,
+normalize them according to guidelines,
+respond in JSON,
+mark unknown values as n/a,
+do not explain the answer.
 ```
 
-LLM 响应拿到后：
+它有六个可直接迁移的工程点：
 
-```python
-json_response = json.loads(response)
-pred = pydantic_models[category](**json.loads(response))
-```
+1. 输出固定为 JSON；
+2. 明确允许 `n/a`，即模型可以拒答；
+3. normalization guideline 动态注入；
+4. 不同 category 使用不同 attribute schema；
+5. 模型使用 `temperature=0`；
+6. 输出再经过 Pydantic 校验。
 
-如果 JSON 无法解析，会尝试修复；如果仍不满足 schema，则不产生合法 prediction。
-
-这对我们的 reference 服务非常重要。
-
-推荐进一步收紧 schema：
+对当前项目，建议把输出 schema 收紧成带证据的候选：
 
 ```json
 {
-  "brand": "Rolex",
+  "brand": "ROLEX",
   "reference_candidates": [
     {
       "raw": "126610 LN",
-      "span": "...黑水鬼 126610 LN 全套...",
-      "role": "current_product_reference",
-      "source_field": "title"
+      "source_field": "title",
+      "evidence_text": "黑水鬼 126610 LN 全套",
+      "role": "CURRENT_PRODUCT_REFERENCE"
     }
   ],
   "abstain": false
 }
 ```
 
-而不是只返回：
+而不是只输出：
 
 ```json
 {"reference": "126610LN"}
 ```
 
-原因是**必须保留证据链**。模型如果输出了一个输入文本中根本不存在的 reference，后处理可以立刻拒绝。
+原因是 production 系统必须能验证：模型给出的字符串是否真的存在于输入证据中。
 
-### 2.3 Category-aware semantic few-shot retrieval
+### 2.2 Pydantic 是故障隔离层
 
-项目中的 `pieutils/search.py` 实现了 `CategoryAwareSemanticSimilarityExampleSelector`。
+代码会根据已知属性动态生成 Pydantic model，再把 LLM JSON 填入 model。如果 JSON 解析失败会尝试修复；如果 schema validation 仍失败，则不会形成合法 prediction。
 
-核心逻辑是：
+这一思想应该进一步强化：
 
 ```text
-training examples
-      │
-      ▼
+LLM output
+   ↓
+JSON schema
+   ↓
+Pydantic
+   ↓
+Evidence grounding
+   ↓
+Role validator
+   ↓
+Reference normalizer
+```
+
+任何一步失败都 `ABSTAIN`，而不是尝试“猜一个最可能答案”。
+
+### 2.3 按品类做语义相似 few-shot 检索
+
+`pieutils/search.py` 中的 `CategoryAwareSemanticSimilarityExampleSelector` 会：
+
+```text
+训练样本
+   ↓
 OpenAIEmbeddings
-      │
-      ▼
-按 category 建立 FAISS vector store
-      │
-      ▼
-对当前商品文本做 semantic search
-      │
-      ▼
-top-k 相似 examples
-      │
-      ▼
-作为 few-shot demonstrations 注入 prompt
+   ↓
+按 category 建 FAISS Vector Store
+   ↓
+对当前文本 semantic search
+   ↓
+取 top-k 相似标注样本
+   ↓
+作为 few-shot demonstrations
 ```
 
-并且支持：
+它还支持过滤相同网站的样本，这一点对三源数据非常有价值。
+
+腕表场景可以映射为：
 
 ```text
-force_from_different_website = True
+category -> brand
+website  -> source
 ```
 
-也就是可以避免从当前网站挑演示样本，让模型学习更具跨站泛化性的模式。
+例如处理雷小安 Rolex 商品时，优先从同品牌、但来自腕表之家或奢当家的已标注 hard cases 中检索 demonstrations，降低模型只记住某个平台标题模板的风险。
 
-映射到三源腕表，可以改成：
+### 2.4 FAISS 的正确用途
+
+WDC-PAVE 的 FAISS 是用来找 few-shot demonstrations，不是把向量距离当成商品匹配真值。
+
+当前系统也应该坚持：
 
 ```text
-category  -> brand
-website   -> source
+向量检索 = 辅助
+reference exact key = 最终业务真值
 ```
 
-例如处理雷小安的一条 Rolex 商品：
-
-```text
-优先检索：Rolex + 与当前标题最相似的已标注样本
-限制：示例尽量来自腕表之家/奢当家，而不是当前来源
-```
-
-这样 few-shot 学到的是“跨来源写法如何解析成同一 reference”，而不是背某个平台模板。
-
-### 2.4 FAISS 只用于找 demonstrations，不用于决定实体是否相同
-
-这是一个容易误用的点。
-
-WDC-PAVE 的向量检索是：
-
-```text
-寻找适合放进 prompt 的 few-shot 示例
-```
-
-而不是：
-
-```text
-embedding 距离近 => 两件商品相同
-```
-
-当前 Spec 也应该保持这个边界。
-
-视觉 embedding、文本 embedding、FAISS/HNSW 都可以做：
+文本 embedding、视觉 embedding 可以用于：
 
 - few-shot 示例检索；
-- 人工复核候选排序；
-- reference 缺失时的辅助信息召回；
+- 人工复核排序；
+- reference 缺失时的辅助候选召回；
 
-但不能绕过 reference exact gate。
+但绝不能绕过 reference gate。
 
 ---
 
-## 3. 论文结果对当前系统有什么启示
+## 3. 论文实验对当前系统的启示
 
-WDC-PAVE 数据集来自多网站商品页，包含 565 个 product offers、59 个网站、5 个品类以及数千个经过人工确认的 attribute-value 标注。
+WDC-PAVE benchmark 包含来自多个网站、多个商品类别的人工确认属性值。论文实验表明：
 
-论文实验显示：
-
-- GPT-4 在直接属性抽取上可以达到约 90% 级别的 F1；
-- 增加 attribute example values 与语义相似 few-shot demonstrations 可以显著提升效果；
+- GPT-4 在直接属性抽取上可以达到约 90% 级别 F1；
+- attribute example values 与语义相似 few-shot demonstrations 能显著提升效果；
 - extraction + normalization 可以一步完成；
-- 但单独做 normalization 的表现还能更高；
-- 对 string wrangling、name expansion 等操作，LLM 具备很强能力。
+- 单独 normalization 的表现还可以更高；
+- string wrangling 等 identifier-like 规范化操作尤其适合 LLM。
 
-这给当前方案两个重要启示。
+但这恰好说明：**即使属性抽取表现很高，也不能让 LLM 直接负责自动合并。**
 
-### 3.1 Few-shot 应用于“抽取”，不是用于“自动放行”
-
-90% 多的 F1 对普通属性抽取已经很好，但对“绝不能误匹配”仍远远不够。
-
-即使 precision 是 99%，在 1000 万条数据中也可能产生数量不可接受的错误。
-
-因此 LLM 的角色必须限定为：
+假设 precision 只有 99%，放到千万级数据仍可能产生不可接受的误匹配。因此 LLM 应定位为：
 
 ```text
-候选生成器 / 证据提取器
+Candidate Generator / Evidence Extractor
 ```
 
 而不是：
 
 ```text
-最终 matcher
+Final Matcher
 ```
 
-### 3.2 抽取与规范化最好拆开
-
-论文实验本身说明 normalization 可以作为独立任务取得非常强的结果。
-
-对腕表更应该拆开：
+并且建议把 extraction 与 authoritative normalization 拆开：
 
 ```text
 LLM extraction
       ↓
-raw reference candidate
+raw reference span
       ↓
-deterministic canonicalization
+deterministic brand-specific canonicalization
       ↓
-registry validation
+trusted registry validation
 ```
 
-而不是：
-
-```text
-LLM：直接告诉我最终 canonical reference
-```
-
-拆开以后每一步都能审计，并且可以对每个品牌独立升级规则。
+而不是让 LLM直接生成最终 canonical reference。
 
 ---
 
-## 4. 当前 Spec 推荐的最终系统：Reference Resolver，而不是 Pair Matcher
+## 4. 推荐数据模型
 
-### 4.1 核心数据模型
-
-建议所有三源记录先统一为：
+三源商品统一为：
 
 ```python
 class ProductRecord:
@@ -419,16 +358,14 @@ class ProductRecord:
     content_hash: str
 ```
 
-Reference 解析结果：
+解析结果：
 
 ```python
 class ReferenceResolution:
     product_id: str
     brand_id: int | None
-
     raw_candidates: list[str]
     canonical_reference: str | None
-
     status: Literal[
         "VERIFIED_REFERENCE",
         "SOFT_REFERENCE",
@@ -436,7 +373,6 @@ class ReferenceResolution:
         "NO_REFERENCE",
         "ABSTAIN"
     ]
-
     evidence: list[Evidence]
     extractor_version: str
     normalizer_version: str
@@ -453,36 +389,28 @@ class Evidence:
         "TITLE",
         "DESCRIPTION",
         "OCR",
-        "REGISTRY",
-        "LLM"
+        "LLM",
+        "REGISTRY"
     ]
     raw_value: str
     field_name: str | None
-    span_start: int | None
-    span_end: int | None
+    evidence_text: str | None
     role: str | None
-    confidence: float | None
 ```
 
-这样一条自动匹配记录可以完整回答：
+每个自动结论都必须能回答：
 
-> “为什么系统认为它是 126610LN？”
+> “系统为什么认为这是这个 reference？”
 
-而不是只有一个不可解释的 0.997 分数。
+而不是只留下一个概率分数。
 
 ---
 
-## 5. 第一道：品牌先归一，再解析 reference
+## 5. 第一层：Brand Canonicalization
 
-reference 不能脱离品牌直接比较。
-
-因为不同品牌可能存在格式相似甚至完全相同的编号字符串。
-
-先建立：
+reference 不能脱离品牌直接比较。建议首先建立：
 
 ```text
-brand_alias
-------------------------------
 劳力士       -> ROLEX
 Rolex        -> ROLEX
 ROLEX SA     -> ROLEX
@@ -490,100 +418,67 @@ ROLEX SA     -> ROLEX
 Omega        -> OMEGA
 ```
 
-然后任何 reference key 都必须是：
+所有匹配 key 都必须是：
 
 ```text
 (brand_id, canonical_reference)
 ```
 
-而不是只用：
+而不是只有 reference 字符串。
 
-```text
-canonical_reference
-```
-
-硬规则：
+Precision-first 硬规则：
 
 ```python
 if brand_id is None:
     return ABSTAIN
 ```
 
-对 precision-first 系统来说，这是值得付出的 recall 损失。
-
 ---
 
-## 6. 第二道：Reference Candidate Extraction
+## 6. 第二层：Reference Candidate Extraction
 
-建议采用四级抽取，按照“可靠性”而不是“模型 sophistication”排序。
+推荐四级抽取，按可信度排序，而不是按模型复杂度排序。
 
 ### 6.1 L0：独立结构化 reference 字段
 
-如果来源本身提供独立 reference 字段：
+如果来源提供：
 
 ```text
-reference_no
-model_number
-ref
-型号
+reference_no / model_number / ref / 型号
 ```
 
-先抽取它。
-
-但结构化字段也不能直接信任，因为来源可能把：
-
-- 序列号；
-- 平台 SKU；
-- 店铺货号；
-- 鉴定编号；
-
-错误塞进“型号”字段。
-
-所以仍需 format + registry validation。
+优先使用，但仍需校验，因为平台 SKU、序列号、鉴定号可能被错误塞进“型号”字段。
 
 ### 6.2 L1：品牌规则 / regex / dictionary
 
-对高频品牌维护 reference pattern，例如概念上：
+高频品牌维护独立 policy：
 
 ```yaml
 ROLEX:
-  extract_patterns:
-    - "..."
-  canonicalization:
-    uppercase: true
-    remove_spaces: true
-    remove_hyphen_if_whitelisted: true
+  uppercase: true
+  remove_spaces: true
+  extract_patterns: [...]
 
 OMEGA:
-  extract_patterns:
-    - "..."
-  canonicalization:
-    preserve_dot_grouping: true
+  uppercase: true
+  preserve_dot_grouping: true
+  extract_patterns: [...]
 ```
 
-这里不建议在文档中硬编码一个“万能腕表型号 regex”，因为品牌格式差异太大，而且规则会迭代。
+不要使用一个“万能 reference regex”覆盖所有品牌。
 
 ### 6.3 L2：LLM constrained extraction
 
-只有 L0/L1 不能唯一确定时，再调用 LLM。
+只有 L0/L1 无法唯一确定时再调用 LLM。
 
-Prompt 不应该问：
-
-```text
-这是什么型号？
-```
-
-而应该约束为：
+Prompt 必须明确：
 
 ```text
-你只能抽取输入文本中实际出现的字符串。
-不要补全、猜测、改写或生成一个文本中不存在的 reference。
-
-请识别：
-1. 哪些字符串可能是腕表 reference；
-2. 每个 candidate 在原文中的精确 span；
-3. 它属于当前商品，还是 compatibility / accessory / comparison / mentioned-only；
-4. 不确定时返回 abstain=true。
+你是 reference evidence extractor，不是商品匹配器。
+只能抽取输入中真实存在的字符串。
+禁止补全、纠错、猜测或生成输入中不存在的 reference。
+需要区分当前商品型号与 compatibility / accessory / comparison / mentioned-only。
+存在多个无法消歧候选时返回 abstain=true。
 ```
 
 返回：
@@ -593,7 +488,7 @@ Prompt 不应该问：
   "candidates": [
     {
       "raw": "126610 LN",
-      "role": "current_product_reference",
+      "role": "CURRENT_PRODUCT_REFERENCE",
       "evidence": "黑水鬼 126610 LN 全套"
     }
   ],
@@ -601,54 +496,58 @@ Prompt 不应该问：
 }
 ```
 
-服务端再做：
+服务端必须做 grounding：
 
 ```python
 assert candidate.raw in original_text
 ```
 
-如果不在原文，直接丢弃。
+模型输出如果不在输入原文中，立即拒绝。
 
-这一步能消除一大类 LLM hallucination。
+### 6.4 L3：OCR
 
-### 6.4 L3：OCR / 图片
-
-当前 Spec 明确说有图片。
-
-图片适合处理：
+图片可用于：
 
 - 表背刻字；
 - 保卡型号；
 - 吊牌 reference；
-- 发票/附件中的型号文本。
+- 发票或附件中的编号。
 
-但图片不能直接根据“长得像”判断 reference。
-
-建议：
+流程应是：
 
 ```text
 image
   ↓
-OCR / document OCR
+OCR
   ↓
-reference candidate
+reference-like token
   ↓
-同样进入 role + canonicalization + registry validator
+同一套 role / normalization / registry validation
 ```
 
-只有 OCR 与文本证据一致时提高可信度；视觉相似但 reference 不明确时仍然 ABSTAIN。
+图片“长得像”不能直接产生 reference；OCR 也只是证据之一。
 
 ---
 
-## 7. 第三道：Reference Role Validation 是防 false positive 的关键
+## 7. 第三层：Reference Role Validation
 
-只找出一个“像型号”的字符串还不够。
+这是防止 false positive 的关键。
 
-必须判断：
+标题中出现一个 reference，不代表它属于当前售卖商品。例如：
 
-> 它是不是**当前售卖商品自己的 reference**？
+```text
+Rolex 126610LN 原装表带
+```
 
-建议 role 至少分：
+这里 `126610LN` 应标记为：
+
+```text
+ACCESSORY_FOR_REFERENCE
+```
+
+而不是 `CURRENT_PRODUCT_REFERENCE`。
+
+建议 role 枚举：
 
 ```text
 CURRENT_PRODUCT_REFERENCE
@@ -661,71 +560,42 @@ SERIAL_NUMBER
 UNKNOWN_ID
 ```
 
-例如：
-
-```text
-Rolex 126610LN 原装表带
-```
-
-应得到：
-
-```json
-{
-  "raw": "126610LN",
-  "role": "ACCESSORY_FOR_REFERENCE"
-}
-```
-
-不能得到：
-
-```json
-{
-  "reference": "126610LN"
-}
-```
-
-高风险否决词可以做规则层：
+高风险词：
 
 ```text
 适配 / 适用 / compatible with / for
 表带 / strap
-盒 / box
-保卡 / card
 配件 / accessory
 对比 / vs
 ```
 
-但不能只靠关键词，因为“全套带盒证”中的“盒”并不表示商品是盒子。
-
-所以更稳妥的是：
+但不能仅靠关键词，因为“全套带盒证”中的“盒”并不表示商品是盒子。推荐：
 
 ```text
-规则快速过滤 + LLM role classification + 商品类目一致性检查
+规则快速过滤
+    +
+LLM role classification
+    +
+商品类目一致性校验
 ```
 
-任何无法明确为 `CURRENT_PRODUCT_REFERENCE` 的候选都不能进入 VERIFIED。
+只有明确为 `CURRENT_PRODUCT_REFERENCE` 的候选才有资格进入 VERIFIED。
 
 ---
 
-## 8. 第四道：Brand-specific Canonicalization，禁止全局暴力清洗
+## 8. 第四层：Brand-specific Collision-safe Canonicalization
 
-这是本方案与直接照搬论文最重要的区别。
+这是不能直接照搬通用 string wrangling 的地方。
 
-很诱人的写法是：
+不推荐全局规则：
 
 ```python
 canonical = re.sub(r'[^A-Z0-9]', '', raw.upper())
 ```
 
-不推荐全局使用。
+因为它默认所有标点都没有语义，可能把两个合法 reference 压成同一个值。
 
-因为这样默认：
-
-> 所有标点、空格、分隔符都没有语义。
-
-这是未经证明的。
-
-正确方法是：
+推荐：
 
 ```python
 def canonicalize(brand_id, raw):
@@ -742,12 +612,12 @@ def canonicalize(brand_id, raw):
         value = apply_whitelisted_hyphen_rules(value)
 
     if policy.dot_rules:
-        value = apply_dot_rules(value)
+        value = apply_brand_specific_dot_rules(value)
 
     return value
 ```
 
-每个规则都需要：
+每条规则必须版本化并保存来源：
 
 ```text
 rule_version
@@ -758,40 +628,28 @@ evidence_source
 approved_by
 ```
 
-例如：
-
-```text
-126610 LN -> 126610LN
-```
-
-只有在确认这种空格是排版差异、不会把两个合法 reference 合并时才进入 production rule。
-
-### 8.1 canonicalization 的安全不变量
-
-上线前对每个品牌做 collision test：
+上线前做 collision test：
 
 ```python
-for all_known_references in brand_registry:
+for ref in all_known_refs:
     canon = canonicalize(ref)
     assert canon maps to exactly one reference entity
 ```
 
-如果：
+只要出现：
 
 ```text
 ref_A != ref_B
 canonicalize(ref_A) == canonicalize(ref_B)
 ```
 
-则该规则不能自动上线。
-
-这比单纯看 normalization F1 更适合“绝不能误匹配”的约束。
+该规则就不能进入自动路径。
 
 ---
 
-## 9. Reference Registry：把 matching 变成 entity linking
+## 9. Reference Registry：把 Pair Matching 变成 Entity Linking
 
-建议建立中心 Reference Registry：
+建议中心 registry：
 
 ```sql
 CREATE TABLE reference_entity (
@@ -815,39 +673,21 @@ CREATE TABLE reference_alias (
 );
 ```
 
-每条商品不是先与另外千万条商品 pairwise 比较，而是独立完成：
+每条商品独立链接：
 
 ```text
-Product Record
-    ↓
-Reference Resolver
-    ↓
-Reference Entity
-```
-
-于是：
-
-```text
-雷小安 A -> ROLEX / 126610LN
+雷小安 A   -> ROLEX / 126610LN
 腕表之家 B -> ROLEX / 126610LN
-奢当家 C -> ROLEX / 126610LN
+奢当家 C   -> ROLEX / 126610LN
 ```
 
-三者自然属于同一个 entity group。
+三者自然属于同一 reference entity。
 
-这使复杂度从潜在的 pairwise 比较降为：
-
-```text
-O(N × extraction_cost) + O(1 / logN registry lookup)
-```
-
-非常适合 100 万–1000 万级持续增量。
+这样不需要在 1000 万条记录上做全量 pairwise 笛卡尔积。主流程是每条记录一次解析，再通过 `(brand_id, canonical_reference)` 的 B-tree/hash 索引查询；数据库 lookup 通常为 O(log M)（B-tree）或近似 O(1)（hash/KV）。
 
 ---
 
-## 10. 自动匹配 Gate：必须用硬规则收口
-
-推荐最终 gate：
+## 10. 自动 Match Gate：硬规则收口
 
 ```python
 def can_auto_match(a, b) -> bool:
@@ -855,29 +695,24 @@ def can_auto_match(a, b) -> bool:
         return False
     if b.status != "VERIFIED_REFERENCE":
         return False
-
     if a.brand_id != b.brand_id:
         return False
-
     if a.canonical_reference != b.canonical_reference:
         return False
-
     if a.has_conflict or b.has_conflict:
         return False
-
     return True
 ```
 
-其中 `VERIFIED_REFERENCE` 的进入条件也要严格：
+`VERIFIED_REFERENCE` 本身也必须是严格状态：
 
-```python
-VERIFIED_REFERENCE iff:
-  brand is verified
-  AND exactly one current-product reference remains
-  AND canonicalization is collision-safe
-  AND reference exists in trusted registry
-  AND no explicit conflicting reference exists
-  AND no accessory/compatibility role conflict exists
+```text
+brand 已验证
+AND 恰好一个 current-product reference
+AND canonicalization collision-safe
+AND reference 命中 trusted registry
+AND 没有显式冲突 reference
+AND 没有 accessory/compatibility 冲突
 ```
 
 新发现但 registry 不存在的 reference：
@@ -886,17 +721,9 @@ VERIFIED_REFERENCE iff:
 SOFT_REFERENCE / REVIEW
 ```
 
-而不是自动创建 reference entity 后立即合并商品。
+而不是自动创建实体并立即合并。
 
----
-
-## 11. 冲突规则：负证据权重应高于正相似度
-
-当前需求 precision 优先，因此推荐 asymmetrical decision policy：
-
-```text
-一个强冲突证据 > 多个弱相似证据
-```
+### 10.1 负证据高于弱相似证据
 
 例如：
 
@@ -905,33 +732,27 @@ title candidate      = 126610LN
 structured ref field = 126610LV
 ```
 
-无论图片多像，结果都应该是：
+无论图片多像，都应该：
 
 ```text
 CONFLICT / ABSTAIN
 ```
 
-而不是平均两个证据分数。
-
 推荐 hard veto：
 
-```text
-1. 两个可信独立字段给出不同 reference；
+1. 两个可信字段给出不同 reference；
 2. 同一商品存在多个无法解释的 reference；
-3. 当前商品角色判定为配件；
+3. 商品角色是配件；
 4. 品牌与 reference registry 不一致；
-5. canonicalization 出现多实体 collision；
-6. LLM 输出 reference 不存在于原始输入证据；
+5. canonicalization 产生 collision；
+6. LLM reference 没有原文 grounding；
 7. OCR 与结构化字段发生明确冲突。
-```
-
-这类 gate 比训练一个 end-to-end score 更容易审计，也更符合业务风险。
 
 ---
 
-## 12. 处理多 reference 标题
+## 11. 多 Reference 标题的默认策略
 
-这是腕表场景最危险的 corner case 之一：
+危险例子：
 
 ```text
 126610LN / 116610LN 新老款对比
@@ -943,38 +764,28 @@ CONFLICT / ABSTAIN
 适用 126610LN 126610LV 124060 表带
 ```
 
-默认策略：
+默认：
 
 ```python
 if len(distinct_current_product_candidates) != 1:
     return ABSTAIN
 ```
 
-除非存在更强证据：
-
-```text
-structured reference field = 126610LN
-AND title 中 126610LN 被明确标注为本商品
-AND 116610LN 只处在 comparison span
-```
-
-否则宁可不匹配。
+除非存在更强、可解释的结构化证据，否则宁可不匹配。
 
 ---
 
-## 13. 如何把 WDC-PAVE few-shot 检索改造成腕表专用版本
+## 12. WDC-PAVE Few-shot 如何改造成腕表专用版本
 
-论文代码以 category 建 FAISS index。
-
-腕表可改成：
+WDC-PAVE 以 category 建 FAISS index；腕表可改为：
 
 ```text
 一级：brand
-二级：source / language / title template
+二级：source / language
 三级：hard-case type
 ```
 
-训练样本 metadata：
+训练样本：
 
 ```json
 {
@@ -988,25 +799,23 @@ AND 116610LN 只处在 comparison span
 }
 ```
 
-示例检索：
+检索：
 
 ```text
 current item
    ↓
-brand filter = ROLEX
+brand filter
    ↓
-semantic retrieval top 20
+semantic retrieval top-N
    ↓
-prefer different source
+优先不同 source
    ↓
 hard-case diversity rerank
    ↓
-3~5 examples into prompt
+3~5 demonstrations
 ```
 
-不要盲目把 top-10 最相似样本全塞进去，因为高度相似的邻近 reference 反而可能诱导模型 copy。
-
-更稳的 few-shot 组成：
+few-shot 不应全是正例，建议固定加入：
 
 ```text
 1 个正常正例
@@ -1016,174 +825,24 @@ hard-case diversity rerank
 1 个 platform-SKU negative
 ```
 
-也就是 deliberately teach abstention。
+也就是显式教模型“什么时候应该不回答”。
 
 ---
 
-## 14. Prompt 设计：必须把“不回答”当成一等输出
+## 13. 百万到千万规模的存储与增量架构
 
-推荐 system contract：
-
-```text
-你是 reference evidence extractor，不是商品匹配器。
-你只能引用输入中实际出现的 reference candidate。
-禁止根据品牌、系列名称推测一个未出现的型号。
-禁止补全残缺 reference。
-如果存在多个无法消歧的 candidate，返回 abstain。
-如果 reference 只描述配件兼容对象、对比对象或被提及对象，不得标记为 current product reference。
-```
-
-输出：
-
-```json
-{
-  "brand_candidate": "ROLEX",
-  "reference_candidates": [
-    {
-      "raw": "126610 LN",
-      "evidence_field": "title",
-      "evidence_text": "劳力士黑水鬼 126610 LN 全套",
-      "role": "CURRENT_PRODUCT_REFERENCE"
-    }
-  ],
-  "other_identifiers": [
-    {
-      "raw": "LX202408019338",
-      "role": "PLATFORM_SKU"
-    }
-  ],
-  "abstain": false,
-  "reason": "single explicit current-product reference"
-}
-```
-
-模型输出后的 validator：
-
-```python
-for c in output.reference_candidates:
-    if c.raw not in source_field_text:
-        reject(c)
-```
-
-再做 pattern 与 registry check。
-
----
-
-## 15. 不建议让 LLM 做 authoritative normalization
-
-虽然论文说明 LLM normalization 很强，但当前场景不能把它作为最终权威。
-
-错误例：
-
-```text
-input:  126610L?
-LLM:    126610LN
-```
-
-这在普通属性任务可能被视为“合理纠错”，在本需求里却是不可接受的猜测。
-
-推荐分工：
-
-```text
-LLM：抽 raw span + role
-规则：canonicalize
-Registry：验证这个 canonical value 是否是合法实体
-```
-
-LLM 可以输出：
-
-```text
-normalization_suggestion
-```
-
-但只能用于人工复核或 offline rule mining，不能直接修改 canonical key。
-
----
-
-## 16. 图片在系统中的正确位置
-
-当前数据有图片，但不能把图片相似度提升为 reference 的替代品。
-
-原因很简单：
-
-```text
-同系列不同 reference 的腕表外观可能极度相似
-```
-
-推荐图片用途：
-
-### A. OCR evidence
-
-```text
-表背 / 保卡 / 吊牌图片
-        ↓
-       OCR
-        ↓
-reference-like token
-        ↓
-registry validation
-```
-
-### B. Conflict detection
-
-如果文本写：
-
-```text
-126610LN
-```
-
-但保卡 OCR 高置信度识别出：
-
-```text
-126610LV
-```
-
-则：
-
-```text
-CONFLICT
-```
-
-### C. Review ranking
-
-图片 embedding 可以帮助人工把最可能相关的候选排前，但不能产生 `VERIFIED_REFERENCE`。
-
----
-
-## 17. 百万到千万规模的存储与索引设计
-
-主索引完全可以很朴素：
+主索引：
 
 ```sql
 CREATE INDEX idx_product_verified_reference
-ON product_resolution (brand_id, canonical_reference)
-WHERE status = 'VERIFIED_REFERENCE';
-```
-
-分组：
-
-```sql
-SELECT brand_id, canonical_reference, array_agg(product_id)
-FROM product_resolution
+ON product_reference_resolution (brand_id, canonical_reference)
 WHERE status = 'VERIFIED_REFERENCE'
-GROUP BY brand_id, canonical_reference;
+  AND has_conflict = FALSE;
 ```
 
-因为 matching key 最终是 exact key，不需要对 1000 万条做全量 ANN pair retrieval。
+向量数据库只服务 few-shot retrieval / review assist，不承担主匹配。
 
-向量数据库仅服务：
-
-```text
-few-shot retrieval / review assist
-```
-
-而不是主匹配索引。
-
----
-
-## 18. 增量更新架构
-
-建议每条 source record 计算：
+每条 source record 计算：
 
 ```text
 content_hash = hash(
@@ -1196,7 +855,7 @@ content_hash = hash(
 )
 ```
 
-并记录：
+并保存：
 
 ```text
 extractor_version
@@ -1206,7 +865,7 @@ prompt_version
 ocr_version
 ```
 
-处理 key：
+幂等处理 key：
 
 ```text
 (source, source_item_id, content_hash, pipeline_version)
@@ -1224,9 +883,7 @@ Change Detector
 Reference Extraction Queue
        │
        ├─ cheap rules
-       │
        ├─ LLM fallback
-       │
        └─ OCR fallback
        ▼
 Validator / Registry Linker
@@ -1236,74 +893,21 @@ Validator / Registry Linker
        └─ ABSTAIN  -> storage only
 ```
 
-如果基础设施简单，MVP 不必一开始上 Kafka：
+MVP 可以从：
 
 ```text
 PostgreSQL + Python worker + Redis/Celery
 ```
 
-就足够。
-
-数据增长后再替换为：
-
-```text
-Kafka / Flink / Spark / warehouse batch backfill
-```
-
-关键不是消息队列品牌，而是幂等与版本可追踪。
+开始。规模扩大后再替换为 Kafka/Flink/Spark。关键是幂等、版本可追踪、可重跑，而不是一开始选择复杂基础设施。
 
 ---
 
-## 19. 建议的 PostgreSQL 最小表结构
+## 14. 人工黄金标签应该优先标 Hard Negatives
 
-```sql
-CREATE TABLE product_record (
-    id BIGSERIAL PRIMARY KEY,
-    source TEXT NOT NULL,
-    source_item_id TEXT NOT NULL,
-    title TEXT,
-    description TEXT,
-    brand_raw TEXT,
-    reference_raw TEXT,
-    content_hash TEXT NOT NULL,
-    source_payload JSONB NOT NULL,
-    UNIQUE (source, source_item_id)
-);
+Spec 允许几百对人工黄金标签，不建议随机抽样。随机数据大部分太容易，无法发现 precision 风险。
 
-CREATE TABLE product_reference_resolution (
-    product_id BIGINT PRIMARY KEY REFERENCES product_record(id),
-    brand_id BIGINT,
-    reference_entity_id BIGINT,
-    canonical_reference TEXT,
-    status TEXT NOT NULL,
-    has_conflict BOOLEAN NOT NULL DEFAULT FALSE,
-    evidence JSONB NOT NULL,
-    decision_reason TEXT NOT NULL,
-    extractor_version TEXT NOT NULL,
-    normalizer_version TEXT NOT NULL,
-    registry_version TEXT NOT NULL,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE INDEX idx_resolution_match
-ON product_reference_resolution(brand_id, canonical_reference)
-WHERE status = 'VERIFIED_REFERENCE'
-  AND has_conflict = FALSE;
-```
-
-这个表本身就可以直接支持跨三源聚合。
-
----
-
-## 20. 人工标注几百对应该标什么
-
-当前 Spec 允许几百对黄金标签。
-
-不建议随机抽几百对，因为随机样本大部分太容易，无法约束 false positive。
-
-应该主动构造 hard-negative benchmark。
-
-至少覆盖：
+优先构造：
 
 ### A. 同系列近邻 reference
 
@@ -1311,7 +915,7 @@ WHERE status = 'VERIFIED_REFERENCE'
 126610LN vs 126610LV
 ```
 
-### B. reference 格式变体
+### B. 格式等价变体
 
 ```text
 126610 LN vs 126610LN
@@ -1331,31 +935,29 @@ vs
 126610LN / 116610LN 对比
 ```
 
-### E. 平台 SKU 冒充型号
+### E. 平台 SKU 冒充 reference
 
-字母数字混合但实际是来源内部 ID。
+### F. OCR 与 title 冲突
 
-### F. OCR 冲突
+### G. 新品牌、新格式、训练集未见 reference pattern
 
-title 与保卡/表背 OCR 不一致。
+黄金集用于：
 
-### G. 新品牌 / 新格式
+```text
+reference_candidate_precision
+role_classification_precision
+canonicalization_collision_test
+verified_reference_precision
+regression test
+```
 
-训练集从未出现的 reference pattern。
-
-黄金集主要用于：
-
-1. 评估抽取 precision；
-2. 评估 role classification precision；
-3. 评估 canonicalization collision；
-4. 校准哪些品牌/规则能进入自动路径；
-5. 建立 regression suite。
+需要强调：几百条标签不足以从统计上“证明”99.99% precision，因此极高 precision 不能主要依赖概率阈值，而必须依赖 deterministic gate、registry、collision-safe rules 和 abstention。
 
 ---
 
-## 21. 指标不要只看 F1
+## 15. 指标不要只看 F1
 
-当前需求的 dashboard 至少拆成：
+推荐 dashboard：
 
 ```text
 reference_candidate_precision
@@ -1367,102 +969,20 @@ auto_match_coverage
 abstain_rate
 conflict_rate
 manual_review_rate
+canonical_collision_count
 ```
 
-最重要的不是整体 F1，而是：
+发布门槛按品牌、来源拆分。
 
-```text
-Auto-match bucket 中出现了多少 false positives？
-```
+最重要的问题是：
 
-发布门槛应按品牌、来源分别看。
+> **Auto-match bucket 中到底出现了多少 false positives？**
 
-例如某品牌规则还没有充分验证：
-
-```text
-只允许 SOFT_REFERENCE
-```
-
-而不是因为全局模型 F1 很高就让它自动匹配。
-
-### 关于“几百条标签能否证明 99.99% precision”
-
-需要特别提醒：几百条黄金标签不足以从统计上证明 99.99% 级别的 precision。
-
-因此“极高 precision”不能只靠调一个模型概率阈值实现，必须依赖：
-
-```text
-业务真值定义 + deterministic gate + collision-safe normalization + registry + abstention
-```
-
-标签主要用于找漏洞、回归测试和扩展 coverage。
+某品牌规则证据不够，就只允许输出 `SOFT_REFERENCE`，不能因为全局 F1 很高而自动放行。
 
 ---
 
-## 22. 推荐的两阶段上线方案
-
-### Phase 1：不使用 LLM 也能上线的 Precision Core
-
-先做：
-
-```text
-品牌归一化
-独立 reference 字段
-品牌规则抽取
-collision-safe normalization
-Reference Registry
-exact matching
-conflict gate
-```
-
-只覆盖最确定的记录。
-
-目标不是 coverage，而是先构建“零误合并风格”的可信自动通道。
-
-### Phase 2：WDC-PAVE 风格 LLM Extraction 扩 coverage
-
-对 Phase 1 无法解析的商品：
-
-```text
-semantic few-shot retrieval
-    ↓
-LLM structured extraction
-    ↓
-span verification
-    ↓
-role validation
-    ↓
-normalization
-    ↓
-registry
-```
-
-LLM 的价值是把原本 ABSTAIN 的一部分记录推进到 VERIFIED，而不是改变 VERIFIED 的安全定义。
-
-### Phase 3：OCR 与 active learning
-
-对仍无法解析的高价值商品：
-
-```text
-OCR
-人工复核
-hard-case labeling
-规则/示例库更新
-```
-
-把人工结果回流到：
-
-```text
-reference aliases
-negative contexts
-few-shot examples
-brand policies
-regression tests
-```
-
----
-
-## 23. 一套可直接实现的 Python 决策骨架
+## 16. 可直接落地的 Python 决策骨架
 
 ```python
 from dataclasses import dataclass
@@ -1474,13 +994,6 @@ class Status(str, Enum):
     CONFLICT = "CONFLICT"
     NO_REFERENCE = "NO_REFERENCE"
     ABSTAIN = "ABSTAIN"
-
-@dataclass
-class Candidate:
-    raw: str
-    role: str
-    source: str
-    evidence: str
 
 @dataclass
 class Resolution:
@@ -1496,14 +1009,13 @@ def resolve_reference(record, brand_registry, reference_registry, policies):
         return Resolution(None, None, Status.ABSTAIN, "brand_unresolved")
 
     candidates = []
-
     candidates += extract_structured_candidates(record)
     candidates += extract_rule_candidates(record, policies[brand_id])
 
     if not has_single_safe_candidate(candidates):
         candidates += extract_llm_candidates(record, brand_id)
 
-    # LLM must quote source text; hallucinated values cannot survive.
+    # LLM 输出必须能回指原文证据。
     candidates = [
         c for c in candidates
         if evidence_contains_raw_candidate(record, c)
@@ -1534,11 +1046,8 @@ def resolve_reference(record, brand_registry, reference_registry, policies):
         return Resolution(brand_id, canonical, Status.CONFLICT, "veto_evidence")
 
     return Resolution(brand_id, canonical, Status.VERIFIED, "verified_exact_reference")
-```
 
-最终匹配：
 
-```python
 def same_product(a: Resolution, b: Resolution) -> bool:
     return (
         a.status == Status.VERIFIED
@@ -1548,17 +1057,11 @@ def same_product(a: Resolution, b: Resolution) -> bool:
     )
 ```
 
-业务逻辑非常容易单元测试。
+这套决策非常容易做单元测试和审计。
 
----
-
-## 24. 测试用例建议
+推荐 regression tests：
 
 ```python
-def test_space_variant_can_match():
-    assert canonicalize("ROLEX", "126610 LN") == "126610LN"
-
-
 def test_neighbor_reference_must_not_match():
     a = resolve("ROLEX", "126610LN")
     b = resolve("ROLEX", "126610LV")
@@ -1577,26 +1080,19 @@ def test_multiple_refs_must_abstain():
 
 def test_llm_hallucination_must_be_rejected():
     text = "劳力士黑水鬼 41mm"
-    llm_candidate = "126610LN"
-    assert llm_candidate not in text
-    assert validate_llm_candidate(text, llm_candidate) is False
-
-
-def test_normalizer_must_be_collision_free():
-    refs = trusted_registry("OMEGA")
-    canonical_values = [canonicalize("OMEGA", x) for x in refs]
-    assert len(canonical_values) == len(set(canonical_values))
+    candidate = "126610LN"
+    assert validate_llm_candidate(text, candidate) is False
 ```
 
-特别推荐把每次线上误判都转成永久 regression test。
+线上每出现一个误判，都转成永久 regression case。
 
 ---
 
-## 25. 成本控制：LLM 不应该跑全部 1000 万条
+## 17. LLM 成本控制
 
-WDC-PAVE 的实验代码会记录 token 与 API cost，这个思路值得保留。
+不应让 LLM 跑全部 1000 万条。
 
-生产上应分层：
+分层：
 
 ```text
 Tier 0：结构化字段 + registry exact
@@ -1605,317 +1101,105 @@ Tier 2：LLM extraction
 Tier 3：OCR / manual review
 ```
 
-只有 Tier 0/1 无法决策的部分进入 LLM。
+只有前两层无法决策的记录进入 LLM。
 
-还可以缓存：
+缓存：
 
 ```text
 (input_hash, prompt_version, model_version) -> extraction_result
 ```
 
-内容没变就不重复调用。
-
-对于百万级历史回填：
-
-```text
-先规则跑全量
-再只把 unresolved subset 发 LLM
-```
-
-这样成本和延迟都可控。
+历史回填先规则全量跑一次，只把 unresolved subset 发给模型，能大幅降低成本。
 
 ---
 
-## 26. 为什么不建议直接训练“两个商品是否相同”的大模型
+## 18. 推荐上线顺序
 
-当前真值已经定义为：
+### Phase 1：Precision Core
 
-```text
-same reference
-```
-
-如果训练 pairwise matcher：
+先做：
 
 ```text
-商品 A 文本 + 图片
-商品 B 文本 + 图片
-      ↓
-     model
-      ↓
-   same / different
+Brand Registry
+Reference Registry
+Source Field Mapper
+Brand-specific Canonicalization
+Exact-match Gate
+Conflict / Abstain State Machine
+Evidence Audit Schema
 ```
 
-模型很容易学习到：
+这一版即使 coverage 不高，也已经能安全产生一批自动匹配结果。
+
+### Phase 2：WDC-PAVE 风格 LLM Extraction
+
+对 Phase 1 无法解析的记录：
 
 ```text
-同系列 + 外观相似 + 标题相似 => same
+Semantic Few-shot Retrieval
+        ↓
+LLM Structured Extraction
+        ↓
+Span Grounding
+        ↓
+Role Validation
+        ↓
+Safe Normalization
+        ↓
+Registry Validation
 ```
 
-但恰恰对腕表来说：
+LLM 的作用是扩大 VERIFIED coverage，而不是改变 VERIFIED 的安全标准。
+
+### Phase 3：OCR + Human Feedback
 
 ```text
-同系列不同 reference
+OCR
+ ↓
+人工复核
+ ↓
+Hard-case labels
+ ↓
+Rule / Alias / Few-shot Example / Regression Suite 回流
 ```
-
-就是最危险的 hard negative。
-
-所以应把问题改写成：
-
-```text
-A -> reference entity X
-B -> reference entity X
-```
-
-而不是：
-
-```text
-A ~= B ?
-```
-
-这也是本次从 WDC-PAVE 得到的最重要架构启发：**优先解决 identifier extraction + normalization，再做 exact entity linking。**
 
 ---
 
-## 27. 与已有调研方向的关系
+## 19. 最终判断
 
-现有调研里已经覆盖了 Blocking、Entity Matching、图清洗、selective classifier 等多个下游方向。
+WDC-PAVE 证明了：LLM 可以高质量地从多网站电商脏文本中抽取并规范化属性，而且 schema、example values、few-shot demonstrations、语义相似示例检索都会显著影响效果。
 
-本方案补的是更上游的一层：
-
-```text
-“reference 到底是什么、在哪里、如何安全规范化？”
-```
-
-推荐整体组合关系：
-
-```text
-WDC-PAVE 风格 Reference Extraction
-             ↓
-Brand-specific Safe Normalization
-             ↓
-Reference Registry Entity Linking
-             ↓
-Exact-match auto group
-             ↓
-图一致性 / 冲突检测作为审计层
-```
-
-而不是把多个 matcher 的分数做加权平均。
-
----
-
-## 28. 具体落地 API 设计
-
-### 单条解析
-
-```http
-POST /v1/reference/resolve
-```
-
-Request：
-
-```json
-{
-  "source": "leixiaoan",
-  "source_item_id": "123456",
-  "title": "劳力士黑水鬼 41mm 126610 LN 全套",
-  "description": "...",
-  "brand": "劳力士",
-  "reference": null,
-  "images": []
-}
-```
-
-Response：
-
-```json
-{
-  "brand_id": 1,
-  "brand": "ROLEX",
-  "canonical_reference": "126610LN",
-  "status": "VERIFIED_REFERENCE",
-  "evidence": [
-    {
-      "type": "TITLE",
-      "raw": "126610 LN",
-      "role": "CURRENT_PRODUCT_REFERENCE"
-    },
-    {
-      "type": "REGISTRY",
-      "raw": "126610LN",
-      "role": "APPROVED_REFERENCE"
-    }
-  ],
-  "decision_reason": "single current-product reference + approved registry hit"
-}
-```
-
-### 批量处理
-
-```http
-POST /v1/reference/resolve-batch
-```
-
-仅负责提交任务，结果写数据库/对象存储。
-
-### 查询同 reference 商品
-
-```http
-GET /v1/reference/{brand}/{reference}/products
-```
-
-内部只查 exact canonical key。
-
----
-
-## 29. 人工复核界面最应该展示什么
-
-不要只展示两张商品卡片和一个模型概率。
-
-应该把证据拆开：
-
-```text
-品牌：ROLEX
-
-结构化 reference：NULL
-标题候选：126610 LN
-描述候选：126610LN
-OCR 候选：126610LN
-平台 SKU：LX202408019338
-
-Canonicalization：
-126610 LN -> 126610LN
-Rule: ROLEX_SPACE_RULE_V3
-
-Registry：
-ROLEX / 126610LN -> APPROVED
-
-冲突：无
-模型角色：CURRENT_PRODUCT_REFERENCE
-```
-
-人工的操作也应是：
-
-```text
-Approve reference
-Reject candidate
-Mark accessory
-Mark platform SKU
-Create/approve alias
-```
-
-这些动作可以直接反哺规则与 few-shot example store。
-
----
-
-## 30. 监控与回滚
-
-每次规则、模型、registry 更新后都可能影响历史结果，所以必须支持版本化。
-
-建议每日指标：
-
-```text
-verified_count
-new_reference_count
-unknown_reference_count
-abstain_rate
-conflict_rate
-manual_reject_rate
-canonical_collision_count
-LLM_non_grounded_output_count
-```
-
-如果某次发布后：
-
-```text
-manual_reject_rate अचानक上升
-```
-
-能够按：
-
-```text
-extractor_version / normalizer_version / prompt_version
-```
-
-迅速定位并回滚。
-
-所有已自动合并的结果最好保存：
-
-```text
-match_decision_version
-```
-
-便于重新计算。
-
----
-
-## 31. 推荐实施优先级
-
-### P0：先建立不可绕过的安全核心
-
-1. brand registry；
-2. reference registry；
-3. source field mapper；
-4. canonicalization policy engine；
-5. exact-match gate；
-6. conflict / abstain 状态机；
-7. audit evidence schema。
-
-### P1：提高 reference coverage
-
-1. brand-specific extractor；
-2. WDC-PAVE 风格 structured LLM extraction；
-3. semantic few-shot retrieval；
-4. hard-negative / abstention demonstrations；
-5. span grounding validator。
-
-### P2：图像与反馈闭环
-
-1. OCR；
-2. 图像冲突验证；
-3. human review UI；
-4. active learning；
-5. regression benchmark。
-
----
-
-## 32. 最终建议
-
-WDC-PAVE 证明了一个非常实用的方向：**LLM 可以高质量地从多网站电商脏文本里抽取并规范化属性，而且 few-shot、schema 描述、示例值和语义相似 demonstration 都会显著影响效果。**
-
-但当前二奢/腕表需求不能停在“属性抽取 F1 很高”这一步。
-
-要把它改造成 production-safe 系统，需要再加五层约束：
+但当前二奢/腕表系统不能停在“属性抽取 F1 很高”。为了满足“绝对不能误匹配”，必须额外加五层安全约束：
 
 ```text
 1. Evidence Grounding
-   每个 reference 必须能指回原始字段或 OCR 证据。
+   reference 必须回指原始字段或 OCR 证据。
 
 2. Role Validation
-   reference 必须属于当前商品，不是兼容/配件/对比对象。
+   必须证明 reference 属于当前商品，而不是配件、兼容或对比对象。
 
 3. Brand-specific Collision-safe Normalization
-   只做被证明安全的规范化，不做模糊纠错。
+   只做被证明安全的等价变换，不做模糊纠错。
 
 4. Trusted Reference Registry
-   canonical reference 必须链接到明确实体。
+   canonical reference 必须链接到明确、可信的实体。
 
 5. Hard Abstention Gate
    任何冲突、多值、不确定都拒绝自动匹配。
 ```
 
-因此最推荐的落地架构不是：
+因此推荐的生产架构不是：
 
 ```text
-LLM matcher + similarity threshold
+LLM Matcher + Similarity Threshold
 ```
 
 而是：
 
 ```text
-WDC-PAVE 风格抽取器
+WDC-PAVE 风格 Reference Extractor
        +
-安全规范化规则
+Safe Canonicalization
        +
 Reference Registry
        +
@@ -1924,15 +1208,15 @@ Exact Match Gate
 ABSTAIN / Human Review
 ```
 
-在 100 万–1000 万级规模下，这个方案同时满足：
+这套方案同时满足：
 
-- **精度优先**：最终自动合并由可审计的 exact reference gate 决定；
-- **字段稀疏**：LLM / OCR 可从非结构化字段补 reference 候选；
-- **可扩展**：每条商品独立 entity linking，不做全量 pairwise 笛卡尔积；
+- **Precision-first**：最终自动合并由 exact reference gate 决定；
+- **字段稀疏**：LLM/OCR 可从非结构化字段补候选；
+- **百万到千万规模**：每条记录独立 entity linking，不做全量 pairwise；
 - **持续增量**：content hash + pipeline version 支持幂等重跑；
-- **可人工闭环**：几百条黄金标签优先覆盖 hard negatives；
-- **可解释**：每个匹配都有 raw span、规则版本、registry entity 与 decision reason。
+- **人工标签有限**：把几百条黄金样本集中在 hard negatives；
+- **可解释可审计**：每次决策保留 raw span、规则版本、registry entity、decision reason。
 
-如果只能先实现一个版本，我建议第一版甚至先不追求 LLM 覆盖率：先把 `Reference Registry + safe canonicalization + exact-match gate + abstention` 做稳，然后把 WDC-PAVE 风格 LLM extractor 放在 unresolved records 上逐步扩大 coverage。
+如果只实现一个第一版，建议甚至先不追求 LLM 覆盖率：**优先把 `Reference Registry + safe canonicalization + exact-match gate + abstention` 做稳，再把 WDC-PAVE 风格 LLM extractor 放在 unresolved records 上逐步扩大 coverage。**
 
-这最符合当前 Spec 中“**绝对不能误匹配，允许漏匹配**”的核心约束。
+这最符合当前 Spec 的核心要求：**绝对不能误匹配，允许漏匹配。**
