@@ -22,14 +22,13 @@ jobs:
           main = Path('奢侈品文章调研.md')
           history = Path('奢侈品文章历史调研.md')
           entries = [
-              ('系统评估大语言模型做实体匹配的 zero-shot/few-shot 能力与提示策略，可作为 reference 硬规则之后的疑难候选二阶段复核器；对本需求更适合把模型限定为“解释冲突与辅助拒识”，而不是让语义相似度越过型号严格一致条件。', 'https://arxiv.org/abs/2310.11244'),
-              ('直接研究跨电商网站的 product record linkage，并用“候选正对 + 与其冲突的关联对”组成组置信度进行半监督自训练；只需少量标注即可利用三源之间的冲突关系，特别适合把不满足一对一/同 reference 一致性的候选降权或拒绝。', 'https://aclanthology.org/C14-1124/'),
-              ('面向比价场景的持续流式商品归一化，利用有限且有噪声的唯一标识监督在线学习，并指出 complete-link 聚类能抑制 single-link 的链式误合并；与持续增量、precision-first 的腕表跨源聚类非常契合。', 'https://www.microsoft.com/en-us/research/publication/adaptive-product-normalization-using-online-learning-for-record-linkage-in-comparison-shopping/'),
-              ('MWPD 电商商品匹配方案显式从原始商品信息补抽 brand 与 model，并用 Part Number 等字段构建 model 词表，再将 brand、model、title、price 输入多模型判别；可直接参考“先从标题恢复 reference/model，再进入候选匹配”的工程分层。', 'https://ir-ischool-uos.github.io/mwpd/MWPD20/paper4.pdf'),
-              ('把实体匹配歧义从简单二分类扩展为关系发现，适合先区分 exact same、相近变体、相关但不同等关系；腕表中同系列外观极近但 reference 不同，可用关系层做明确的冲突标签，最终仅 exact-same-reference 进入自动合并。', 'https://arxiv.org/abs/2403.17344'),
-              ('从实操角度展示精确等价 blocking、相似度阈值与 precision/recall 取舍，并进一步讨论多源实体聚类；可借鉴为“高阈值自动合并 + 低置信度不匹配/人工复核”的可解释基线，符合宁可漏匹配也不能错配。', 'https://zhuanlan.zhihu.com/p/2000811473736311645'),
-              ('给出 OCR 在型号编号等固定词汇场景的自定义字典与“exact first、fuzzy fallback”校正思路；腕表 reference 若只出现在表背、保卡或吊牌图片中，可先 OCR 再对品牌 reference 白名单做严格校验，将视觉证据转成可审计的型号字符串。', 'https://zhuanlan.zhihu.com/p/2044354359304226501'),
-              ('针对商品实体解析把文本信息与商品上下文图表示结合，在无监督条件下生成候选排名；可作为百万级数据的辅助召回/候选排序信号，尤其适合字段稀疏时利用品牌、价格等共享上下文，但最终自动合并仍由 reference 硬证据收口。', 'https://sigir-ecom.github.io/ecom2019/ecom19Papers/paper26.pdf'),
+              ('直接面向二手电商的商品结构化瓶颈，先从非结构化商品元数据学习领域语义，再生成可用于下游任务的 semantic codes；适合三源字段稀疏、长尾 reference 场景做统一结构化表征和候选召回，但自动合并仍只由已验证 canonical reference 精确一致决定。', 'https://aclanthology.org/2025.emnlp-industry.78/'),
+              ('淘宝拍立淘 2026 生产级原生多模态搜索基座，把图片、文本和混合意图统一到 HybSID 与持续预训练检索框架；可作为千万级腕表图文候选召回和持续增量索引参考，视觉或语义结果只进入 reference/OCR 严格校验层。', 'https://arxiv.org/abs/2607.17499'),
+              ('2026 年 BlockingPy 用 schema-agnostic 的近似最近邻与图算法显著减少实体解析比较量，并支持 CPU/GPU；适合 100万–1000万级三源记录先做高召回 blocking，再在小候选集内执行品牌加 canonical reference 硬校验，避免全量笛卡尔积。', 'https://www.sciencedirect.com/science/article/pii/S2352711026000774'),
+              ('这个新开源 ER 工程直接为产品实现多键 blocking、SKU/品牌 hard conflict、manual/auto/no-match、拒绝记忆、provenance 与 anti-transitive union；尤其适合把“同 SKU 不同品牌或关键标识冲突即硬否决”和传递合并前冲突检查落成 precision-first 防误合并机制。', 'https://github.com/sergey-lastochkin/master-data-resolution'),
+              ('2026 大规模电商 VLM 适配研究专门覆盖多图、噪声和 attribute-centric 商品数据，并评测动态属性抽取；适合表盘、表背、保卡等多图联合恢复品牌与 reference 候选，补齐稀疏字段，但候选必须再经过品牌型号词典和 exact gate 验证。', 'https://arxiv.org/abs/2602.11733'),
+              ('实务型商品匹配流程明确把 brand+normalized MPN 视为 decisive signal，并用关键规格冲突 veto、分层 blocking 和传递错误防护；与腕表“品牌作用域内 reference 为身份键、冲突即拒绝、文本和图片仅辅助”的规则设计高度一致。', 'https://www.anglera.com/glossary/product-matching'),
+              ('1688 图搜同款方案展示大规模动态商品库的深度视觉特征检索与类目/属性抽取，适合作为 reference 缺失时的图片候选召回工程参考；但视觉同款只能产生候选，最终仍需品牌加 canonical reference 严格一致才能自动归并。', 'https://zhuanlan.zhihu.com/p/2036109515855287978'),
           ]
 
           main_text = main.read_text(encoding='utf-8')
