@@ -1,0 +1,71 @@
+name: Apply c luxury research append
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/c-luxury-research-20260818.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    if: ${{ !contains(github.event.head_commit.message, '[c-research-applied]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Sync latest main
+        run: git pull --ff-only origin main
+      - name: Append unique research rows
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          article = Path('奢侈品文章调研.md')
+          history = Path('奢侈品文章历史调研.md')
+          workflow = Path('.github/workflows/c-luxury-research-20260818.yml')
+
+          items = [
+              ('直接以百达翡丽 5711/1A-010 为例处理跨 14 个腕表市场的 reference 写法差异，规范化空格/分隔符后对仅写“5711”这类歧义短号直接拒绝猜测，并建议图片 OCR 至少两图一致才采信；与“宁可漏匹配也不能错配”的 reference-first 规则高度一致。', 'https://datakazkn.hashnode.dev/designing-a-14-marketplace-median-aggregator-for-luxury-watch-listings-in-typescript'),
+              ('爱彼官方解释其腕表型号/reference 编号由基础型号、材质、表带与表盘等分段组成，可据此建立品牌专属 reference 解析与规范化规则，并把完整变体编号与个体序列号分开，减少同系列近似编号误合并。', 'https://apchronicles.audemarspiguet.com/en/article/audemars-piguet-watch-numbering'),
+              ('专门研究异构流数据上的增量 Entity Blocking，新记录到达时只更新受影响的候选索引而非反复全量重算；适合 100万–1000万级持续增量三源商品先做高召回候选压缩，再由品牌+canonical reference 精确规则放行。', 'https://www.mdpi.com/2078-2489/13/12/568'),
+              ('面向多来源数据的增量实体解析，在新记录加入后增量维护实体聚类而非从头执行全量 ER；可借鉴其局部更新与簇维护思路，让新增商品只影响相关候选区域，同时把不同有效 reference 设为硬冲突防止旧簇被污染。', 'https://pmc.ncbi.nlm.nih.gov/articles/PMC7250616/'),
+              ('EIVEN 面向电商商品把文本与图片联合用于隐式属性值抽取，适合结构字段/标题缺失 reference 时从商品图补充型号候选；在本场景应只把多模态结果作为可验证候选，并要求标题、OCR 或 reference 目录交叉一致后才自动匹配。', 'https://aclanthology.org/2024.naacl-industry.40/'),
+              ('将商品属性预测与属性值抽取放进统一多模态模型，利用图像帮助补足文本中缺失的细粒度属性；可把 reference/model number 作为目标属性做候选恢复，并把图像证据限制为辅助验证，避免视觉相似覆盖型号硬规则。', 'https://aclanthology.org/2020.emnlp-main.166/'),
+              ('Selective Conformal Risk Control 把风险控制与“选择性输出/拒识”结合，可用少量校准样本只放行满足严格风险上界的预测；很适合把 false match 风险设得极低，证据不足的同款候选全部 abstain 或转人工。', 'https://arxiv.org/abs/2512.12844'),
+              ('腕表实务文章说明应先识别品牌与参考编号，并介绍 reference 可能出现在表壳、文件等位置；可用于设计图片/OCR 取证优先级与编号角色规则，让缺结构字段的二手腕表先恢复可核验 reference，再进入严格匹配。', 'https://zhuanlan.zhihu.com/p/634633632'),
+          ]
+
+          a = article.read_text(encoding='utf-8')
+          h = history.read_text(encoding='utf-8')
+          changed = False
+          for reason, url in items:
+              if url in a or url in h:
+                  continue
+              if a and not a.endswith('\n'):
+                  a += '\n'
+              if h and not h.endswith('\n'):
+                  h += '\n'
+              a += f'| {reason} | {url} |\n'
+              h += f'| {url} |\n'
+              changed = True
+
+          if changed:
+              article.write_text(a, encoding='utf-8')
+              history.write_text(h, encoding='utf-8')
+
+          workflow.unlink(missing_ok=True)
+          PY
+      - name: Commit append
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'docs: append c luxury research [c-research-applied]'
+          git push origin HEAD:main
