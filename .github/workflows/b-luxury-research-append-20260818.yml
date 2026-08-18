@@ -13,16 +13,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Append deduplicated research
+      - name: Repair boundary and append deduplicated research
         shell: bash
         run: |
           set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          research = Path('奢侈品文章调研.md')
+          history = Path('奢侈品文章历史调研.md')
+          r = research.read_text(encoding='utf-8')
+          h = history.read_text(encoding='utf-8')
+          r = r.replace('https://www.zhihu.com/question/420848987/answer/2072332564891808411 || 该工作把真实 product-to-catalog matching', 'https://www.zhihu.com/question/420848987/answer/2072332564891808411 |\n| 该工作把真实 product-to-catalog matching', 1)
+          h = h.replace('https://www.zhihu.com/question/420848987/answer/2072332564891808411 || https://arxiv.org/abs/2608.04341', 'https://www.zhihu.com/question/420848987/answer/2072332564891808411 |\n| https://arxiv.org/abs/2608.04341', 1)
+          research.write_text(r, encoding='utf-8')
+          history.write_text(h, encoding='utf-8')
+          PY
           hist='奢侈品文章历史调研.md'
           research='奢侈品文章调研.md'
           append_row() {
             local url="$1"
             local reason="$2"
             if ! grep -Fq "$url" "$hist"; then
+              if [ -s "$research" ] && [ "$(tail -c 1 "$research" | wc -l)" -eq 0 ]; then printf '\n' >> "$research"; fi
+              if [ -s "$hist" ] && [ "$(tail -c 1 "$hist" | wc -l)" -eq 0 ]; then printf '\n' >> "$hist"; fi
               printf '| %s | %s |\n' "$reason" "$url" >> "$research"
               printf '| %s |\n' "$url" >> "$hist"
             fi
@@ -43,5 +56,5 @@ jobs:
           git config user.name 'b'
           git config user.email 'b@users.noreply.github.com'
           git add -- '奢侈品文章调研.md' '奢侈品文章历史调研.md'
-          git commit -m 'research: append b luxury article research'
+          git commit -m 'research: fix b luxury research table formatting'
           git push
