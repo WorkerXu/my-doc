@@ -1,0 +1,42 @@
+name: b append luxury research
+
+on:
+  push:
+    paths:
+      - .github/workflows/b-append-luxury-research.yml
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Append researched links
+        shell: bash
+        run: |
+          set -euo pipefail
+          article="奢侈品文章调研.md"
+          history="奢侈品文章历史调研.md"
+
+          append_pair() {
+            local url="$1"
+            local reason="$2"
+            if ! grep -Fq -- "$url" "$history"; then
+              printf '\n| %s | %s |' "$reason" "$url" >> "$article"
+              printf '\n| %s |' "$url" >> "$history"
+            fi
+          }
+
+          append_pair "https://www.sciencedirect.com/science/article/pii/S0950705124003435" "针对小样本、未见实体与正负样本不平衡的实体匹配，用 self-ensemble 提升泛化和标签效率；可用几百对黄金标签训练 brand/reference 硬规则后的疑难候选复核器，并把相邻 reference hard negatives 重点加入训练，自动合并仍只接受 canonical reference 一致。"
+          append_pair "https://onlinelibrary.wiley.com/doi/10.1002/sim.70292" "用合成 decoy 记录估计任意 record-linkage 流程的 false discovery proportion，不依赖 matcher 本身；很适合上线后持续估计误合并率、比较阈值/规则版本，在缺少大规模 ground truth 时仍把 precision 风险量化出来。"
+          append_pair "https://webdatacommons.org/largescaleproductcorpus/v2020/" "大规模多源商品语料直接围绕 SKU、productID、MPN、GTIN 等 identifier 聚簇，并专门清理变体、列表页、主商品与推荐商品等伪关联；适合验证“编号角色分类→reference 规范化→跨源聚类”的数据治理与异常簇清洗，尤其能暴露平台 SKU/制造商标识混淆。"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- "$article" "$history"
+          if ! git diff --cached --quiet; then
+            git commit -m "追加 b 本轮奢侈品文章调研"
+            git push
+          fi
