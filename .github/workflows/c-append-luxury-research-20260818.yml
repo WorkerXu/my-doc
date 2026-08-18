@@ -25,12 +25,20 @@ jobs:
           from pathlib import Path
 
           items = [
-              ('直接在 24 个电商站点的异构相机规格上采用“品牌→型号”两阶段 Blocking；当 model 字段缺失或含糊时从 page title 规则抽取型号，并用 block splitting 明显提升 precision，和“reference 埋在标题、千万级候选压缩、宁漏勿错”的腕表场景高度同构。', 'https://ceur-ws.org/Vol-2726/paper5.pdf'),
-              ('直接研究从电商商品标题联合抽取属性和值，示例把字母数字串 b34308 正确识别为 model number；生成式/位置式方案可用于从噪声标题定位 reference，再配合品牌词典和格式规则做严格规范化与拒识。', 'https://arxiv.org/abs/2208.07130'),
-              ('JPAVE 针对同一商品在不同购物平台上描述结构和风格不同的问题，同时支持开放世界新属性值；其 copy mechanism 只聚焦输入中的相关片段，适合持续增量时抽取此前未见的 reference，而不是把未知型号强行映射到旧型号。', 'https://arxiv.org/abs/2311.04196'),
-              ('电商检索工程中用当前模型自身的 Top-K 误召回自动挖掘 hard negatives，并明确排除已知正例；可把同品牌、同系列、只差 1–2 位字符的相邻 reference 作为困难负例持续回灌，专门压低最危险的 false positive。', 'https://qdrant.tech/articles/sparse-embeddings-ecommerce-part-3/'),
-              ('生产级多模态电商方案面对文本元数据稀疏/不可靠和视觉差异，通过按细分类目检索 few-shot exemplars 做校准，并已扩展到每日数百万 listing；可借鉴其“类目内检索+校准上下文”给 reference 抽取/复核提供高相关样例，减少跨类目或长尾误判。', 'https://aclanthology.org/2026.acl-industry.41/'),
-              ('电商 NER 实践把品牌、型号、系列等作为独立实体类别，并利用实体重要性参与精确召回；可把标题中的 reference 当成高权重“型号”实体先抽取，再在 canonical brand 内做严格等值匹配，避免营销词和低价值修饰词干扰。', 'https://zhuanlan.zhihu.com/p/383937575'),
+              ('Khoji 提供文本、图像及混合模态检索的 LoRA 微调与迭代 hard-negative mining，并直接带跨品牌 SKU matching 示例；可用同品牌相邻 reference、外观极近但型号不同的腕表作为困难负例，把百万级候选召回器专门训练成“先找全、但不把相似当相同”，最终仍由 reference 硬规则收口。', 'https://github.com/suyashh94/khoji'),
+              ('Samesake 把电商搜索与实体解析放在同一工程框架中，支持 structured parse gates、分通道打分、可解释结果以及 confirm/decline 后的别名学习；很适合把 brand/reference 设为不可被语义相似度覆盖的硬门槛，同时保留标题、图片和别名作候选召回与人工复核辅助。', 'https://github.com/asyncdotengineering/samesake'),
+              ('SERF 是持续迭代的语义实体解析框架，包含 FAISS blocking、块级匹配、合并和评测闭环，并可多轮运行直至稳定；可借其“候选生成与匹配解耦”的工程结构处理三源持续增量，但在本需求中应把 LLM 合并权限降级，只允许 canonical reference 一致时自动归并。', 'https://github.com/Graphlet-AI/serf'),
+              ('Abstain-R1 专门学习校准后的拒答/拒识行为，并在不可判定输入上主动 abstain；可迁移到 precision-first 商品匹配，把 reference 缺失、OCR 字符不确定、品牌冲突或多候选并列等情况训练为明确“不自动匹配”，而不是被迫二分类产生 false positive。', 'https://aclanthology.org/2026.findings-acl.985/'),
+              ('这项多模态 LLM OCR 研究直接分析图像分辨率与视觉复杂度对字符级准确率的影响，结论强调精确字符任务对输入质量高度敏感；腕表 reference 常刻在表背且字母数字只差一位即可变成另一型号，可据此设置最小像素/清晰度门槛，达不到就拒识而非猜号。', 'https://arxiv.org/abs/2503.23667'),
+              ('该研究比较多模态 LLM 的直接 OCR 与 OCR post-correction，并显示后校正可显著改善转录；可在表背、保卡、吊牌 reference 提取中采用“双路 OCR + 受限候选库校正”，但仅当原始字符证据与品牌 reference 词典一致时放行，避免自由生成型号。', 'https://arxiv.org/abs/2504.00414'),
+              ('Breitling 官方 FAQ 明确说明 reference number 唯一标识一个腕表型号及其设计、机芯和特征，并指出 reference 可从保修资料或表背获得；这是与本需求定义高度一致的品牌一手证据，可用于制定“型号级 reference 与单表 serial number 分离”的字段规范和图像 OCR 取证位置。', 'https://www.breitling.com/us-en/service/faq/'),
+              ('阳采集团的工业品 AI 数据治理实践采用规则引擎加大模型，从混乱商品字段中拆解品牌、型号等关键属性，并针对“一物多码”做消歧；与三源二奢数据的字段稀疏、命名不统一场景同构，可借鉴品牌词典、型号结构化抽取和规则优先的治理分层。', 'https://zhuanlan.zhihu.com/p/1942151146182545569'),
+              ('零售领域的 Visual RAG 用少量样本即可做细粒度商品 ID 识别，新商品只需加入少量示例而无需重训；很适合持续增量腕表从图片补充 reference/型号候选，但视觉结果只作召回和旁证，最终仍由 canonical reference 严格验证。', 'https://openaccess.thecvf.com/content/CVPR2025W/FGVC/html/Lamm_A_Visual_RAG_Pipeline_for_Few-Shot_Fine-Grained_Product_Classification_CVPRW_2025_paper.html'),
+              ('面向电商商品属性预测，以小规模标注配合大量未标注 listing、PEFT 与 DPO 提升紧凑多模态模型；适合只有几百对黄金标签时训练图片侧属性/reference 辅助抽取器，输出仍应经标题、OCR 或品牌型号库复核后才参与匹配。', 'https://openaccess.thecvf.com/content/ICCV2025W/CDEL/html/Kulkarni_Efficient_Learning_for_Product_Attributes_with_Compact_Multimodal_Models_ICCVW_2025_paper.html'),
+              ('Amazon 的商品图像分析研究专门区分“图片真实证据”与模型潜在知识，并提供面向 catalog 术语的属性预测基准；可用于约束图片侧 reference/型号证据必须可从图像支持，避免 VLM 凭先验猜号，证据不足时直接拒识。', 'https://openaccess.thecvf.com/content/WACV2025W/PRAW/html/Trabelsi_What_Matters_when_Building_Vision_Language_Models_for_Product_Image_WACVW_2025_paper.html'),
+              ('DiT-Distill 针对 open-set 细粒度检索，重点学习属性级微小差异并泛化到训练中未见的子类别；适合新增腕表 reference 的图片候选召回和同系列近邻 hard-negative 挖掘，但最终身份仍必须回到品牌内 canonical reference exact gate。', 'https://openaccess.thecvf.com/content/CVPR2026/html/Jiang_DiT-Distill_Open-Set_Fine-Grained_Retrieval_via_Generative_Curriculum_Knowledge_CVPR_2026_paper.html'),
+              ('该工作直接研究“误判代价很高时何时拒绝预测”，并为 reject-option 分类设计校准损失；可把跨源“同 reference”判定做成高精度接受区，标题/OCR 噪声或边界候选落入拒识区，宁可降低覆盖也不制造 false positive。', 'https://proceedings.mlr.press/v260/shah25a.html'),
+              ('将选择性分类与 OOD 检测统一，并以零样本方式组合多个检测器、控制最坏情形拒识风险；适合新品牌、新来源和持续增量引起的分布漂移，在 matcher 面对陌生 reference 分布时优先 abstain，避免过度自信误合并。', 'https://proceedings.mlr.press/v286/dadalto-camara-gomes25a.html'),
           ]
 
           research = Path('奢侈品文章调研.md')
