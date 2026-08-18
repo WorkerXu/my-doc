@@ -1,0 +1,67 @@
+name: b luxury research temp
+
+on:
+  push:
+    paths:
+      - '.github/workflows/b-luxury-research-temp.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append-research:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Append unique research rows
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "b-research-bot"
+          git config user.email "b-research-bot@users.noreply.github.com"
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            python3 - <<'PY'
+          from pathlib import Path
+
+          target = Path('奢侈品文章调研.md')
+          history = Path('奢侈品文章历史调研.md')
+          rows = [
+              ('该经典实体解析工作把领域冲突写成独立 negative rules，并要求最终解析结果满足这些否定约束；可直接把有效 reference 不一致、品牌冲突、配件与主商品冲突设为不可跨越的硬否决，比单纯提高相似度阈值更贴合零误匹配目标。', 'https://vldb.org/vldb_journal/index.php/component/article_manager/article/1105'),
+              ('DTMEL 把图文多模态实体链接做成可离线索引的双塔架构，并在编码器内部加入跨模态深交互；适合千万级先用标题、图片或 OCR 召回少量候选，再做细粒度消歧，但最终自动合并仍应由品牌作用域内 canonical reference 严格一致收口。', 'https://www.sciencedirect.com/science/article/pii/S0306457326004322'),
+              ('EntityCLIP 专门强化实体级而非粗粒度图文匹配，可把表盘、刻字与外观微差用于 reference 候选的辅助确认和冲突检测；很适合防止普通视觉相似度把同系列近邻型号过度拉近，图片证据仍不越过 reference 硬规则。', 'https://arxiv.org/abs/2410.17810'),
+              ('AdapterEM 用参数高效 Adapter 做 generalized entity matching，面向异构数据和低资源迁移时只需更新少量参数；适合按新增品牌或来源快速适配几百对黄金标签，同时把 reference 不一致继续交给规则层绝对否决。', 'https://arxiv.org/abs/2305.18725'),
+              ('APrompt4EM 面向低资源 generalized entity matching，用增强 prompt tuning 与信息补全缓解字段异构和信息缺口；可作为 reference 提取后的疑难候选二阶段判别器，用很少标注适配新品牌或来源，自动合并仍只接受 reference 严格一致。', 'https://arxiv.org/abs/2405.04820'),
+              ('该生产环境 ER 研究强调在缺少完整 ground truth 时持续监控 precision、领域约束与跨批次一致性，并展示高 precision、低 recall 的保守运行方式；适合把不同有效 reference 不可同簇等约束做增量线上审计，宁可漏配也不放行高风险合并。', 'https://doi.org/10.2298/SJEE2601123K'),
+              ('Dataphin 的知识图谱实体消歧把多属性组合成显式识别规则，并支持精确匹配、编辑距离等不同判定方式；可借鉴为品牌加 reference 的硬规则层与增量入图去重形态，把模糊相似限制在候选层而不是直接触发同款合并。', 'https://zhuanlan.zhihu.com/p/2068766558453764445'),
+          ]
+          target_text = target.read_text(encoding='utf-8')
+          history_text = history.read_text(encoding='utf-8')
+          target_add = []
+          history_add = []
+          for reason, url in rows:
+              if url in history_text:
+                  continue
+              if url not in target_text:
+                  target_add.append(f'| {reason} | {url} |\n')
+              history_add.append(f'| {url} |\n')
+          if target_add:
+              with target.open('a', encoding='utf-8') as f:
+                  f.writelines(target_add)
+          if history_add:
+              with history.open('a', encoding='utf-8') as f:
+                  f.writelines(history_add)
+          PY
+            if git diff --quiet -- '奢侈品文章调研.md' '奢侈品文章历史调研.md'; then
+              exit 0
+            fi
+            git add -- '奢侈品文章调研.md' '奢侈品文章历史调研.md'
+            git commit -m "research: append new luxury entity matching sources"
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+          done
+          exit 1
