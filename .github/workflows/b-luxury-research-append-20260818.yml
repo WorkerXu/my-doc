@@ -1,0 +1,47 @@
+name: b luxury research append
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    if: github.event.head_commit.message == 'chore: run b luxury research append'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Append deduplicated research
+        shell: bash
+        run: |
+          set -euo pipefail
+          hist='奢侈品文章历史调研.md'
+          research='奢侈品文章调研.md'
+          append_row() {
+            local url="$1"
+            local reason="$2"
+            if ! grep -Fq "$url" "$hist"; then
+              printf '| %s | %s |\n' "$reason" "$url" >> "$research"
+              printf '| %s |\n' "$url" >> "$hist"
+            fi
+          }
+          append_row 'https://arxiv.org/abs/2608.04341' '该工作把真实 product-to-catalog matching 明确建模为 selective prediction，并在满足每类 P@1 精度门槛后追求最大覆盖；可直接借鉴为“高精度自动匹配子集 + 其余全部拒识/人工”的决策层，把误匹配风险放在覆盖率之前。'
+          append_row 'https://arxiv.org/abs/2509.19557' '专门研究实体匹配模型的置信度校准，比较 Temperature Scaling、MC Dropout 与 Ensemble；可用几百对黄金标签把 match confidence 校准后只放行极高置信区间，避免未校准模型的过度自信把相邻 reference 错并。'
+          append_row 'https://openreview.net/forum?id=3nprbNR3HB' 'ASPEST 将主动学习与 selective prediction 合并，并针对目标域分布漂移主动挑最有信息量样本、对不确定预测 abstain；很适合三来源持续增量且只有几百条标注时，把人工预算集中到新品牌/新来源的 reference hard cases。'
+          append_row 'https://arxiv.org/abs/2310.01202' 'Unified Uncertainty Calibration 联合 aleatoric 与 epistemic uncertainty，并以拒识处理困难或分布外样本；可把标题/OCR 噪声与新增品牌的域外风险一起纳入 gate，只在多类不确定性都低且 reference 证据一致时自动匹配。'
+          append_row 'https://arxiv.org/abs/2605.28308' 'HELEA 专门构造“名字几乎相同但实体不同”的 hard negatives，并采用检索加重排两阶段框架；可直接迁移为同品牌同系列、reference 仅差一位/后缀的腕表难负例集，训练候选层学会拒绝外观和名称都极近的不同型号。'
+          append_row 'https://zhuanlan.zhihu.com/p/371404082' 'Shopee 商品匹配银牌方案把图片 ArcFace、标题 TF-IDF/BERT、KNN 与多路融合用于跨 listing 匹配；可作为三源腕表多模态候选召回基线，并重点用其近邻结果挖相邻 reference hard negatives，最终自动合并仍由 canonical reference 硬规则收口。'
+      - name: Commit changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name 'b'
+          git config user.email 'b@users.noreply.github.com'
+          git add -- '奢侈品文章调研.md' '奢侈品文章历史调研.md'
+          git commit -m 'research: append b luxury article research'
+          git push
