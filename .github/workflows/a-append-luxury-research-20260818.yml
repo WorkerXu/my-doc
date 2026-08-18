@@ -38,6 +38,12 @@ jobs:
               ('ACL 2026 的 DySECT 用持续扩张的知识库、概率知识和图推理反哺信息抽取器，形成随使用不断更新的闭环；适合三来源持续增量时沉淀品牌 reference 词典、别名和新格式，再用人工复核结果迭代抽取器，而不改变 precision-first 的硬匹配门槛。', 'https://aclanthology.org/2026.acl-demo.69/'),
               ('ACL 2026 对数值和字母数字实体抽取做了系统误差诊断，显示编码式表达和字符级表达仍是 LLM 的稳定失败点，并验证 Error-Aware prompting 可改善抽取；腕表 reference 常是一位字符即决定不同型号，可据此加入字符级复核、格式词典和不稳定即拒识策略。', 'https://aclanthology.org/2026.acl-industry.132/'),
               ('这篇 2026 年 Merchant Center 数据 Feed 实践把 brand、GTIN、MPN 单列为唯一产品标识符，并区分主 Feed 与补充 Feed；可借鉴为三源增量数据设计“原始来源字段 + 规范化 reference 或标识符补充层”，避免覆盖原证据，同时把后续纠错作为可追踪补充数据。', 'https://zhuanlan.zhihu.com/p/2000249156971823722'),
+              ('UniECS 统一支持文本、图片及图文组合的电商检索，并专门处理模态缺失与细粒度商品区分；适合在标题缺 reference 或字段稀疏时用图片补充高召回候选，同时把最终自动合并继续收紧到品牌内 canonical reference 严格一致。', 'https://github.com/qzp2018/UniECS'),
+              ('Mine and Refine 通过结构化 hard-negative 挖掘与分级相关性优化，专门拉开“高度相似但并非 exact”的电商候选边界；可系统构造同品牌同系列但 reference 不同的危险近邻负例，训练候选层避免把 substitute/near-match 当成同款。', 'https://arxiv.org/abs/2602.17654'),
+              ('低资源实体解析把跨域泛化与主动学习结合，并直接在商品实体匹配数据上验证；很适合只有几百对黄金标签且来源、品牌持续新增的场景，把人工优先投入最不确定、最容易造成 reference false positive 的边界样本。', 'https://www.sciencedirect.com/science/article/pii/S0925231224009020'),
+              ('Amazon ESCI 将电商候选显式分为 Exact、Substitute、Complement、Irrelevant，可直接借其“Exact 与高相似非 Exact 分层”的标注思想构造腕表 hard-negative 评测集；尤其适合把同系列不同 reference 固定为近邻负例，防止语义或图片相似越权判同款。', 'https://github.com/amazon-science/esci-data'),
+              ('该生成式电商检索工作用层级语义 Cluster ID 与强化学习面向大规模动态商品目录优化召回效率；可参考其百万到千万级持续增量候选索引与缩圈思路，让昂贵验证只落到少量候选，最终身份仍由 canonical reference 硬规则裁决。', 'https://arxiv.org/abs/2605.14434'),
+              ('这篇京东 GRAM 技术解读把品牌、品类、系列、型号等结构化属性编码进共享商品 Code；对本项目最有价值的是把标题里的型号/reference 抽成显式检索键用于 blocking/召回，避免整句 embedding 掩盖一字符型号差异，再由 reference exact check 收口。', 'https://zhuanlan.zhihu.com/p/2014381422060794660'),
           ]
 
           main_text = main.read_text(encoding='utf-8')
