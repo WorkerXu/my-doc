@@ -1,0 +1,71 @@
+name: a append luxury research 20260818
+
+on:
+  push:
+    paths:
+      - '.github/workflows/a-append-luxury-research-20260818.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Append a luxury research rows
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+          for attempt in 1 2 3; do
+            git fetch origin main
+            git reset --hard origin/main
+
+            python - <<'PY'
+          from pathlib import Path
+
+          main = Path('奢侈品文章调研.md')
+          history = Path('奢侈品文章历史调研.md')
+          entries = [
+              ('直接是腕表商品数据增强案例，跨多个外部来源主要依靠 reference number 与 brand+model 链接，并专门处理同一 reference 在不同站点格式不一致、缺失与来源冲突；可直接借鉴“品牌内 reference 规范化→多信号补证→冲突按来源优先级拒绝/择优”的生产链路。', 'https://scraping.pro/cases/watch-product-data-enrichment/'),
+              ('开源 WatchCharts MCP 把 free text（如 Daytona 116503）解析为 watch_id/uuid/brand/collection，并能返回 references、variation 与规格；可作为独立的腕表 canonical resolver/外部核验源，用于检查标题抽出的 reference 是否能在品牌目录中解析到唯一实体，而不是拿模糊搜索结果直接合并。', 'https://github.com/NiccoloSalvini/watchcharts-mcp'),
+              ('Product 360 官方实现明确用 exact Brand+MPN 自动合并，fuzzy title 只进入 steward 候选区，并保留 approve/reject/Unmerge 和审计历史；几乎对应本需求的“品牌+reference 硬门控、边界人工、误合并可回滚”治理模式。', 'https://documentation.cluedin.net/product360'),
+              ('腕表图像识别工具会同时读取品牌标识、盘面、表壳比例与可见 reference/serial/机芯文字，输出具体 reference；可作为表背、保卡、表盘图片侧的辅助 reference 候选和冲突检测信号，尤其适合文本字段缺失，但不应越过 canonical reference 硬校验。', 'https://curiosa.com/scan/watch-identifier'),
+              ('文章把 WatchBase 的 brand→family→reference 层级整理成“一 reference 一记录”的规范化 JSON，同时保留原始 specs 键值以避免过度清洗丢信息；适合构建 brand-scoped reference 词典与规格旁证，并用 raw+normalized 双轨数据审计解析器。', 'https://dev.to/liuhao04/turn-a-watch-reference-number-into-full-specs-caliber-case-dial-as-json-g0g'),
+              ('1688 图搜落地实践明确指出纯图搜只识别外观，可能“长得一样、货不一样”，高价值商品应保留候选并人工复核；可用来约束腕表图片只负责候选召回/辅助核验，不把视觉相似直接当同 reference 证据。', 'https://zhuanlan.zhihu.com/p/2070908403698996246'),
+          ]
+
+          main_text = main.read_text(encoding='utf-8')
+          hist_text = history.read_text(encoding='utf-8')
+          rows = [(reason, url) for reason, url in entries if url not in main_text and url not in hist_text]
+
+          if rows:
+              with main.open('a', encoding='utf-8') as f:
+                  if main_text and not main_text.endswith('\n'):
+                      f.write('\n')
+                  for reason, url in rows:
+                      f.write(f'| {reason} | {url} |\n')
+              with history.open('a', encoding='utf-8') as f:
+                  if hist_text and not hist_text.endswith('\n'):
+                      f.write('\n')
+                  for _, url in rows:
+                      f.write(f'| {url} |\n')
+          PY
+
+            if git diff --quiet -- '奢侈品文章调研.md' '奢侈品文章历史调研.md'; then
+              exit 0
+            fi
+
+            git add '奢侈品文章调研.md' '奢侈品文章历史调研.md'
+            git commit -m 'a 追加本轮奢侈品文章调研'
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            sleep 2
+          done
+
+          exit 1
