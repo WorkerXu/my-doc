@@ -1,0 +1,59 @@
+name: One-time append luxury research
+
+on:
+  push:
+    paths:
+      - ".github/workflows/one-time-append-luxury-research-b-20260818.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Append new research rows
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          target = Path("奢侈品文章调研.md")
+          history = Path("奢侈品文章历史调研.md")
+          rows = [
+              ('Chrono24 官方导入规范把 manufacturer、model、reference number 作为基础字段，并要求 reference 使用完整官方编号；特别适合据此约束三源 reference 采集/规范化，截断或不完整型号直接拒识，再由品牌+完整 canonical reference 做自动匹配。', 'https://update.chrono24.com/listing-import-guide/'),
+              ('Chrono24 官方卖家指南明确要求完整 reference（包括字母后缀）并按腕表或随附文件原样填写，不能只写部分编号；这与“同一 reference 才算同款”完全一致，可把完整后缀、分隔符和品牌格式校验设为自动合并前的硬门槛。', 'https://update.chrono24.com/how-to-create-listings-that-sell-on-chrono24/'),
+              ('2026 年商品匹配工程文章把精确标识符确定性匹配放在首层，并让 LLM 只从脏文本抽 part number/处理未决项，同时保留 confidence、人工复核与 provenance；很适合本项目采用“reference exact 优先、LLM 不直接决定 identity”的可审计分层。', 'https://getclaro.ai/resources/articles/product-matching/'),
+              ('2026 年电商 Agent 实践给出一个与本需求高度同构的误判：把“适用于 iPhone 15 Pro”的兼容型号错抽成商品自身型号，并用字段角色、反例、校验规则和 badcase 回归修复；可直接用于防止表带/配件标题中的他款 reference 被误当当前商品 reference。', 'https://zhuanlan.zhihu.com/p/2068102678136280151'),
+              ('电商实体识别实践把品牌、品类、型号作为独立 NER 实体并系统讨论规则、词典与上下文歧义；可用于从稀疏标题先定位 reference/model 候选，并通过品牌上下文判断实体角色，抽取结果再交 canonical reference 词典严格校验。', 'https://zhuanlan.zhihu.com/p/383575465'),
+              ('商品标题 NER 实战专门讨论轻量构造标注集、BERT-CRF 多标签抽取和“无品牌标题被错误识别出品牌”的过拟合 false positive；可借鉴少量人工样本训练 reference 抽取器，并把错误实体/过拟合当成重点拒识与回归测试。', 'https://zhuanlan.zhihu.com/p/525965250'),
+          ]
+
+          t = target.read_text(encoding='utf-8')
+          h = history.read_text(encoding='utf-8')
+          for reason, url in rows:
+              if url not in t:
+                  if not t.endswith('\n'):
+                      t += '\n'
+                  t += f'| {reason} | {url} |\n'
+              if url not in h:
+                  if not h.endswith('\n'):
+                      h += '\n'
+                  h += f'| {url} |\n'
+          target.write_text(t, encoding='utf-8')
+          history.write_text(h, encoding='utf-8')
+          PY
+
+      - name: Commit appended research and remove one-time workflow
+        shell: bash
+        run: |
+          rm .github/workflows/one-time-append-luxury-research-b-20260818.yml
+          git config user.name "chatgpt-b"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "docs: append luxury research [skip ci]"
+          git push
