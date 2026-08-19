@@ -288,3 +288,6 @@
 | 该中文电商 NER 研究把实体类型写成 MRC 问题，从商品描述中识别品牌与商品实体；和 GLiNER2 用自然语言 Schema 定义字段的方式很接近，适合参考中文 brand/商品实体字段描述、边界定位与少样本迁移。 | https://drpress.org/ojs/index.php/fcis/article/view/12817 |
 | 该研究专门从印尼电商商品标题联合抽取属性，结合词典、词表示与序列/联合建模处理 brand、商品名等字段；适合用作 GLiNER2 多语言短标题的传统基线，并设计品牌/品名与细粒度属性的联合 span 回归测试。 | https://www.scielo.org.mx/scielo.php?pid=S1405-55462018000401367&script=sci_arttext |
 | 该 NER 研究在电商数据集中直接使用 Brand、Product、Model 三类实体，并结合远程监督与跨域数据降低人工标注依赖；适合为 GLiNER2 的中文长尾品牌、新型号构造弱标注训练数据，并验证跨商城/跨域迁移。 | https://pmc.ncbi.nlm.nih.gov/articles/PMC9168158/ |
+| OneSearch 的开源代码在真实电商搜索链路中用 NER 维护 18 类结构化属性，直接包含 Brand、Model、Specifications、Color、Material，并把这些字段用于 query/item 语义增强；适合将 GLiNER2 作为动态 Schema 抽取器接入，验证品牌、型号和规格抽取对检索链路的实际增益。 | https://github.com/benchen4395/onesearch-family |
+| OneRetrieval 的开源实现把电商 Brand、Model/GOOD_MODEL、Specification、Color、Material 等细粒度属性先抽取和归并，再编码进可检索的结构化表示；适合参考 GLiNER2 抽取后的字段分组、词典维护、增量更新以及“抽取→检索”衔接。 | https://github.com/xuxinzhang/oneretrieval |
+| KuaiSearch 提供 1800 万级真实电商商品的 title+brand，以及 query/title/brand_name/attribute 相关性数据；可用现成目录字段构造 GLiNER2 品牌与属性弱标注/回归集，并直接评估抽取结果对召回、相关性和排序的业务价值。 | https://github.com/benchen4395/KuaiSearch |

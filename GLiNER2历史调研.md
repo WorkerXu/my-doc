@@ -133,3 +133,6 @@ https://aclanthology.org/2021.stil-1.12/
 https://drpress.org/ojs/index.php/fcis/article/view/12817
 https://www.scielo.org.mx/scielo.php?pid=S1405-55462018000401367&script=sci_arttext
 https://pmc.ncbi.nlm.nih.gov/articles/PMC9168158/
+https://github.com/benchen4395/onesearch-family
+https://github.com/xuxinzhang/oneretrieval
+https://github.com/benchen4395/KuaiSearch
