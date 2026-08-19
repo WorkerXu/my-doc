@@ -136,3 +136,6 @@ https://aclanthology.org/2025.emnlp-industry.78/
 https://github.com/aws-samples/sample-ai-powered-product-catalog
 https://github.com/GoogleCloudPlatform/agentsmithy/blob/main/agent_bar_v2/subagents/retail/intelligent_inventory_manager/sub_agents/catalog_enrichment/agent.py
 https://www.tandemn.com/blog/1
+https://aclanthology.org/2025.emnlp-demos.10/
+https://github.com/bureaucratic-labs/revizor
+https://aws.amazon.com/blogs/machine-learning/how-the-amazon-com-catalog-team-built-self-learning-generative-ai-at-scale-with-amazon-bedrock/
