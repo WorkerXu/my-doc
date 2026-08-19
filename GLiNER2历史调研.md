@@ -205,3 +205,9 @@ https://medium.com/walmartglobaltech/understanding-conversational-search-refinem
 https://medium.com/walmartglobaltech/retail-graph-walmarts-product-knowledge-graph-6ef7357963bc
 https://huggingface.co/aagzamov/search-query-parser
 https://github.com/drawrowfly/amazon-product-api
+https://github.com/octaprice/ecommerce-product-dataset
+https://github.com/google-marketing-solutions/css-feedviz
+https://elogic.co/projects/cromwell/
+https://experienceleague.adobe.com/en/docs/llm-optimizer/using/dashboards/opportunities/enrich-product-catalog
+https://productlasso.com/en/blog/product-title-templates-by-category
+https://arovon.com/ai-product-data-extraction-from-pdfs
