@@ -253,3 +253,11 @@
 | OpenTag 原始工作把商品标题/描述中的开放词表属性值抽取建模为序列标注，并结合注意力与主动学习，在少量标注下发现训练中未见的新属性值；适合参考 GLiNER2 对长尾品牌、新型号、规格新值的开放抽取能力及低成本标注/难例采样策略。 | https://www.amazon.science/publications/opentag-open-attribute-extraction-from-product-profiles |
 | 该研究从非结构化多语言商品网页中抽取细粒度、标准化商品属性，并验证模型可跨网店、跨语言迁移，同时支持商品 taxonomy 对齐；适合评估 GLiNER2 的品牌/型号/规格字段在跨站点、多语言目录中的泛化，以及抽取后字段标准化与类目映射。 | https://arxiv.org/abs/2302.12139 |
 | 这个 Ruby/ONNX 的 GLiNER2 推理封装直接给出 iPhone 商品结构化抽取示例，可一次得到完整型号、storage、processor、price 等字段，并支持 INT8 ONNX；适合参考 GLiNER2 商品品牌/型号/规格服务的跨语言封装、本地低成本部署和固定 Schema 输出。 | https://github.com/elcuervo/gliner |
+| PARSE 会自动优化 JSON Schema，并用反思式抽取结合静态与 LLM guardrail 降低字段歧义和抽取错误；适合迁移到 GLiNER2，持续改进 brand、model、规格字段描述，并对低置信结果做 Schema 级校验。 | https://aclanthology.org/2025.emnlp-industry.184/ |
+| 该研究先对冗长商品 description/bullets 做句子级相关性排序，再交给 NER 类抽取链路；适合放在 GLiNER2 前筛除噪声，只保留最可能包含品牌、型号、规格的片段，降低长文本误抽和推理成本。 | https://arxiv.org/abs/1907.06330 |
+| tech-product-ner 的标签直接覆盖 BRAND、COLOR、CATEGORY 与价格约束等电商实体；可作为 GLiNER2 商品查询侧品牌/属性 span 的小型回归集，并扩展 MODEL、规格字段做 few-shot 校准。 | https://huggingface.co/datasets/roundspecs/tech-product-ner |
+| datasheet_extractor 用 PDF parser、LLM/VLM、Pydantic Schema 和 validator 把电子元件 datasheet 转成结构化规格；适合参考 GLiNER2 从说明书/规格书抽品牌、型号和参数字段时的文档解析、Schema 约束与结果校验。 | https://github.com/hsinjuitsai/datasheet_extractor |
+| Alibaba 商品详情抓取项目直接产出 brand、SKU、MPN、商品 ID 等结构化字段；可将页面结构化结果作为弱标签或对照真值，批量验证 GLiNER2 从标题/描述回抽品牌、型号/货号和规格的准确率。 | https://github.com/AbsoluteAnchor/alibaba-single-product-details-scraper |
+| CommerceTXT 为 AI Agent 定义机器可读电商商品规范，字段映射中直接包含 Brand 等核心商品信息；适合把 GLiNER2 抽取结果映射到稳定的商品交换 Schema，明确品牌、型号与属性的标准化输出边界。 | https://github.com/commercetxt/commercetxt/blob/main/spec/README.md |
+| third-eye 是自托管商品页解析 API，可从页面直接得到 title、brand、price、sizes 等结构化数据，并融合 JSON-LD/OpenGraph/Shopify/DOM；适合给 GLiNER2 提供干净候选文本与页面结构化对照值，减少网页噪声并做字段回归。 | https://github.com/myselfshravan/third-eye |
+| GLiNER2 官方 LoRA 教程展示了按领域训练轻量 Adapter 并按文档类型路由切换的方式；适合把商品 brand/model/规格 Schema 做成电商专用 Adapter，在保持基础模型通用能力的同时低成本迭代长尾字段。 | https://github.com/fastino-ai/GLiNER2/blob/main/tutorial/10-lora_adapters.md |
