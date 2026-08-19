@@ -22,24 +22,24 @@ jobs:
 
           rows = [
               (
-                  "Amazon 2026 工作把非结构化品牌知识库作为参照，用 LLM Agent 同时修复并匹配商品目录记录；适合接在 GLiNER2 的 brand/model span 抽取后做品牌实体归一、目录匹配和冲突校验，尤其能补强长尾品牌与脏目录场景。",
-                  "https://www.amazon.science/publications/using-brand-knowledge-bases-and-llm-agents-to-enhance-e-commerce-retailers-catalog-quality",
+                  "ShopSavvy Python SDK 支持按 model number、条码、ASIN 或商品 URL 反查统一商品记录，并返回品牌等结构化字段且支持批量查询；适合把 GLiNER2 抽出的型号/品牌作为二阶段检索键，做跨零售商实体确认、型号纠错和目录归一。",
+                  "https://github.com/shopsavvy/sdk-python",
               ),
               (
-                  "Amazon 2026 的属性感知合成数据方法围绕商品属性保留、负例生成和属性移除构造可控训练样本，并在 MAVE 上达到接近真实数据训练的效果；适合为 GLiNER2 的 brand/model/规格字段批量生成难例、缺失字段和负样本，降低人工标注成本。",
-                  "https://www.amazon.science/publications/attribute-aware-controlled-product-generation-with-llms-for-e-commerce",
+                  "Google Product Feed Enrichment Kit 会统一识别 GTIN/EAN/UPC、MPN/manufacturer_part_number 与 brand/manufacturer 等字段别名并检查标识符是否存在；适合接在 GLiNER2 后做品牌、MPN/型号字段归一和 Feed 入库前完整性校验。",
+                  "https://github.com/Ads-insights/google-productfeed-enrichment-kit/blob/main/productfeed-identifier-exists.md",
               ),
               (
-                  "Catalog Attribute Normalizer 直接接收 title、description 和 raw_attributes，输出受控字段名、规范化属性、来源 provenance 与 taxonomy 映射；适合把 GLiNER2 抽出的品牌/型号/尺寸/颜色/材质接到标准化、来源追踪和 PIM/Feed 入库层。",
-                  "https://github.com/ACJLabs/catalog-normalizer",
+                  "Product Research Agent 已实现“商品搜索→品牌/规格抽取→Pydantic 结构化验证”的 Agent 流程，并支持从购物搜索结果汇总证据；适合给 GLiNER2 的低置信品牌、型号和规格增加联网补证与结构化复核层。",
+                  "https://github.com/scarnyc/product-research-agent",
               ),
               (
-                  "CatalogRAG 会按 product type、文本相似度和品牌关系检索目录内完整样本，再预测缺失属性；适合给 GLiNER2 的低置信品牌、型号和属性增加同类商品证据召回与二次补全，并可直接参考多语言目录的检索增强方式。",
-                  "https://www.amazon.science/publications/catalograg-retrieval-guided-llm-prediction-for-multilingual-e-commerce-product-attributes",
+                  "Bright Data 的 Amazon Global Dataset Scraper 输出商品 title/description 的同时提供 brand、manufacturer、model_number、Model Name、颜色、容量等结构化字段；适合持续生成 GLiNER2 品牌/型号/规格回归样本，并用商城结构化值自动做字段级差异校验。",
+                  "https://github.com/luminati-io/amazon-products-global-dataset-scraper",
               ),
               (
-                  "Amazon SIGIR 2026 的方案先从非结构化商品文本抽取类目感知的结构化属性，再构建可复用 attribute graph 服务搜索排序；适合把 GLiNER2 的 brand/model/规格抽取结果沉淀成结构化图谱，并用下游检索效果反向验证字段质量。",
-                  "https://www.amazon.science/publications/from-unstructured-to-structured-llm-guided-attribute-graphs-for-entity-search-and-ranking",
+                  "Meta Business SDK 的 ProductItem 目录对象直接定义 brand、GTIN、manufacturer_part_number、material、color 等字段；适合把 GLiNER2 的品牌、MPN/型号和属性输出映射到实际电商目录 Schema，并据目录字段约束设计入库质量门禁。",
+                  "https://github.com/facebook/facebook-python-business-sdk/blob/main/facebook_business/adobjects/productitem.py",
               ),
           ]
 
@@ -51,7 +51,7 @@ jobs:
 
           added = 0
           for reason, url in rows:
-              if url in history_urls:
+              if url in history_urls or url in research:
                   continue
               if research and not research.endswith("\n"):
                   research += "\n"
@@ -68,12 +68,13 @@ jobs:
           print(f"added={added}")
           PY
           rm -f .github/workflows/c-gliner2-append-once-20260820.yml
-      - name: Commit append and cleanup workflow
+          rm -f .github/c-gliner2-trigger-20260820.txt
+      - name: Commit append and cleanup
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add GLiNER2文章调研.md GLiNER2历史调研.md .github/workflows/c-gliner2-append-once-20260820.yml
+          git add GLiNER2文章调研.md GLiNER2历史调研.md .github/workflows/c-gliner2-append-once-20260820.yml .github/c-gliner2-trigger-20260820.txt
           if ! git diff --cached --quiet; then
             git commit -m "docs: append c GLiNER2 research"
             git push
