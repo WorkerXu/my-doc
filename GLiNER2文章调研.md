@@ -375,3 +375,8 @@
 | 该 2026 汽配项目把 Air Lift 与 Timbren 的原始商品标题解析为 year、make、model、product type 并输出结构化表；适合做 GLiNER2 在汽配短标题中型号/产品类型抽取的规则基线和回归样本来源。 | https://github.com/abdurrehman616/vehicle-parts-scraper |
 | Asset Information Extraction System 以产品 model number 和资产分类为入口，联网检索产品资料后用 LLM 提取结构化数据；很适合接在 GLiNER2 的 model/model number 抽取之后，形成“型号识别→联网补证→属性富化”的完整链路。 | https://github.com/Bhanuraj23m0316iitb/Asset-Information-Extraction-System |
 | Amharic-Ecommerce-NER 专门从阿姆哈拉语非结构化电商文本识别商品名、品牌、价格、数量、商家等实体；可作为 GLiNER2 多语言商品品牌/属性抽取的低资源语言对照基线，并检验动态 Schema 的跨语言泛化。 | https://github.com/Habtamu91/Amharic-Ecommerce-NER |
+| Olostep × Merchkit 案例把多零售商 PDP/规格页统一按固定 Schema 抽成确定性 JSON，字段直接包含 title、brand、model、dimensions、materials、variants，并可批量处理数万 URL；很适合参考 GLiNER2 的“网页采集→品牌/型号/规格抽取→跨来源统一 Schema→批量目录富化”生产链路。 | https://www.olostep.com/blog/how-merchkit-automates-catalog-enrichment-with-olostep |
+| Deep Mist AI 的 5 万 SKU 实战用双模型流水线做属性抽取、标准化与 taxonomy 补全：一模型负责图文语义推断，另一模型按目标 Schema 输出结构化字段，并把模型分歧送人工审核；适合给 GLiNER2 设计“主抽取→交叉验证→低置信/冲突复核→批量入库”的质量闭环。 | https://deepmist.ai/case-studies/catalog-intelligence |
+| Extralt 将不同商城商品统一成 taxonomy、attributes、identifiers 与精确 variant 记录，并在有标识符时用 GTIN 或 brand+MPN 做跨卖家同款归一；适合把 GLiNER2 抽出的 brand/model/MPN/颜色/尺码接到 canonical product/variant 层，做跨站实体消歧与变体对齐。 | https://extralt.com/use-cases/product-data |
+| GigaCommerce 的 2026 目录富化 Playbook 把“描述中埋藏的规格→独立结构化字段”、类目级必填属性 Schema 和兼容性关系作为核心治理项；适合用来定义 GLiNER2 各类目的 brand/model/规格必抽字段、缺失字段检测及抽取覆盖率指标。 | https://gigacommerce.co/insights/catalog-for-ai/catalog-enrichment-for-ai-playbook |
+| AdYogi Catalog.ai 从网站、表格、Feed 和图片中识别类目相关属性并输出结构化字段，再映射到 Amazon/Flipkart/Myntra 等平台 taxonomy 与合法取值；适合参考 GLiNER2 的“多来源输入→动态类目 Schema 抽取→字段标准化→渠道/PIM 映射”落地方式。 | https://www.adyogi.com/catalog-ai |
