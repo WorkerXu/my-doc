@@ -340,3 +340,8 @@
 | PRAISE 会从商品评论与卖家描述中抽取并对比结构化属性信息，显式标记缺失、冲突和部分匹配并保留证据；适合把 GLiNER2 对标题/描述的 brand/model/规格抽取扩展到评论证据源，用于缺失属性补证和冲突字段复核。 | https://arxiv.org/abs/2506.17314 |
 | Velou Commerce-1 是面向零售专门训练的商品模型，架构显式跟踪 color、material、fit、seasonality，并支持结构化属性生成与变体聚类；可作为 GLiNER2 在商品属性抽取、同款/变体归并和实时目录服务上的领域模型对照基线。 | https://www.velou.com/commerce1 |
 | 该 Ministral 3B Magento 适配器用 5.6 万级电商指令训练，直接把商品文本或 Magento custom_attributes 按目标字段抽成 JSON，并提供本地 LoRA/GGUF 形态；适合与 GLiNER2 做 3B 级本地部署、结构化属性输出以及同一电商数据上的跨模型吞吐/精度对照。 | https://huggingface.co/gabrielgts/ministral3-3b-ec-magento |
+| FewIE 是低资源 few-shot NER 评测框架，并内置 Zhang 等人的电商 NER 数据；适合评估 GLiNER2 在新增品牌、型号、规格字段只有极少标注时的样本效率，并作为固定标签 few-shot 基线。 | https://github.com/DFKI-NLP/fewie |
+| 该项目先对电商商品名做类目路由，再在类目内从标题拆出 color、style、size、material、gender 等属性；适合参考 GLiNER2 的“类目→字段 Schema”裁剪思路，并作为短标题属性抽取的传统方法对照。 | https://github.com/JinghuiZhao/product-item-name-classification |
+| Linkfox 的 Product Title Analysis Skill 会把商品标题按 brand、material、color 等字段做结构化拆解与关键词统计；适合对照 GLiNER2 的标题级字段 Schema、批处理输出以及字段聚合分析。 | https://github.com/linkfox-ai/linkfox-skills/blob/main/skills/linkfox-product-title-analyze/SKILL.md |
+| AskPoly 将不同来源的商品引用统一解析到 canonical `brand|family|model` 键；适合接在 GLiNER2 的 brand/model 抽取之后做品牌-系列-型号归一、同款聚合和实体消歧。 | https://github.com/ask-poly/askpoly |
+| Alibaba CIC 含 189 万级淘宝服饰交互记录，每条都带商品标题和由服饰专家人工标注的属性集合；适合构造 GLiNER2 中文商品属性回归集，验证真实标题噪声下的类目属性覆盖与抽取稳定性。 | https://github.com/ixuejiaozhao/Alibaba-Custermers-Interaction-Dataset |
