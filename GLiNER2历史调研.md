@@ -78,3 +78,6 @@ https://arxiv.org/abs/2606.23889
 https://arxiv.org/abs/2202.00217
 https://github.com/ninglab/eCeLLM
 https://github.com/suyan-liang/EshopInstruct
+https://huggingface.co/thepian/product-query-ner-int8
+https://github.com/iethes/product-taxonomy-extraction
+https://github.com/fzp0424/EC-Guide-KDDUP-2024
