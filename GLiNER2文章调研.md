@@ -479,3 +479,6 @@
 | EcomEval 基于真实电商查询与交易日志构建多语言、多模态基准，任务中直接包含 Product Attribute Extraction、Brand Model 和 Brand Knowledge；适合把 GLiNER2 的品牌、型号、属性 Schema 放进真实跨语言回归评测，暴露短查询、噪声与多模态场景下的失败模式。 | https://arxiv.org/abs/2510.20632 |
 | polite-retail-scrapers 用统一 Schema 封装 16 家主流零售站点解析器，公共字段包含 brand、description、specs、variations，技术类站点还提供 model_number、UPC；适合作为 GLiNER2 的网页采集上游和对照真值，批量构造品牌/型号/规格回归样本。 | https://pypi.org/project/polite-retail-scrapers/ |
 | Google Merchant Center 官方规范明确区分 brand、MPN、GTIN 与店铺内部 SKU，并要求标识符不确定时不要猜测；适合据此定义 GLiNER2 的品牌/型号/MPN/SKU 字段边界、空值策略与后处理校验，减少相似字母数字串误抽。 | https://support.google.com/merchants/answer/160161?hl=en |
+| AutoCatalogAI V2 面向电商商品目录自动化做图像侧多任务属性抽取，适合与 GLiNER2 的文本 brand/model/属性主抽取组合，用图片补齐颜色、款式等文本缺失字段并做跨模态一致性校验。 | https://huggingface.co/mohsin416/autocatalogai-clip-multitask-v2 |
+| Furniture Model Number Extraction Dataset 专门以卖场实拍图片训练和评测 model number 识别，覆盖多种字母数字型号模式；适合为 GLiNER2 的 MODEL/MODEL_NUMBER 文本抽取增加 OCR/视觉兜底，并专项验证型号边界与规范化。 | https://huggingface.co/datasets/wynnwatson/furniture-model-extraction |
+| Amazon MMT4 在真实电商目录上联合商品图片与文本，并把 attribute generation 作为核心下游任务；适合将 GLiNER2 的文本字段抽取与多模态属性生成做对照和兜底，评估图片对文本缺失属性的补充价值。 | https://www.amazon.science/publications/mmt4-multi-modality-to-text-transfer-transformer |
