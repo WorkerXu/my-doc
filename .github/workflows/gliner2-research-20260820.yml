@@ -76,3 +76,5 @@ jobs:
           fi
           git commit -m "docs: append GLiNER2 product extraction research"
           git push
+
+# trigger
