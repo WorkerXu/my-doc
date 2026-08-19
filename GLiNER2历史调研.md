@@ -280,3 +280,5 @@ https://github.com/context-dot-dev/ad-maker
 https://github.com/jawadhaider0024/products-web-scraper
 https://github.com/DevanshBCA25/Product-Attribute-Extraction
 https://github.com/sanjaysam410/Amazon-ML-Hackathon
+https://github.com/adilet0212/shelfsense
+https://github.com/Aayush20art/Product-Attribute-Extraction-API
