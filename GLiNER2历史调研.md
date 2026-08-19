@@ -299,3 +299,6 @@ https://www.griddynamics.com/blog/g-star-ai-catalog-enrichment-case-study
 https://ficstar.medium.com/why-product-matching-is-the-hardest-part-of-competitive-pricing-programs-30a41393afb6
 https://helloretail.com/en/product-intelligence/
 https://www.applianceapi.com/features
+https://huggingface.co/spaces/fastino/gliner2-official-demo
+https://www.diffbot.com/docs/extract/product
+https://docs.zyte.com/zyte-api/usage/reference.html
