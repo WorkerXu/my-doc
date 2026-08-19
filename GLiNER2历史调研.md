@@ -330,3 +330,6 @@ https://support.google.com/merchants/answer/160161?hl=en
 https://huggingface.co/mohsin416/autocatalogai-clip-multitask-v2
 https://huggingface.co/datasets/wynnwatson/furniture-model-extraction
 https://www.amazon.science/publications/mmt4-multi-modality-to-text-transfer-transformer
+https://github.com/vaishnaviagrawal26/ner-german-ecommerce
+https://github.com/ikatsov/tensor-house/blob/master/search/product-attribute-extraction-llm.ipynb
+https://github.com/stkisengese/spacy-nlp-ecommerce-pipeline

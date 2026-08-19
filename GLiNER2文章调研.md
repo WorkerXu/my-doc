@@ -482,3 +482,6 @@
 | AutoCatalogAI V2 面向电商商品目录自动化做图像侧多任务属性抽取，适合与 GLiNER2 的文本 brand/model/属性主抽取组合，用图片补齐颜色、款式等文本缺失字段并做跨模态一致性校验。 | https://huggingface.co/mohsin416/autocatalogai-clip-multitask-v2 |
 | Furniture Model Number Extraction Dataset 专门以卖场实拍图片训练和评测 model number 识别，覆盖多种字母数字型号模式；适合为 GLiNER2 的 MODEL/MODEL_NUMBER 文本抽取增加 OCR/视觉兜底，并专项验证型号边界与规范化。 | https://huggingface.co/datasets/wynnwatson/furniture-model-extraction |
 | Amazon MMT4 在真实电商目录上联合商品图片与文本，并把 attribute generation 作为核心下游任务；适合将 GLiNER2 的文本字段抽取与多模态属性生成做对照和兜底，评估图片对文本缺失属性的补充价值。 | https://www.amazon.science/publications/mmt4-multi-modality-to-text-transfer-transformer |
+| 这个 2026 eBay 德语商品标题 NER 项目把 BMW、320d、Ölfilter、Mann 分别抽成 CAR_BRAND、CAR_MODEL、PART_NAME、MANUFACTURER，并提供 spaCy 训练/测试流程；适合直接做 GLiNER2 品牌/型号/零件名字段的短标题回归基线，尤其验证字母数字型号边界。 | https://github.com/vaishnaviagrawal26/ner-german-ecommerce |
+| tensor-house 的 Notebook 把商品数据治理拆成“新商品类型/Schema 发现→按已知 Schema 抽 brand、material、features 等值→单位与分类体系 harmonization”，并输出严格 JSON；和 GLiNER2 动态 Schema→结构化字段→归一化的生产链路高度一致。 | https://github.com/ikatsov/tensor-house/blob/master/search/product-attribute-extraction-llm.ipynb |
+| spacy-nlp-ecommerce-pipeline 提供面向电商的可运行 NER Notebook，直接从非结构化文本识别 products、brands、prices，并说明结果可进入知识图谱与推荐链路；适合与 GLiNER2 做固定标签 spaCy 基线、字段精度对照和服务化前处理。 | https://github.com/stkisengese/spacy-nlp-ecommerce-pipeline |
