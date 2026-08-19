@@ -1,0 +1,70 @@
+name: GLiNER2 Research Append B Temp
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.gliner2-research-b-trigger-temp'
+
+permissions:
+  contents: write
+
+jobs:
+  append-research:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Sync latest main
+        shell: bash
+        run: git pull --rebase origin main
+      - name: Append deduplicated GLiNER2 research entries
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          article_path = Path('GLiNER2文章调研.md')
+          history_path = Path('GLiNER2历史调研.md')
+          rows = [
+              ("该工作从厂商官网端到端定位产品页面并自动抽取规格信息，目标是把分散网页规格直接整合进企业系统/网店；适合参考 GLiNER2 的“先定位商品正文/规格区→再按 brand、model、技术参数 Schema 抽取”的网页落地链路。", "https://www.scitepress.org/PublishedPapers/2010/28743/pdf/index.html"),
+              ("该研究从多个电商站点的商品描述页无监督抽取热门商品属性，并利用评论侧信息跨越页面与用户表达的词汇差异；适合补充 GLiNER2 固定 Schema 之外的属性发现、长尾字段候选生成和新类目冷启动。", "https://doi.org/10.1145/2857054"),
+              ("该 VLDB 工作面向在线商品目录自动维护，从商家 offer 落地页抽取属性-值对并通过 Schema Reconciliation 消除不同来源字段噪声；适合参考 GLiNER2 抽取后的 supplier 字段归并、同义属性对齐和多来源目录入库。", "https://doi.org/10.14778/1988776.1988777"),
+              ("该产品集成研究用网页中已有结构化商品数据作为弱监督，训练模型从非结构化商品描述抽取 attribute-value pairs，再用于商品匹配和分类；适合借鉴用现有 PIM/商城字段自动构造 GLiNER2 的 brand/model/规格伪标注并验证抽取对同款匹配的业务增益。", "https://journals.sagepub.com/doi/10.3233/SW-180300"),
+          ]
+
+          article = article_path.read_text(encoding='utf-8')
+          history = history_path.read_text(encoding='utf-8')
+          if article and not article.endswith('\n'):
+              article += '\n'
+          if history and not history.endswith('\n'):
+              history += '\n'
+
+          researched = {line.strip() for line in history.splitlines() if line.strip()}
+          changed = False
+          for reason, url in rows:
+              if url in researched or url in article:
+                  continue
+              article += f'| {reason} | {url} |\n'
+              history += url + '\n'
+              researched.add(url)
+              changed = True
+
+          if changed:
+              article_path.write_text(article, encoding='utf-8')
+              history_path.write_text(history, encoding='utf-8')
+          PY
+          rm -f .gliner2-research-b-trigger-temp .github/workflows/gliner2-research-b-append-temp.yml
+      - name: Commit research updates
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m 'docs: append four new GLiNER2 product extraction research items'
+          git pull --rebase origin main
+          git push origin main
