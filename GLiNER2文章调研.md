@@ -371,3 +371,7 @@
 | MyDataScraper 的电商抽取字段表把 Product Identity 明确拆成 Title、Brand、SKU、ASIN、Model Number、Category，并同时保留 Technical Specs 和 Size/Colour variants；适合校准 GLiNER2 的品牌/型号/平台标识边界与变体 Schema。 | https://mydatascraper.com/ecommerce-data-scraping-services/ |
 | Meesho AI Data Challenge 公开按 Category + Attribute Keys/Values 组织的真实电商商品数据，并以属性级 micro/macro F1 评测；适合把 GLiNER2 动态 Schema 评测扩展到类目专属属性集合，也可用于文本主抽取与图片属性兜底的对照。 | https://www.meesho.io/ai/data-challenge |
 | Akeneo 2026 Spring 的 Smart Attribute Discovery 会自动生成属性结构（label/code/type/scope/config）并给出值/选项建议、审核与 API 流程；适合借鉴 GLiNER2 在新类目下“候选字段发现→人工审核→动态 Schema→持续迭代”的治理机制。 | https://akeneo.helpjuice.com/2026/april-2026-serenity-updates |
+| 该 2026 专利把规则、NER 与 GenAI 组成混合商品目录抽取链路，从多语言非结构化/半结构化商品数据提取品牌、规格、尺寸、材质等属性并映射为 attribute-value pairs；适合把 GLiNER2 作为其中 Schema/NER 主抽取器，参考其模型分工、验证和目录映射。 | https://patents.justia.com/patent/20260064648 |
+| 该 2026 汽配项目把 Air Lift 与 Timbren 的原始商品标题解析为 year、make、model、product type 并输出结构化表；适合做 GLiNER2 在汽配短标题中型号/产品类型抽取的规则基线和回归样本来源。 | https://github.com/abdurrehman616/vehicle-parts-scraper |
+| Asset Information Extraction System 以产品 model number 和资产分类为入口，联网检索产品资料后用 LLM 提取结构化数据；很适合接在 GLiNER2 的 model/model number 抽取之后，形成“型号识别→联网补证→属性富化”的完整链路。 | https://github.com/Bhanuraj23m0316iitb/Asset-Information-Extraction-System |
+| Amharic-Ecommerce-NER 专门从阿姆哈拉语非结构化电商文本识别商品名、品牌、价格、数量、商家等实体；可作为 GLiNER2 多语言商品品牌/属性抽取的低资源语言对照基线，并检验动态 Schema 的跨语言泛化。 | https://github.com/Habtamu91/Amharic-Ecommerce-NER |
