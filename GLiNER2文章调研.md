@@ -392,3 +392,6 @@
 | Product Research Agent 已实现“商品搜索→品牌/规格抽取→Pydantic 结构化验证”的 Agent 流程，并支持从购物搜索结果汇总证据；适合给 GLiNER2 的低置信品牌、型号和规格增加联网补证与结构化复核层。 | https://github.com/scarnyc/product-research-agent |
 | Bright Data 的 Amazon Global Dataset Scraper 输出商品 title/description 的同时提供 brand、manufacturer、model_number、Model Name、颜色、容量等结构化字段；适合持续生成 GLiNER2 品牌/型号/规格回归样本，并用商城结构化值自动做字段级差异校验。 | https://github.com/luminati-io/amazon-products-global-dataset-scraper |
 | Meta Business SDK 的 ProductItem 目录对象直接定义 brand、GTIN、manufacturer_part_number、material、color 等字段；适合把 GLiNER2 的品牌、MPN/型号和属性输出映射到实际电商目录 Schema，并据目录字段约束设计入库质量门禁。 | https://github.com/facebook/facebook-python-business-sdk/blob/main/facebook_business/adobjects/productitem.py |
+| X5 Tech 的零售搜索 NER 实战直接从短且噪声较大的商品查询中抽取 TYPE、BRAND、VOLUME、PERCENT，并围绕线上速度与准确率设计流水线；很适合作为 GLiNER2 品牌、商品类型、容量/百分比等字段在真实搜索词噪声下的生产基线与回归参考。 | https://habr.com/ru/companies/X5Tech/articles/941634/ |
+| Naratix 的电商目录富化案例从原始商品 Feed/非结构化输入按类目抽取 size、color、material、weight、dimensions、technical specs 等字段，再做 canonical Schema 归一化、同义值映射和验证回流；适合参考 GLiNER2 的“类目 Schema→多属性抽取→标准化→质检/反馈”完整落地闭环。 | https://agixtech.com/case-studies/naratix/ |
+| Agility AI 的生产案例用 NER 从多语言、格式混乱的商品/运输描述中抽取 Brand、Type、Processing、Grade、Form、Origin，并采用离线 ONNX INT8 部署与字段覆盖率评估；适合参考 GLiNER2 品牌/类型等字段的本地化部署、噪声文本鲁棒性和逐字段覆盖率门禁。 | https://agilitytech.ai/case-studies/hsn-classification |

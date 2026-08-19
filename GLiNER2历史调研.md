@@ -238,3 +238,6 @@ https://github.com/Ads-insights/google-productfeed-enrichment-kit/blob/main/prod
 https://github.com/scarnyc/product-research-agent
 https://github.com/luminati-io/amazon-products-global-dataset-scraper
 https://github.com/facebook/facebook-python-business-sdk/blob/main/facebook_business/adobjects/productitem.py
+https://habr.com/ru/companies/X5Tech/articles/941634/
+https://agixtech.com/case-studies/naratix/
+https://agilitytech.ai/case-studies/hsn-classification
