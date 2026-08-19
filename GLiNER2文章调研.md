@@ -434,3 +434,5 @@
 | products-web-scraper 采用“结构化数据→站点规则→Headless→LLM 兜底”的分层商品抽取，并在输出端用 validator 拒绝空 SKU、异常价格等不可信值；适合把 GLiNER2 放在语义兜底层，同时保留确定性数据优先和结果校验。 | https://github.com/jawadhaider0024/products-web-scraper |
 | 该 spaCy NER + FastAPI 项目直接从商品描述抽取 Category、Fabric、Neckline、Sleeve、Length、Silhouette、Embellishment、Color，并记录未见属性、多值和拼写噪声失败类型；适合作为 GLiNER2 商品属性 span 抽取的固定标签基线和接口实现参考。 | https://github.com/DevanshBCA25/Product-Attribute-Extraction |
 | 该 Amazon 商品目录工程用规则/启发式从复杂文本抽取 brand、包装数量和标准化基础数量，再接文本清洗与向量化；适合与 GLiNER2 形成“品牌等语义字段用模型、数量/单位等强规则字段用确定性抽取”的混合方案。 | https://github.com/sanjaysam410/Amazon-ML-Hackathon |
+| ShelfSense 直接把杂乱零售商品标题抽成 brand、product_name、category、size、pack_count、variant 等 8 个 Schema 校验字段，并逐字段统计准确率、Schema 有效率、延迟与成本；非常适合参考 GLiNER2 的字段边界定义、缺失值处理、逐字段回归评测和生产质量门禁。 | https://github.com/adilet0212/shelfsense |
+| 该 Product Attribute Extraction API 将非结构化服饰描述一次抽成 silhouette、fabric、neckline、sleeve、length、embellishment、color、category，并返回逐字段置信度、FastAPI 接口和固定标签评测；适合与 GLiNER2 做多属性结构化输出、置信度阈值和服务化接口的轻量基线对照。 | https://github.com/Aayush20art/Product-Attribute-Extraction-API |
