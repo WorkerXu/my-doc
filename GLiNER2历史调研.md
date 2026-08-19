@@ -142,3 +142,9 @@ https://github.com/talmago/fast_gliner
 https://github.com/scrapinghub/product-extraction-benchmark
 https://aclanthology.org/2026.acl-demo.69/
 https://github.com/MacPaw/Gliner2Swift
+https://doi.org/10.1111/coin.12654
+https://doi.org/10.1007/s11227-025-07035-x
+https://doi.org/10.1145/3678610.3678619
+https://doi.org/10.1145/3556089.3556149
+https://github.com/grant-TraDA/named-entity-recognition-in-titles-of-e-commerce-products
+https://doi.org/10.13140/RG.2.2.11045.47842

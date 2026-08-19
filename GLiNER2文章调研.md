@@ -297,3 +297,9 @@
 | Product Extraction Benchmark 提供真实商品页 HTML/WARC、ground truth、评测代码和开源基线，标注中包含 brand、GTIN、SKU，并专门分析 SKU/MPN 混淆；适合扩展成 GLiNER2 网页商品品牌/型号/货号抽取的固定输入回归集，避免线上页面变化影响对比。 | https://github.com/scrapinghub/product-extraction-benchmark |
 | DySECT 是 2026 ACL 的动态自演化结构化抽取系统，会把抽取结果持续沉淀到可扩展知识库并适应新术语和罕见离群值；适合借鉴到 GLiNER2 长尾品牌、新型号、新规格的“抽取→知识库积累→候选增强/校验”持续演化闭环。 | https://aclanthology.org/2026.acl-demo.69/ |
 | GLiNER2Swift 是 GLiNER2 的 Swift/MLX 原生实现，支持 NER、结构化抽取与 LoRA Adapter，并可在 Apple Silicon/iOS/macOS 本地运行；若商品扫描、离线识别或端侧目录工具需要提取 brand/model/规格，可参考其端侧部署与适配器复用方式。 | https://github.com/MacPaw/Gliner2Swift |
+| 该研究针对京东中文商品标题中的大量专业属性词和非规范短文本，用标签语义与多粒度上下文提升实体边界识别；适合参考 GLiNER2 中文 brand/model/规格 Schema 的字段描述、相似字段区分和短标题回归测试。 | https://doi.org/10.1111/coin.12654 |
+| 该 2025 电商实体抽取研究用 BERT-BiLSTM-CRF 处理复杂、非标准化商品描述，并基于真实任务自建数据验证高精度实体抽取；适合作为 GLiNER2 商品文本 span 抽取的监督基线及脏文本难例对照。 | https://doi.org/10.1007/s11227-025-07035-x |
+| Rakuten 的研究直接比较 ChatGPT、Gemini 与 Llama-2 系模型在日本时尚商品属性抽取上的准确率、结构化输出、基础设施和成本；适合给 GLiNER2 做生产选型对照，重点评估字段一致性、批量成本与本地模型优势。 | https://doi.org/10.1145/3678610.3678619 |
+| Rakuten 的互联网规模商品匹配方案在标题/描述上做类目专属 NER 属性抽取，并用知识图谱字段定义、Snorkel 弱监督和持续训练支撑商品匹配；很适合参考 GLiNER2 的“类目 Schema→弱标注→属性抽取→同款匹配”生产链路。 | https://doi.org/10.1145/3556089.3556149 |
+| 该开源项目对应“电商商品标题 NER”硕士研究，围绕品牌及选定商品属性构建多语言数据与基准；适合拿来补充 GLiNER2 在英、波、德、西、法等多语言标题上的 brand/属性 span 评测和 few-shot 对照。 | https://github.com/grant-TraDA/named-entity-recognition-in-titles-of-e-commerce-products |
+| 该商品属性抽取研究明确覆盖 brand、size、weight、dimension 等字段，同时尝试用商品描述预测品牌并用无监督方法关联属性名和值；适合和 GLiNER2 对照品牌抽取、属性值配对及低标注数据场景。 | https://doi.org/10.13140/RG.2.2.11045.47842 |
