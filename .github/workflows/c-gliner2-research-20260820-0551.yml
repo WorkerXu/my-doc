@@ -1,0 +1,51 @@
+name: c GLiNER2 research append 20260820-0551
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/c-gliner2-research-20260820-0551.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    if: github.event.head_commit.message == 'c: trigger GLiNER2 research append 20260820-0551'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Append new research and clean up trigger
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARTICLE='GLiNER2文章调研.md'
+          HISTORY='GLiNER2历史调研.md'
+          WORKFLOW='.github/workflows/c-gliner2-research-20260820-0551.yml'
+
+          [ ! -s "$ARTICLE" ] || [ "$(tail -c 1 "$ARTICLE" | wc -l)" -eq 1 ] || printf '\n' >> "$ARTICLE"
+          [ ! -s "$HISTORY" ] || [ "$(tail -c 1 "$HISTORY" | wc -l)" -eq 1 ] || printf '\n' >> "$HISTORY"
+
+          append_item() {
+            url="$1"
+            row="$2"
+            if ! grep -Fqx "$url" "$HISTORY"; then
+              printf '%s\n' "$row" >> "$ARTICLE"
+              printf '%s\n' "$url" >> "$HISTORY"
+            fi
+          }
+
+          append_item 'https://github.com/hopit-ai/Moda' '| Moda 直接把 GLiNER2 `fastino/gliner2-base-v1` 用作零样本时尚商品属性抽取组件，并与检索链路结合；非常接近“用 GLiNER2 抽品牌/型号/属性后服务商品搜索”的实际落地，可参考字段定义、检索融合和效果评估。 | https://github.com/hopit-ai/Moda |'
+          append_item 'https://company.instacart.com/tech-innovation/scaling-catalog-attribute-extraction-with-multi-modal-llms' '| Instacart 的 PARSE 已在百万级商品目录中用多模态 LLM 抽取 flavor、size/volume 等属性，支持属性名/类型/描述配置、few-shot、置信度和人工质检；适合参考为 GLiNER2 的 Schema 配置、批量抽取、置信度门控和质量闭环。 | https://company.instacart.com/tech-innovation/scaling-catalog-attribute-extraction-with-multi-modal-llms |'
+          append_item 'https://huggingface.co/spaces/fastino/gliner2-official-demo' '| GLiNER2 官方 Demo 内置商品结构化抽取 Schema，可直接从商品文本抽 name、brand、SKU、price、available_colors、available_sizes、stock_quantity 等字段；可作为品牌/SKU/规格等字段落地的可运行模板和回归样例。 | https://huggingface.co/spaces/fastino/gliner2-official-demo |'
+
+          rm -f "$WORKFLOW"
+          git config user.name 'WorkerXu'
+          git config user.email '819972341@qq.com'
+          git add "$ARTICLE" "$HISTORY" "$WORKFLOW"
+          git commit -m 'c: append GLiNER2 research 20260820-0551'
+          git push origin HEAD:main
