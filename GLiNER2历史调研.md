@@ -191,3 +191,6 @@ https://github.com/JinghuiZhao/product-item-name-classification
 https://github.com/linkfox-ai/linkfox-skills/blob/main/skills/linkfox-product-title-analyze/SKILL.md
 https://github.com/ask-poly/askpoly
 https://github.com/ixuejiaozhao/Alibaba-Custermers-Interaction-Dataset
+https://www.getcatalog.ai/blog/product-data-enrichment-ai-commerce
+https://productlasso.com/en/blog/product-data-enrichment-2026
+https://github.com/fastino-ai/GLiNER2/blob/main/docs/boundary_baseline.md
