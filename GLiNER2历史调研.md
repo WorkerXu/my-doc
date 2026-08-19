@@ -183,3 +183,8 @@ https://arxiv.org/abs/2508.11801
 https://www.nature.com/articles/s41598-026-38214-2
 https://openaccess.thecvf.com/content/WACV2023/html/Ghosh_D-Extract_Extracting_Dimensional_Attributes_From_Product_Images_WACV_2023_paper.html
 https://www.amazon.science/publications/implicit-query-parsing-for-product-search
+https://amazon-berkeley-objects.s3.us-east-1.amazonaws.com/index.html
+https://www.kaggle.com/datasets/dataturks/best-buy-ecommerce-ner-dataset/data
+https://huggingface.co/datasets/Shopify/product-catalogue
+https://github.com/luminati-io/Home-Depot-dataset-sample
+https://github.com/Shopify/product-taxonomy
