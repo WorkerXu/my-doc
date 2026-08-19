@@ -208,3 +208,9 @@ https://huggingface.co/Atkr07/gemma4-priority-attribute-extraction
 https://huggingface.co/gabrielgts/phi4-3b-ec-magento
 https://huggingface.co/thebajajra/RexBERT-large
 https://github.com/shreyar04/german-ecommerce-ner-xlmr
+https://medium.com/walmartglobaltech/product-matching-in-ecommerce-4f19b6aebaca
+https://community.databricks.com/t5/technical-blog/intelligent-document-processing-for-data-extraction-transforming/ba-p/153847
+https://huggingface.co/LiquidAI/LFM2-350M-Extract
+https://huggingface.co/gabrielgts/qwen3.5-4b-ec-magento
+https://huggingface.co/datasets/commotion/Ecommerce-AVE-Dataset
+https://github.com/seth-risenow/lowes
