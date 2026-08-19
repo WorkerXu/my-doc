@@ -407,3 +407,7 @@
 | 该 Amazon 服饰鞋履珠宝数据集同时提供商品文本与 brand、manufacturer、item_model_number、color、material、size 等目录字段；适合批量生成 GLiNER2 的真实商品品牌/型号/属性弱标签和跨类目回归样本。 | https://huggingface.co/datasets/smartcat/Amazon_Clothing_Shoes_and_Jewelry_2023 |
 | ScrapeGraphAI 的商品抽取提示工程指南把标题解析目标明确为 brand + model + key spec，并强调结构化输出；适合用作 GLiNER2 Schema 字段定义、网页商品文本清洗和 LLM 对照基线的工程参考。 | https://scrapegraphai.com/blog/prompt-engineering-guide |
 | Width.ai 的商品匹配实践把 brand、model number、size、condition、color 等抽取字段作为同款匹配信号，并结合标题信息抽取；适合验证 GLiNER2 抽出的品牌/型号/属性能否直接提升商品去重、归并和跨站匹配。 | https://www.width.ai/post/product-matching-in-ecommerce |
+| 该项目用 AWS Textract OCR 配合 spaCy 自定义 NER，从商品图片文字中识别 product name、brand、price；适合在 GLiNER2 文本链路前增加包装/图片 OCR 兜底，再按 brand/model/规格 Schema 做统一抽取与校验。 | https://github.com/jeevan251203/Product_Info_Extraction_using_OCR |
+| 该项目直接从商品描述抽取 attribute-value pairs，并专门讨论 noisy descriptions 与 seed data generation 难题；适合用作 GLiNER2 在脏商品描述、少标注/弱监督场景下的传统基线和困难样本构造参考。 | https://github.com/vamsilnm/Attribute-Value-Extraction |
+| Ferret 是开源声明式数据抽取运行时，商品示例可从网页直接取得 brand/title/price，并支持按 Schema 对 HTML 做 AI 结构化抽取；适合放在 GLiNER2 前面做网页候选字段定位与统一输入，减少 DOM 噪声。 | https://ferretlang.org/ |
+| Match Data Studio 的工程实践会把“Samsung 65-inch 4K Smart TV QN65Q80C”拆成 brand、size、resolution、category、model number，再结合确定性规则、Embedding 和 LLM 做匹配确认；适合把 GLiNER2 抽出的品牌/型号/规格直接接到商品去重、实体匹配和低置信复核。 | https://match-data.studio/blog/deterministic-vs-probabilistic-matching/ |

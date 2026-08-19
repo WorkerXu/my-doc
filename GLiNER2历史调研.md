@@ -253,3 +253,7 @@ https://huggingface.co/datasets/siavashsaki/wdc-pave-ave
 https://huggingface.co/datasets/smartcat/Amazon_Clothing_Shoes_and_Jewelry_2023
 https://scrapegraphai.com/blog/prompt-engineering-guide
 https://www.width.ai/post/product-matching-in-ecommerce
+https://github.com/jeevan251203/Product_Info_Extraction_using_OCR
+https://github.com/vamsilnm/Attribute-Value-Extraction
+https://ferretlang.org/
+https://match-data.studio/blog/deterministic-vs-probabilistic-matching/
