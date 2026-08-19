@@ -67,3 +67,9 @@
 | 该研究同时评估商品属性“抽取+归一化”，覆盖名称扩展、泛化、单位转换和字符串规整等后处理；适合把 GLiNER2 的 span 抽取结果接入统一 canonical value 层，并作为端到端基准对照。 | https://arxiv.org/abs/2403.02130 |
 | 该框架通过可控修改、负样本生成和属性删除来合成高质量商品数据，并在 MAVE 上验证可接近真实训练数据效果；适合给 GLiNER2 的品牌/型号/规格字段构造低资源训练集、困难负样本和缺失字段测试集。 | https://arxiv.org/abs/2601.04200 |
 | 该工业方案自动迭代生成用于“商品类目-属性”质量检查的提示，在数万种字段组合和多语言场景中提升质检准确率；适合放在 GLiNER2 抽取之后做字段合法性、类目匹配和异常值复核层。 | https://aclanthology.org/2025.emnlp-industry.63/ |
+| TACLR 把商品属性值识别改造成 taxonomy-aware 检索任务，能处理隐式值、OOD 值和标准化输出，并已在闲鱼每天处理数百万商品；适合作为 GLiNER2 抽取后的候选值检索、规范化和高吞吐校验层。 | https://github.com/SuYindu/TACLR |
+| MICE 用多种图像描述模型为商品图片生成更可靠的文本，再做商品属性值抽取；适合在商品标题/描述缺失或不可信时，为 GLiNER2 提供图片转文本后的补充证据，增强颜色、款式、规格等字段召回。 | https://aclanthology.org/2025.acl-industry.80/ |
+| PAE 面向电商时尚趋势 PDF，同时从文本和图片抽取属性并通过 BERT 表征与现有目录属性做匹配；适合参考 GLiNER2 在说明书、趋势报告等非标准商品文本中的属性抽取与目录映射流程。 | https://arxiv.org/abs/2405.17533 |
+| FeedGen 以商品 feed 为输入，通过生成式 AI 补充和优化结构化商品属性，示例明确使用 Brand、Color、Size、Material 等字段；适合参考 GLiNER2 抽取结果进入 Merchant Feed 后的字段补全、命名规范和质量控制。 | https://github.com/google-marketing-solutions/feedgen |
+| lightfeed/extractor 提供基于显式 Schema 的网页结构化抽取示例，电商场景直接定义 name、brand、price 等字段；适合参考把 GLiNER2 包装成可配置 Schema 的商品详情页抽取服务，并与网页采集链路衔接。 | https://github.com/lightfeed/extractor |
+| esci-s 在 Amazon ESCI 商品数据上补充了更丰富的商品元数据，原始字段包含 product_title、product_description、product_brand、product_color 等；适合构造 GLiNER2 的品牌/颜色等字段回归集，并为后续型号、规格扩充提供真实商品语料。 | https://github.com/shuttie/esci-s |
