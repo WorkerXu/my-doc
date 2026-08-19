@@ -159,3 +159,9 @@
 | Pinterest 的生产级网页信息抽取系统把 DOM 结构、视觉布局和文本压缩成统一网页表示，并以超高吞吐抽取电商结构化属性；适合放在 GLiNER2 前面做商品页候选字段定位，减少无关文本后再抽 brand/model/规格。 | https://arxiv.org/abs/2508.01096 |
 | 该 2026 电商查询 NER 研究构建 17 类细粒度标签，覆盖 brand、color、size、fabric、feature、product_code 等，并系统比较 Transformer 与零样本 LLM；适合用来验证 GLiNER2 多语言短查询中的品牌/规格/货号抽取鲁棒性和噪声表现。 | https://www.sciencedirect.com/science/article/pii/S0950705126009391 |
 | Catalog Phrase Grounding 将商品 title/brand 与图片中的商品区域、品牌 Logo 区域做对齐，并在生产品牌匹配任务上提升召回；适合把 GLiNER2 抽出的品牌字段与视觉 Logo 证据交叉校验，降低品牌误抽和包装文字干扰。 | https://arxiv.org/abs/2308.16354 |
+| IPL 是闲鱼已上线的多模态商品 Listing 系统，围绕 category、brand、color、condition 等商品属性做领域微调与 RAG，并有真实生产采用数据；适合反向参考 GLiNER2 的“图片/文本→品牌与属性 Schema→结构化结果→商品发布”生产链路和多模态兜底。 | https://aclanthology.org/2024.emnlp-industry.52/ |
+| 该研究把 PAVI 统一成属性-值生成任务，并在三个数据集系统比较多种生成策略，端到端方式兼顾效果和推理效率；适合与 GLiNER2 单次动态 Schema 多字段抽取做直接基准，比较 span 抽取与属性-值生成在精度、成本和长尾泛化上的差异。 | https://arxiv.org/abs/2407.01137 |
+| QPAVE 把细粒度商品属性作为问题，从包含多个粗粒度信息的商品 Profile 中定位对应值，并引入类目感知的多任务学习；适合参考 GLiNER2 的“类目→字段 Schema→细粒度 value span”设计，尤其用于把复合规格拆成独立字段。 | https://doi.org/10.1007/978-3-031-68323-7_28 |
+| CAVE 专门解决商品目录中错误属性值的纠正与补全，联合商品标题和现有属性表通过 QA 校正错误值，并能从标题补出新值；适合作为 GLiNER2 抽取后的品牌、型号、规格冲突校验和纠错层。 | https://doi.org/10.1145/3511808.3557161 |
+| Home Depot 的该工作针对供应商入驻时手工录入属性值带来的噪声与不一致，研究可扩展的 Transformer 属性值验证与纠错；适合给 GLiNER2 结果增加“抽取→目录值验证→自动纠错/拦截”的质量门禁。 | https://isir-ecom2022.github.io/papers/isir-ecom-2022_paper_7.pdf |
+| Beauty Beyond Words 在真实护肤商品目录中根据成分信息抽取垂直类目的专属属性，并强调可解释、鲁棒和可持续增加新属性；适合验证 GLiNER2 按类目维护专属 Schema，提取成分、功效、适用类型等长尾属性的能力。 | https://arxiv.org/abs/2409.13628 |
