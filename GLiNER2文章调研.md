@@ -417,3 +417,9 @@
 | Chewy Scraper 从真实宠物商品页输出 manufacturer（品牌/制造商）、partNumber、描述、规格、库存与价格等结构化数据；适合作为 GLiNER2 商品页文本抽品牌/货号/规格的采集上游和对照真值，补充宠物用品垂直类目测试。 | https://github.com/jonmac422/chewy-scraper |
 | Nike Global Product Dataset 将商品记录与 model_number、brand_name 等核心标识字段对齐；可用于构造 GLiNER2 在运动鞋服短标题上的品牌/型号回归样本，并检查 Nike/Jordan 等品牌体系下型号边界与标准化。 | https://github.com/payal-kangsabanik/NIKE-DATA-ANALYSIS |
 | DSW 商品抽取项目直接采集真实鞋履 Listing 的 brand、名称、颜色、尺码、价格、图片等字段；适合用作 GLiNER2 鞋履类 brand/color/size 等属性抽取的网页数据源与结构化对照，并验证类目专属 Schema。 | https://github.com/getascraper/how-to-scrape-dsw/ |
+| RagForge 将 GLiNER2 封装为 FastAPI/Docker 可部署微服务，并内置 ecommerce 域的 product、brand、price 等实体配置、批处理和 YAML 热更新；适合直接参考把 brand/model/规格 Schema 做成可配置服务并按类目/域路由。 | https://github.com/LuciformResearch/ragforge-core/blob/main/services/gliner_service/README.md |
+| GLiNER2 官方 Adapter Switching 教程支持在不重载基础模型的情况下按领域切换 LoRA Adapter，并给出路由与分组批处理代码；适合为电子、服饰、汽配等类目维护专用 brand/model/规格 Adapter，降低单一大 Schema 的干扰。 | https://github.com/fastino-ai/GLiNER2/blob/main/tutorial/11-adapter_switching.md |
+| ShopGraph 从任意商品 URL 输出结构化商品字段，并为每个字段提供来源与置信度，采用 Schema.org→LLM→Headless Playwright 的分层抽取；适合与 GLiNER2 组成“结构化数据优先→缺失字段语义抽取→逐字段证据/置信度校验”的网页商品链路。 | https://shopgraph.dev/ |
+| Datafiniti 的品牌+型号检索文档演示用 brand/manufacturer 与 manufacturerNumber 联合反查商品；适合把 GLiNER2 抽出的品牌+型号作为二阶段目录检索键，验证实体唯一性、处理品牌/制造商别名并辅助型号纠错。 | https://docs.datafiniti.co/docs/lookup-products-by-brand-and-model-number |
+| Q2K 针对跨平台 SKU 映射，把 brand、variant、specification、quantity 等差异拆成可核查问题，再通过联网证据与历史推理复用做判定；适合接在 GLiNER2 品牌/型号/规格抽取后做歧义消解、同款确认和低置信结果复核。 | https://arxiv.org/abs/2509.01182 |
+| WebMall-Interfaces 提供 91 个真实风格电商任务，其中包含按商品名或 model number 找特定商品、按精确技术规格筛选商品，并比较 RAG/MCP/NLWeb/HTML；适合把 GLiNER2 抽出的品牌/型号/规格接入检索链路做端到端任务级回归评测。 | https://github.com/wbsg-uni-mannheim/WebMall-Interfaces |
