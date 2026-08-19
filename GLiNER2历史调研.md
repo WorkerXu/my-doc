@@ -302,3 +302,8 @@ https://www.applianceapi.com/features
 https://huggingface.co/spaces/fastino/gliner2-official-demo
 https://www.diffbot.com/docs/extract/product
 https://docs.zyte.com/zyte-api/usage/reference.html
+https://github.com/superlinked/sie/blob/main/examples/ecommerce-product-search/typescript/README.md
+https://github.com/imoonkey/openweb/blob/main/src/sites/costco/DOC.md
+https://support.elovate.io/en/articles/15188908-writing-better-extraction-prompts
+https://www.conorluddy.com/writing/foundation-models-reference
+https://medium.com/jin-system-architect/from-e-commerce-product-understanding-to-product-agent-how-to-actually-build-enterprise-grade-ai-2f159f105650
