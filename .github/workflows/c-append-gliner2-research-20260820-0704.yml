@@ -1,0 +1,67 @@
+name: c append gliner2 research 20260820 0704
+
+on:
+  push:
+    paths:
+      - '.github/workflows/c-append-gliner2-research-20260820-0704.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Append c GLiNER2 research row
+        shell: bash
+        run: |
+          set -e
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+          for attempt in 1 2 3; do
+            git fetch origin main
+            git reset --hard origin/main
+
+            python - <<'PY'
+          from pathlib import Path
+
+          main = Path('GLiNER2文章调研.md')
+          history = Path('GLiNER2历史调研.md')
+          entries = [
+              ('Claro 2026 的商品数据证据链实践要求每个结构化属性都携带来源位置、原始片段、抽取方法/版本、归一化变换、置信度、校验与回写审计；很适合给 GLiNER2 的 brand/model/规格结果增加逐字段 provenance、低置信复核和安全写入 PIM/ERP 的生产门禁。', 'https://getclaro.ai/resources/guides/why-ai-enriched-product-data-needs-evidence/'),
+          ]
+
+          main_text = main.read_text(encoding='utf-8')
+          hist_text = history.read_text(encoding='utf-8')
+          rows = [(reason, url) for reason, url in entries if url not in main_text and url not in hist_text]
+
+          if rows:
+              with main.open('a', encoding='utf-8') as f:
+                  if main_text and not main_text.endswith('\n'):
+                      f.write('\n')
+                  for reason, url in rows:
+                      f.write(f'| {reason} | {url} |\n')
+              with history.open('a', encoding='utf-8') as f:
+                  if hist_text and not hist_text.endswith('\n'):
+                      f.write('\n')
+                  for _, url in rows:
+                      f.write(f'{url}\n')
+          PY
+
+            if git diff --quiet -- 'GLiNER2文章调研.md' 'GLiNER2历史调研.md'; then
+              exit 0
+            fi
+
+            git add 'GLiNER2文章调研.md' 'GLiNER2历史调研.md'
+            git commit -m 'c 追加本轮 GLiNER2 商品字段调研 0704'
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            sleep 2
+          done
+
+          exit 1
