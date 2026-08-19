@@ -1,0 +1,72 @@
+name: b append gliner2 research 20260819 2118
+
+on:
+  push:
+    paths:
+      - '.github/workflows/b-append-gliner2-research-20260819-2118.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Append b GLiNER2 research rows
+        shell: bash
+        run: |
+          set -e
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+          for attempt in 1 2 3; do
+            git fetch origin main
+            git reset --hard origin/main
+
+            python - <<'PY'
+          from pathlib import Path
+
+          main = Path('GLiNER2文章调研.md')
+          history = Path('GLiNER2历史调研.md')
+          entries = [
+              ('ArgusFlow 是开源商品数据抽取套件，既能从商品 HTML 提取 brand 与技术规格，也能把脏商品标题转成结构化 JSON，并带商品匹配能力；适合参考 GLiNER2 的“页面/标题→品牌/型号/规格→目录匹配”端到端工程链路。', 'https://github.com/getargusflow/argus'),
+              ('ScrapeGraphAI Extract 支持对 URL、HTML、Markdown 按 JSON Schema/Pydantic 做结构化抽取，官方直接给出商品 Schema 示例；适合参考 GLiNER2 前置网页正文获取、动态字段 Schema 契约以及抽取结果类型校验。', 'https://docs.scrapegraphai.com/services/extract'),
+              ('product-harvest 可无模型地从商品页 JSON-LD、OpenGraph、meta 直接解析 brand、SKU、GTIN、类目等结构化字段；适合与 GLiNER2 组合成“已有结构化数据优先、缺失品牌/型号/规格再语义抽取”的低成本混合链路，并作为对照真值。', 'https://pypi.org/project/extract-product/'),
+              ('NuExtract3 是开源本地结构化抽取模型，输入文本/图片与 JSON 模板即可输出结构化 JSON，并支持多语言、多模态和 vLLM 部署；可把 brand、model、规格定义成同一模板，与 GLiNER2 做本地吞吐、结构约束和多模态兜底对照。', 'https://github.com/numindai/nuextract'),
+              ('SKU Launch 的商品抽取流程覆盖标题、URL、PDF、图片和联网补证，并把 Brand、Voltage、Weight 等结果统一映射到自定义 Schema，附逐字段置信度、来源和人工复核；很适合借鉴 GLiNER2 的多来源输入、规范化与低置信度质量门禁。', 'https://skulaunch.com/platform/product-data-extraction'),
+              ('Upsonic 的电商 Agent 示例会自动发现官网、导航到商品页，再将 product_name、product_brand、price、availability 等写入 Pydantic 模型；适合参考给 GLiNER2 增加“站点发现/页面路由→字段抽取→类型验证”的自动化采集外壳。', 'https://docs.upsonic.ai/examples/business-sales/find-example-product'),
+          ]
+
+          main_text = main.read_text(encoding='utf-8')
+          hist_text = history.read_text(encoding='utf-8')
+          rows = [(reason, url) for reason, url in entries if url not in main_text and url not in hist_text]
+
+          if rows:
+              with main.open('a', encoding='utf-8') as f:
+                  if main_text and not main_text.endswith('\n'):
+                      f.write('\n')
+                  for reason, url in rows:
+                      f.write(f'| {reason} | {url} |\n')
+              with history.open('a', encoding='utf-8') as f:
+                  if hist_text and not hist_text.endswith('\n'):
+                      f.write('\n')
+                  for _, url in rows:
+                      f.write(f'{url}\n')
+          PY
+
+            if git diff --quiet -- 'GLiNER2文章调研.md' 'GLiNER2历史调研.md'; then
+              exit 0
+            fi
+
+            git add 'GLiNER2文章调研.md' 'GLiNER2历史调研.md'
+            git commit -m 'b 追加本轮 GLiNER2 文章调研 2118'
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            sleep 2
+          done
+
+          exit 1
