@@ -271,3 +271,6 @@
 | Flipkart 商品属性抽取项目用字符级表示 + BiLSTM + CRF 做序列标注，示例直接标注 B_BRAND、B_COLOR、B_SLEEVE、B_TYPE，且面向卖家提供的噪声商品文本；适合作为 GLiNER2 在短商品标题上的固定标签监督基线，并用于比较品牌与细粒度属性 span 边界。 | https://github.com/SumitVermakgp/NLP-Attribute-Extraction-Flipkart |
 | multimodal-product-catalogue 把商品入库阶段的属性抽取做成独立 Agent，以严格 JSON/Pydantic 输出 colour、style、material、shape、extras，并将属性直接用于文本/图片联合检索；适合参考把 GLiNER2 作为文本属性主抽取器接入“抽取→结构化校验→向量索引→检索”的端到端目录链路。 | https://github.com/visy-ani/multimodal-product-catalogue |
 | Ivory-Parts-Finder 从真实电脑零售商品名批量抽取 manufacturer 和 part_number/SKU，并写入机器可读 JSON，样例可识别 Samsung 与 MZ-V9P2T0BW 这类品牌和字母数字型号；非常适合用来验证 GLiNER2 的品牌/型号边界、批量处理与抽取结果入库格式。 | https://github.com/danielrosehill/Ivory-Parts-Finder |
+| 这个中文商品信息抽取模型直接从商品名称输出“品牌、型号、主商品”JSON，字段与 GLiNER2 要落地的核心目标几乎一一对应；适合拿来做中文 SKU 标题的基线、Schema 设计参考，并重点对照型号误判和幻觉问题。 | https://huggingface.co/ykallan/SkuInfo-Qwen2.5-3B-R1 |
+| Saleor 的实战方案先读取商品类型已有 Schema，只让模型补齐缺失属性，并用枚举白名单、证据片段和人工审核后再回写；非常适合迁移成 GLiNER2 的“类目 Schema 约束→字段抽取→证据校验→安全写库”生产链路。 | https://saleor.io/blog/saleor-app-ai-catalog-enrichment |
+| 该 4 万商品案例直接处理“只有混乱商品名、没有品牌/型号/类型”的目录，用外部权威资料交叉验证后抽取并归一化 brand/model，还设置低置信度剔除；很适合参考 GLiNER2 后面的型号标准化、别名合并和质量闸门。 | https://granulargroup.com/case-study/using-ai-to-turn-40000-unstructured-products-into-a-navigable-seo-ready-catalog/ |

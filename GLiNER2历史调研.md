@@ -116,3 +116,6 @@ https://huggingface.co/thepian/product-query-ner
 https://github.com/SumitVermakgp/NLP-Attribute-Extraction-Flipkart
 https://github.com/visy-ani/multimodal-product-catalogue
 https://github.com/danielrosehill/Ivory-Parts-Finder
+https://huggingface.co/ykallan/SkuInfo-Qwen2.5-3B-R1
+https://saleor.io/blog/saleor-app-ai-catalog-enrichment
+https://granulargroup.com/case-study/using-ai-to-turn-40000-unstructured-products-into-a-navigable-seo-ready-catalog/
