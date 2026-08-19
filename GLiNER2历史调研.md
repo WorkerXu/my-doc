@@ -257,3 +257,9 @@ https://github.com/jeevan251203/Product_Info_Extraction_using_OCR
 https://github.com/vamsilnm/Attribute-Value-Extraction
 https://ferretlang.org/
 https://match-data.studio/blog/deterministic-vs-probabilistic-matching/
+https://huggingface.co/datasets/smartcat/Amazon_Products_2023
+https://huggingface.co/datasets/philschmid/amazon-product-descriptions-vlm
+https://huggingface.co/datasets/rocailler/test_prod_lab
+https://github.com/jonmac422/chewy-scraper
+https://github.com/payal-kangsabanik/NIKE-DATA-ANALYSIS
+https://github.com/getascraper/how-to-scrape-dsw/
