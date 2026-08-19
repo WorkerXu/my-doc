@@ -221,3 +221,8 @@ https://patents.justia.com/patent/20260064648
 https://github.com/abdurrehman616/vehicle-parts-scraper
 https://github.com/Bhanuraj23m0316iitb/Asset-Information-Extraction-System
 https://github.com/Habtamu91/Amharic-Ecommerce-NER
+https://www.olostep.com/blog/how-merchkit-automates-catalog-enrichment-with-olostep
+https://deepmist.ai/case-studies/catalog-intelligence
+https://extralt.com/use-cases/product-data
+https://gigacommerce.co/insights/catalog-for-ai/catalog-enrichment-for-ai-playbook
+https://www.adyogi.com/catalog-ai
