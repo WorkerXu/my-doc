@@ -15,3 +15,11 @@ https://aclanthology.org/2023.acl-industry.29/
 https://aclanthology.org/2025.emnlp-industry.147/
 https://arxiv.org/abs/1608.04670
 https://www.mdpi.com/2079-9292/14/10/1930
+https://aclanthology.org/2026.findings-acl.766/
+https://aclanthology.org/2026.acl-industry.40/
+https://aclanthology.org/2025.emnlp-industry.18/
+https://aclanthology.org/2024.findings-acl.510/
+https://aclanthology.org/2024.findings-emnlp.80/
+https://github.com/wbsg-uni-mannheim/SelfRefinement4ExtractGPT
+https://github.com/aws-samples/aws-smart-product-onboarding
+https://github.com/annis-souames/brand-ner
