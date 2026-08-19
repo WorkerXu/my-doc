@@ -95,3 +95,8 @@
 | Instacart 的 PARSE 是已覆盖百万级商品的自助式多模态属性抽取平台，按属性配置名称/类型/定义/样例，结合文本、图片、置信度自验证和低置信度人工复核；其架构与 GLiNER2 动态 Schema 落地非常贴近，可直接参考版本化配置、质量门禁和成本分层。 | https://company.instacart.com/tech-innovation/scaling-catalog-attribute-extraction-with-multi-modal-llms |
 | Amazon Catalog AI 的 CascadeAgent 在生产级目录中自动生成和维护 27,000+ 个“商品类型-属性”专属指令，并用失败样本持续改写属性定义、取值约束与 abstention 规则；非常适合迁移到 GLiNER2，自动优化 brand/model/规格等 Schema 描述并按字段独立迭代。 | https://sigir-ecom.github.io/eCom26Papers/paper_785.pdf |
 | Amazon 的该方案面向千级商品类型和百余视觉属性，用 CLIP 集成自动生成合成标签，并通过按类置信度拒绝阈值把准确率控制在 90%+；适合给 GLiNER2 文本抽取补充颜色、材质、款式等视觉属性训练数据，并设计“低置信度不入库”质量门禁。 | https://sigir-ecom.github.io/eCom26Papers/paper_773.pdf |
+| Amazon SIGIR 2026 的两阶段方案先从商品标题/描述抽取结构化属性，再按类目构建可复用属性图并用于检索排序；很适合参考 GLiNER2 的“类目 Schema→字段抽取→结构化目录/图谱→下游检索”生产链路。 | https://arxiv.org/abs/2604.27410 |
+| 该电商研究直接从商品标题抽取关键属性并以深度序列标注模型达到高精度；适合把它作为 GLiNER2 在短标题 brand/model/规格等 span 抽取上的传统监督基线，用于衡量零样本/少样本方案收益。 | https://arxiv.org/abs/1803.11284 |
+| eBay 的经典方案把商品属性抽取建模为 NER，并通过 bootstrapping 扩展训练数据；适合参考 GLiNER2 对长尾品牌、新型号、拼写变体等低资源实体的弱监督扩充与字段回归评测。 | https://aclanthology.org/D11-1144/ |
+| 该 NLPCC 工作直接研究时尚商品属性值抽取并引入视觉 Prompt；适合补足 GLiNER2 纯文本抽取在颜色、材质、款式等视觉属性上的盲区，形成“文本 Schema 主抽取 + 图片证据补充/校验”的方案。 | https://doi.org/10.1007/978-981-95-3343-5_9 |
+| 该 NLPCC 工作针对直播电商商品属性识别采用弱监督生成框架；适合参考从直播文本/口语描述构造低成本训练信号，再迁移到 GLiNER2 的品牌、型号、规格字段抽取，覆盖噪声大、标注稀缺的商品内容。 | https://doi.org/10.1007/978-981-95-3343-5_17 |
