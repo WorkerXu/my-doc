@@ -1,0 +1,68 @@
+name: temp-gliner2-research-append
+
+on:
+  push:
+    paths:
+      - '.github/workflows/gliner2-research-append-temp.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append-research:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Sync latest main
+        run: git pull --ff-only origin main
+      - name: Append unique GLiNER2 research
+        shell: python
+        run: |
+          from pathlib import Path
+
+          article = Path('GLiNER2文章调研.md')
+          history = Path('GLiNER2历史调研.md')
+          entries = [
+              ('TREC Product Search 2025 商品语料同时提供标题/描述与 brand、model、color、size、material 等结构化字段，适合直接把目录字段当弱标签构建 GLiNER2 品牌/型号/规格回归集，并专项测试型号与多属性 span 边界。', 'https://huggingface.co/datasets/trec-product-search/product-recommendation-2025'),
+              ('Channel3 Universal Product Graph 把跨商家商品统一成 brands、materials、structured_attributes、variants 等规范字段，并处理同款与变体归并；适合参考 GLiNER2 抽取后的品牌/属性标准化、变体对齐和目录实体消歧。', 'https://huggingface.co/datasets/trychannel3/channel3-universal-product-graph-sample'),
+              ('Japan Fashion Items 含 446 万级日语时尚商品，提供品牌、商品名/描述、属性关键词及颜色/尺码变体；适合验证 GLiNER2 在日语商品短文本中的品牌、材质、颜色、尺码和货号等多字段抽取与跨语言泛化。', 'https://huggingface.co/datasets/otdnnc/japan-fashion-items'),
+              ('ASOS Fashion Products 数据把商品名/描述与 brand、sku、color、sizes、多个 material 字段以及 closure/toe shape 等细粒度属性放在同一记录；非常适合按服饰类目动态生成 GLiNER2 Schema，并逐字段做品牌/货号/规格回归评测。', 'https://huggingface.co/datasets/crawlfeeds/asos-fashion-products-dataset'),
+              ('Shopee Product Listings 提供真实 marketplace 标题/描述、brand/brandId 以及 models 变体/SKU JSON，且包含中文与东南亚电商噪声文本；适合测试 GLiNER2 的长尾品牌、字母数字型号、变体规格抽取以及结果到目录 ID 的映射。', 'https://huggingface.co/datasets/rebrowser/shopee-dataset'),
+              ('PCPartPicker Parts 将商品名与 brand、category 和 category-specific specs JSON 对齐，标题中大量包含 Ryzen 9800X3D、MAG A750GL 等型号；很适合构建 GLiNER2 电子硬件品牌/型号/功率/容量等规格字段的高难度回归集。', 'https://huggingface.co/datasets/Doshiba/pcpartpicker-parts-dataset'),
+              ('Tesco Grocery UK 数据把商品名与 brand、category、unit、price_per_unit 等目录字段对齐，并明确支持 NER 用途；适合用 GLiNER2 抽取品牌、包装规格、计量单位等快消字段，并验证数值+单位的 span 与标准化。', 'https://huggingface.co/datasets/crawlfeeds/tesco-grocery-uk'),
+          ]
+
+          article_text = article.read_text(encoding='utf-8') if article.exists() else '| 推荐理由 | 链接地址 |\n|---|---|\n'
+          history_text = history.read_text(encoding='utf-8') if history.exists() else ''
+          known = {line.strip() for line in history_text.splitlines() if line.strip()}
+          new_entries = [(reason, url) for reason, url in entries if url not in known and url not in article_text]
+
+          if not new_entries:
+              print('No new entries to append.')
+              raise SystemExit(0)
+
+          with article.open('a', encoding='utf-8') as f:
+              if article_text and not article_text.endswith('\n'):
+                  f.write('\n')
+              for reason, url in new_entries:
+                  f.write(f'| {reason} | {url} |\n')
+
+          with history.open('a', encoding='utf-8') as f:
+              if history_text and not history_text.endswith('\n'):
+                  f.write('\n')
+              for _, url in new_entries:
+                  f.write(url + '\n')
+      - name: Commit changes
+        run: |
+          if git diff --quiet -- GLiNER2文章调研.md GLiNER2历史调研.md; then
+            echo 'No changes.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add GLiNER2文章调研.md GLiNER2历史调研.md
+          git commit -m 'docs: append new GLiNER2 research'
+          git push origin HEAD:main
