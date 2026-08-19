@@ -115,3 +115,13 @@ https://arxiv.org/abs/2006.08779
 https://arxiv.org/abs/2511.11017
 https://arxiv.org/abs/2410.02779
 https://doi.org/10.1145/3578741.3578778
+https://deliveryhero.jobs/blog/how-delivery-hero-uses-agentic-ai-for-building-a-product-knowledge-base/
+https://www.amazon.science/publications/using-brand-knowledge-bases-and-llm-agents-to-enhance-e-commerce-retailers-catalog-quality
+https://www.amazon.science/publications/attributeforge-an-agentic-llm-framework-for-automated-product-schema-modeling
+https://www.amazon.science/publications/effective-product-schema-matching-and-duplicate-detection-with-large-language-models
+https://www.amazon.science/publications/using-large-language-models-to-improve-product-information-in-e-commerce-catalogs
+https://www.amazon.science/blog/using-llms-to-improve-amazon-product-listings
+https://www.amazon.science/publications/queaco-borrowing-treasures-from-weakly-labeled-behavior-data-for-query-attribute-value-extraction
+https://ojs.aaai.org/index.php/AAAI/article/view/17773
+https://www.amazon.science/publications/pave-lazy-mdp-based-ensemble-to-improve-recall-of-product-attribute-extraction-models
+https://aclanthology.org/2023.findings-emnlp.542/
