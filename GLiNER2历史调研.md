@@ -324,3 +324,6 @@ https://tech.intershop.com/kb/index.php/Display/4829G4
 https://www.socialcrawl.dev/platforms/home_depot/product
 https://www.feedoptimise.com/integrations/sources/shopify
 https://getclaro.ai/resources/guides/why-ai-enriched-product-data-needs-evidence/
+https://arxiv.org/abs/2510.20632
+https://pypi.org/project/polite-retail-scrapers/
+https://support.google.com/merchants/answer/160161?hl=en
