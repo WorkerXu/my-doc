@@ -80,3 +80,8 @@
 | WebFormer 面向网页结构化信息抽取，电商示例目标字段就包含 product title、description、brand、price，并显式利用 DOM/布局信息；适合在 GLiNER2 之前先从复杂商品详情页定位候选文本，再做品牌、型号和属性细粒度抽取。 | https://arxiv.org/abs/2202.00217 |
 | eCeLLM 的 ECInstruct 提供 11 万级真实电商指令数据，任务明确包含 Attribute Value Extraction 和 Product Matching，并覆盖未见商品/未见指令 OOD 测试；适合用于 GLiNER2 动态 Schema 的微调数据设计和跨商品泛化评测。 | https://github.com/ninglab/eCeLLM |
 | EshopInstruct 含 63,972 条电商指令数据，其中 NER 类直接提供 4,000 条 Attribute Extraction 和 2,120 条 Attribute Value Extraction；适合补充 GLiNER2 商品属性抽取的训练/回归样本，并和商品匹配等下游任务联合评估。 | https://github.com/suyan-liang/EshopInstruct |
+| ImplicitAVE 提供公开多模态隐式属性值数据和评测代码，可用来验证 GLiNER2 在商品文本未显式出现属性值时的能力边界，并筛选哪些字段需要图片或推理链路补充。 | https://github.com/HenryPengZou/ImplicitAVE |
+| MADIAVE 用多代理辩论迭代校验隐式商品属性，适合给 GLiNER2 的低置信度、冲突品牌/型号/属性结果增加二次复核层，避免一次抽取直接入库。 | https://aclanthology.org/2026.findings-eacl.159/ |
+| HyperPAVE 利用异构超图做零样本未见属性值识别，适合把 GLiNER2 与商品目录、关系数据结合，为长尾品牌、型号和规格提供候选增强，重点处理训练数据未覆盖的新值。 | https://arxiv.org/abs/2402.08802 |
+| 该 PAVI 研究显示“先识别属性、再抽属性值”的两阶段零样本方案优于一步式；适合在商品类目 Schema 不完整时先发现候选字段，再交给 GLiNER2 做 brand/model/规格等 span 抽取。 | https://arxiv.org/abs/2409.12695 |
+| 该多模态方案先判断当前商品适用的属性集合，再在缩小后的字段范围内抽值；直接对应 GLiNER2 按类目/商品动态裁剪 Schema 的做法，可降低无关字段误抽和大 Schema 干扰。 | https://arxiv.org/abs/2207.07278 |
