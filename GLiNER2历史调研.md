@@ -119,3 +119,6 @@ https://github.com/danielrosehill/Ivory-Parts-Finder
 https://huggingface.co/ykallan/SkuInfo-Qwen2.5-3B-R1
 https://saleor.io/blog/saleor-app-ai-catalog-enrichment
 https://granulargroup.com/case-study/using-ai-to-turn-40000-unstructured-products-into-a-navigable-seo-ready-catalog/
+https://github.com/sherifmohamed3378-ui/aliexpress-actor-products
+https://github.com/luminati-io/mouser-electronics-price-tracker
+https://github.com/amzn/selling-partner-api-models/blob/main/models/catalog-items-api-model/catalogItems_2022-04-01.json
