@@ -139,3 +139,9 @@ https://www.tandemn.com/blog/1
 https://aclanthology.org/2025.emnlp-demos.10/
 https://github.com/bureaucratic-labs/revizor
 https://aws.amazon.com/blogs/machine-learning/how-the-amazon-com-catalog-team-built-self-learning-generative-ai-at-scale-with-amazon-bedrock/
+https://arxiv.org/abs/2208.07130
+https://www.amazon.science/publications/diffxtract-joint-discriminative-product-attribute-value-extraction
+https://arxiv.org/abs/2104.05504
+https://www.amazon.science/publications/semi-supervised-learning-and-visual-transformers-for-product-attribute-extraction-from-e-commerce-images
+https://medium.com/mercadolibre-tech/genai-meets-crisp-dm-advancing-data-science-for-e-commerce-a9d6d98a9142
+https://medium.com/mercadolibre-tech/boosting-store-integration-mcp-and-agentic-ides-for-mercado-libre-listings-6bf616a914f2
