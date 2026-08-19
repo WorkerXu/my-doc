@@ -178,3 +178,8 @@ https://github.com/green-leo/NER.ProductAttributeExtraction
 https://github.com/nirvan840/Product-Image-Attribute-and-Entity-Extraction
 https://productlasso.com/en/blog/fix-inconsistent-product-titles
 https://datahunk.in/product-data-extraction
+https://aclanthology.org/2021.naacl-industry.34/
+https://arxiv.org/abs/2508.11801
+https://www.nature.com/articles/s41598-026-38214-2
+https://openaccess.thecvf.com/content/WACV2023/html/Ghosh_D-Extract_Extracting_Dimensional_Attributes_From_Product_Images_WACV_2023_paper.html
+https://www.amazon.science/publications/implicit-query-parsing-for-product-search
