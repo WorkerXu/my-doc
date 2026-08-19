@@ -129,3 +129,7 @@ https://github.com/fastino-ai/GLiNER2/blob/main/tutorial/5-validator.md
 https://github.com/fastino-ai/GLiNER2/blob/main/tutorial/9-training.md
 https://docs.aws.amazon.com/solutions/product-attribution-and-personalization-using-amazon-bedrock/
 https://docs.aws.amazon.com/solutions/generating-product-descriptions-with-amazon-bedrock/index.html
+https://aclanthology.org/2021.stil-1.12/
+https://drpress.org/ojs/index.php/fcis/article/view/12817
+https://www.scielo.org.mx/scielo.php?pid=S1405-55462018000401367&script=sci_arttext
+https://pmc.ncbi.nlm.nih.gov/articles/PMC9168158/
