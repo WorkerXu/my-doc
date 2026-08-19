@@ -46,3 +46,11 @@
 | 这套 Walmart 生产方案结合 BERT、CRF、类目-属性关系纠错和 LLM 辅助标注，并进行了线上部署验证；适合借鉴 GLiNER2 的类目约束、合成/弱标注数据扩充及错误结果二次纠偏。 | https://arxiv.org/abs/2312.06684 |
 | 该大规模多模态方案用单模型覆盖数千个“商品类型-属性”组合，支持零样本属性和值在文本缺失时的预测，并采用远程监督降低标注成本；适合参考 GLiNER2 大 Schema 分层、长尾属性扩展和缺失字段补充策略。 | https://arxiv.org/abs/2306.00379 |
 | LLM-Ensemble 在 Walmart 商品属性值抽取中通过加权集成多个模型并已用于生产；可作为 GLiNER2 落地后的高价值字段复核层，把 GLiNER2 与其他抽取器/LLM 的结果做置信度融合，降低品牌、型号冲突。 | https://arxiv.org/abs/2403.00863 |
+| 该研究系统比较生成式模型在 Amazon/MAVE 商品属性抽取上的显式值、隐式值与多语言能力；适合对照 GLiNER2 在“文本直接出现字段”和“需要语义推断字段”之间的能力边界，并设计少样本评测。 | https://aclanthology.org/2023.emnlp-industry.55/ |
+| QueryNER 是 eBay 参与构建的电商查询分段模型，基于 Amazon ESCI 数据做 17 类 token classification；适合把 brand、product name、color、material、UoM 等作为 GLiNER2 字段抽取的查询侧基线和标签体系参考。 | https://huggingface.co/bltlab/queryner-bert-base-uncased |
+| 这个繁体中文商品名称 NER 模型直接覆盖品牌、商品系列/名称、产品序号、颜色、材质、尺寸、重量、容量和功能规格等 16 类属性；非常适合拿来定义中文 GLiNER2 的品牌/型号/规格 Schema，并做逐字段回归对照。 | https://huggingface.co/clw8998/Product-Name-NER-model |
+| Çarşı 提供土耳其语电商 NER 模型，直接抽取 PRODUCT、BRAND、PRICE、COLOR、SIZE、MATERIAL、GENDER，并给出 BERT NER 与零样本 LLM 的对照；适合验证 GLiNER2 在多语言商品短文本上的迁移和动态字段优势。 | https://huggingface.co/cihatyldz/carsi-bert-turkish-ecommerce-ner |
+| AI-PAVE-Br 提供巴西葡萄牙语人工校验的商品分类与属性抽取 Golden Dataset，并按商品类型维护不同属性 Schema；适合评估 GLiNER2 的“类目→字段集合→抽取”方案以及跨语言、跨类目稳定性。 | https://github.com/ai-luizalabs/AI-PAVE-Br |
+| 网易严选的线上电商 NER 会识别商品名、商品属性名和属性值，并对 BERT/BiLSTM-CRF 的准确率与在线推理时延做了实际对比；适合参考 GLiNER2 上线时的字段定义、下游知识图谱衔接和实时服务性能取舍。 | https://blog.tensorflow.org/2020/10/how-netease-yanxuan-uses-tensorflow-for-chatbots.html |
+| EIVEN 专门处理文本或图片中隐含、易混淆的商品属性值，并强调降低多模态 LLM 推理成本；可作为 GLiNER2 文本 span 抽取之外的补充层，用来识别无法直接从标题字面截取的隐式规格与属性。 | https://aclanthology.org/2024.naacl-industry.40/ |
+| MSIT 面向开放世界商品属性挖掘，通过多模态自纠错指令微调同时发现新的属性和值；适合在 GLiNER2 固定 Schema 覆盖不足时，用于“新属性发现→人工确认→Schema 扩充”的持续迭代流程。 | https://aclanthology.org/2025.acl-long.85/ |
