@@ -1,0 +1,69 @@
+name: c append gliner2 research 20260819 1732
+
+on:
+  push:
+    paths:
+      - '.github/workflows/c-append-gliner2-research-20260819-1732.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Append c GLiNER2 research rows
+        shell: bash
+        run: |
+          set -e
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+          for attempt in 1 2 3; do
+            git fetch origin main
+            git reset --hard origin/main
+
+            python - <<'PY'
+          from pathlib import Path
+
+          main = Path('GLiNER2文章调研.md')
+          history = Path('GLiNER2历史调研.md')
+          entries = [
+              ('这个中文商品信息抽取模型直接从商品名称输出“品牌、型号、主商品”JSON，字段与 GLiNER2 要落地的核心目标几乎一一对应；适合拿来做中文 SKU 标题的基线、Schema 设计参考，并重点对照型号误判和幻觉问题。', 'https://huggingface.co/ykallan/SkuInfo-Qwen2.5-3B-R1'),
+              ('Saleor 的实战方案先读取商品类型已有 Schema，只让模型补齐缺失属性，并用枚举白名单、证据片段和人工审核后再回写；非常适合迁移成 GLiNER2 的“类目 Schema 约束→字段抽取→证据校验→安全写库”生产链路。', 'https://saleor.io/blog/saleor-app-ai-catalog-enrichment'),
+              ('该 4 万商品案例直接处理“只有混乱商品名、没有品牌/型号/类型”的目录，用外部权威资料交叉验证后抽取并归一化 brand/model，还设置低置信度剔除；很适合参考 GLiNER2 后面的型号标准化、别名合并和质量闸门。', 'https://granulargroup.com/case-study/using-ai-to-turn-40000-unstructured-products-into-a-navigable-seo-ready-catalog/'),
+          ]
+
+          main_text = main.read_text(encoding='utf-8')
+          hist_text = history.read_text(encoding='utf-8')
+          rows = [(reason, url) for reason, url in entries if url not in main_text and url not in hist_text]
+
+          if rows:
+              with main.open('a', encoding='utf-8') as f:
+                  if main_text and not main_text.endswith('\n'):
+                      f.write('\n')
+                  for reason, url in rows:
+                      f.write(f'| {reason} | {url} |\n')
+              with history.open('a', encoding='utf-8') as f:
+                  if hist_text and not hist_text.endswith('\n'):
+                      f.write('\n')
+                  for _, url in rows:
+                      f.write(f'{url}\n')
+          PY
+
+            if git diff --quiet -- 'GLiNER2文章调研.md' 'GLiNER2历史调研.md'; then
+              exit 0
+            fi
+
+            git add 'GLiNER2文章调研.md' 'GLiNER2历史调研.md'
+            git commit -m 'c 追加本轮 GLiNER2 文章调研 1732'
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            sleep 2
+          done
+
+          exit 1
