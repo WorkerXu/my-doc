@@ -144,3 +144,10 @@
 | Amazon 的半监督视觉属性抽取使用未标注商品图片增强 ViT，在减少标注数据的同时提升属性提取覆盖；适合作为 GLiNER2 文本抽取的视觉兜底，补充标题里缺失的颜色、材质、款式等可见属性。 | https://www.amazon.science/publications/semi-supervised-learning-and-visual-transformers-for-product-attribute-extraction-from-e-commerce-images |
 | Mercado Libre 在数亿级商品数据清洗中专门处理品牌拼写错误、属性不一致和跨语言值，并让 GenAI 返回标准化 JSON；非常适合接在 GLiNER2 后面做品牌别名、拼写纠错、属性值翻译与 canonicalization。 | https://medium.com/mercadolibre-tech/genai-meets-crisp-dm-advancing-data-science-for-e-commerce-a9d6d98a9142 |
 | Mercado Libre 的商品迁移案例覆盖类目预测、类目专属必填属性、属性映射与批量 Listing；适合参考 GLiNER2 的“类目路由→动态 Schema→字段抽取→平台字段映射/校验”生产编排。 | https://medium.com/mercadolibre-tech/boosting-store-integration-mcp-and-agentic-ides-for-mercado-libre-listings-6bf616a914f2 |
+| eBay 的电商 NER 研究直接面向品牌、颜色、材质、尺码等商品实体，并针对短标题与领域表达做表示学习；适合用作 GLiNER2 商品标题 span 抽取的传统基线和领域难例设计参考。 | https://aclanthology.org/W15-1522/ |
+| Structuring E-Commerce Inventory 从非结构化商品描述中无监督发现并抽取属性名-值对，再做属性名同义归并；适合补充 GLiNER2 固定 Schema 之外的“属性发现→字段归并→Schema 扩充”流程。 | https://aclanthology.org/P12-1085/ |
+| 该研究从用户评论中抽取商品属性，并利用 Wikipedia 构建跨领域模型；适合把 GLiNER2 的字段抽取从标题/详情页扩展到评论等长文本，并参考外部知识增强长尾属性识别。 | https://aclanthology.org/I11-1163/ |
+| 这项经典工作直接从商品文本描述抽取属性-值对，同时处理显式与隐式属性，并用半监督学习降低标注成本；适合参考 GLiNER2 的低资源数据构造与隐式字段补充边界。 | https://doi.org/10.1145/1147234.1147241 |
+| 该 EMNLP 工业方案用“网页爬取→商品页轻量分类→商品信息抽取”的模块化流水线显著减少无效页面与推理成本；适合放在 GLiNER2 前面做商品页筛选，只对高价值页面执行品牌、型号、属性抽取。 | https://aclanthology.org/2024.emnlp-industry.106/ |
+| Walmart 的商品目录实践把属性抽取与独立质量检查拆成两步，并按字段精度阈值决定是否入库；很适合给 GLiNER2 增加抽取后 QC、低置信度拦截和人工校验闭环。 | https://tech.walmart.com/content/walmart-global-tech/en_us/blog/post/using-llms-to-manage-product-catalogs.html |
+| 该阿尔及利亚阿拉伯语电商 NER 模型直接覆盖 BRAND、PRODUCT、COLOR、SIZE、QUANTITY、ATTRIBUTE 等实体；适合用作 GLiNER2 多语言/方言商品短文本的迁移基线，并验证动态 Schema 对品牌与属性字段的鲁棒性。 | https://huggingface.co/haninebou/algerian-ner-ultimate |
