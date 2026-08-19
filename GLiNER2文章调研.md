@@ -261,3 +261,7 @@
 | CommerceTXT 为 AI Agent 定义机器可读电商商品规范，字段映射中直接包含 Brand 等核心商品信息；适合把 GLiNER2 抽取结果映射到稳定的商品交换 Schema，明确品牌、型号与属性的标准化输出边界。 | https://github.com/commercetxt/commercetxt/blob/main/spec/README.md |
 | third-eye 是自托管商品页解析 API，可从页面直接得到 title、brand、price、sizes 等结构化数据，并融合 JSON-LD/OpenGraph/Shopify/DOM；适合给 GLiNER2 提供干净候选文本与页面结构化对照值，减少网页噪声并做字段回归。 | https://github.com/myselfshravan/third-eye |
 | GLiNER2 官方 LoRA 教程展示了按领域训练轻量 Adapter 并按文档类型路由切换的方式；适合把商品 brand/model/规格 Schema 做成电商专用 Adapter，在保持基础模型通用能力的同时低成本迭代长尾字段。 | https://github.com/fastino-ai/GLiNER2/blob/main/tutorial/10-lora_adapters.md |
+| mobile-phone-specs 覆盖 1 万+ 手机并直接提供 brandName、modelName、dimensions、display、processor、camera 等结构化字段；可用作电子类 GLiNER2 品牌/型号/规格抽取的对照真值，专项测试长型号和参数边界。 | https://github.com/rawford-ilderman/mobile-phone-specs |
+| DigiKey Scraper 直接提供 manufacturer、manufacturer_part_number、series 以及 30+ 参数规格和 datasheet；适合构造电子元器件场景的 GLiNER2 品牌/MPN/规格回归集，并把说明书抽取结果与标准目录字段逐项校验。 | https://github.com/omkarcloud/digikey-scraper |
+| Open Icecat API 支持用 Brand + ProductCode 或 GTIN 定位标准商品记录；适合接在 GLiNER2 品牌/型号/货号抽取后做目录反查、实体归一和错误拦截，也可据此自动生成带可信标识符的评测样本。 | https://github.com/Tjark-Kuehl/open-icecat |
+| 该 2026 商品匹配项目在 Amazon/Walmart 商品上以 brand、size、color、pack count、model year 等 10 个关键属性做二阶段校验，并设置自动合并/人工复核/拒绝区间；适合验证 GLiNER2 抽取字段能否直接支撑同款归并，并参考低置信结果的质量门禁。 | https://github.com/Wijt/product-matching |
