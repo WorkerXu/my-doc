@@ -173,3 +173,9 @@ https://shopedia.com/platform/product-categorization-enrichment-platform/product
 https://github.com/BlackFalconData-org/ebay-scraper
 https://github.com/basalam/product-catalog-generator
 https://www.rohan-paul.com/p/ml-case-study-interview-question-861
+https://medium.com/constructor-engineering/attribute-enrichment-under-the-hood-acd10b8cf7a7
+https://medium.com/datascience-semantics3/introducing-attribute-extraction-from-user-generated-content-315852e3b567
+https://research.google/pubs/learning-transferable-node-representations-for-attribute-extraction-from-web-documents/
+https://medium.com/meesho-tech/we-automated-attribute-tagging-using-deep-learning-models-part-1-b5bc455d2305
+https://www.shopify.com/enterprise/blog/product-data-enrichment-ecommerce
+https://huggingface.co/datasets/Borise/CaptionQA
