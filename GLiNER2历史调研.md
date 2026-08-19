@@ -156,3 +156,8 @@ https://www.width.ai/post/product-attribute-enrichment-2026
 https://help.akeneo.com/using-ai-in-the-pim/what-is-web-based-attribute-enrichment
 https://www.productdatascrape.com/automated-product-matching-by-model-number.php
 https://aimodels.deepdigitalventures.com/blog/ai-models-for-ecommerce-catalog-enrichment-which-models-best-clean-up-product-titles-attributes-and-categories/
+https://huggingface.co/datasets/roundspecs/product-dataset
+https://github.com/omkarcloud/alibaba-scraper
+https://huggingface.co/datasets/shuttie/wands
+https://huggingface.co/datasets/tsazan/ikea-us-commercetxt
+https://github.com/omkarcloud/walmart-scraper
