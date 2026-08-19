@@ -60,3 +60,5 @@ jobs:
           fi
           git commit -m 'c: 追加 GLiNER2 商品字段提取调研'
           git push origin HEAD:main
+
+# trigger
