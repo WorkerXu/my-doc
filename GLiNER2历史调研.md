@@ -109,3 +109,9 @@ https://webdatacommons.org/productcorpus/index.html
 https://huggingface.co/lighthousefeed/yoda-ner
 https://huggingface.co/xinyacs/ecombert-ner-v1
 https://huggingface.co/Purva17/b2b-ecomm-ner
+https://www.amazon.science/publications/pam-understanding-product-images-in-cross-product-category-attribute-extraction
+https://arxiv.org/abs/2203.03441
+https://arxiv.org/abs/2006.08779
+https://arxiv.org/abs/2511.11017
+https://arxiv.org/abs/2410.02779
+https://doi.org/10.1145/3578741.3578778
