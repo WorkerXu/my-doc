@@ -359,3 +359,9 @@
 | Walmart Retail Graph 从商品标题、描述和元数据抽取实体，再结合 product type 做实体链接，并对低置信结果加入治理/人工校验后写入商品知识图谱；适合把 GLiNER2 的品牌、型号、属性 span 接到实体标准化、类目上下文消歧和质量门禁。 | https://medium.com/walmartglobaltech/retail-graph-walmarts-product-knowledge-graph-6ef7357963bc |
 | search-query-parser 会把原始电商搜索词直接生成结构化 JSON，字段包含 brand、category、color、size、price 等；可作为 GLiNER2 动态 Schema 在搜索词场景的生成式对照基线，比较严格 JSON、缺失字段和复合约束解析。 | https://huggingface.co/aagzamov/search-query-parser |
 | amazon-product-api 的商品详情结果直接暴露 brand 与 model_number 等结构化字段；可用其采集真实 Amazon 商品标题/描述并把页面结构化字段当对照真值，持续构造 GLiNER2 品牌、型号和规格抽取回归样本。 | https://github.com/drawrowfly/amazon-product-api |
+| Octaprice 每周发布跨电商站点商品数据，并明确标注可用于 product categorization 与 attribute extraction；适合持续补充 GLiNER2 的新鲜商品标题/描述语料，构造长尾品牌、型号和属性的回归集及数据漂移检查。 | https://github.com/octaprice/ecommerce-product-dataset |
+| Google CSS FeedViz 的商品 Feed Schema 直接包含 brand、MPN、color 等字段及商品数据校验状态；适合把 GLiNER2 抽出的品牌、型号/料号和属性映射到标准 Feed 字段，并参考校验问题设计入库质量门禁。 | https://github.com/google-marketing-solutions/css-feedviz |
+| Cromwell 的 B2B AI 搜索支持按 partial SKU、manufacturer part number、technical specification 等混合条件找商品，并与 Akeneo PIM 集成；适合把 GLiNER2 用在采购查询侧抽取品牌/MPN/规格，再映射到 PIM 字段做候选检索与实体匹配。 | https://elogic.co/projects/cromwell/ |
+| Adobe LLM Optimizer 的 Catalog Agent 会读取每个 SKU 的技术属性、类目上下文、变体及现有名称/描述并执行目录富化；适合参考 GLiNER2 抽取后的“结构化商品字段→目录富化→跨渠道消费”生产闭环与字段完整度治理。 | https://experienceleague.adobe.com/en/docs/llm-optimizer/using/dashboards/opportunities/enrich-product-catalog |
+| Lasso 给出按类目约束的商品标题模板，核心公式直接包含 Brand、Model、Key Spec、Connectivity、Color；适合用来定义 GLiNER2 的品牌/型号/规格字段边界，并批量生成字段顺序变化、缺失字段和压缩标题等回归测试样本。 | https://productlasso.com/en/blog/product-title-templates-by-category |
+| Arovon 专门把供应商 PDF、目录和 datasheet 转成结构化商品记录，直接抽取 SKU、manufacturer part number、product family、attributes、dimensions、material 等字段；适合把 GLiNER2 接到 PDF 文本解析后做品牌/型号/MPN/规格提取，并保留来源上下文供人工校验。 | https://arovon.com/ai-product-data-extraction-from-pdfs |
