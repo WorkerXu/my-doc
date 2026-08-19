@@ -34,3 +34,13 @@ https://aclanthology.org/2023.icnlsp-1.11/
 https://aclanthology.org/2021.ecnlp-1.12/
 https://aclanthology.org/2023.findings-acl.413/
 https://aclanthology.org/2023.findings-acl.633/
+https://github.com/rishav771/Product-Attribute-Extraction
+https://github.com/etano/productner
+https://github.com/mhilmiasyrofi/product-attribute-extraction
+https://huggingface.co/MuneebAbro/ecommerce-ner-model
+https://aclanthology.org/2024.eacl-srw.8/
+https://aclanthology.org/2023.findings-acl.373/
+https://aclanthology.org/2020.emnlp-main.166/
+https://arxiv.org/abs/2312.06684
+https://arxiv.org/abs/2306.00379
+https://arxiv.org/abs/2403.00863
