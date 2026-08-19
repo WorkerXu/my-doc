@@ -242,3 +242,7 @@
 | 该完整落地指南把 LLM 目录富化拆成结构化属性抽取、taxonomy 映射/归一化、证据引用、幻觉控制和质量保障流水线；适合补充 GLiNER2 抽取后如何做字段约束、标准化、QA 与批量目录治理。 | https://productphilosophy.com/articles/llm-powered-catalog-enrichment |
 | 该 2026 商品数据抽取案例直接覆盖供应商 PDF、Excel、OCR 与文本等异构输入，并把结果转换为可校验的结构化数据；很适合拿来设计 GLiNER2 的多来源文本接入、品牌/型号识别、规格归一化和脏数据测试集。 | https://trueparse.ai/blog/ai-powered-product-data-extraction-ecommerce |
 | 该商品匹配研究把 brand、model id、product number、units 从非结构化商品标题中先行抽取，再用于跨商城商品去重/匹配；适合验证 GLiNER2 的品牌、型号、货号、单位字段能否直接提升同款识别，并参考字段抽取顺序与归一化策略。 | https://www.scitepress.org/PublishedPapers/2019/80694/pdf/index.html |
+| EC-Guide 提供 7,429 条电商 NER 样本并覆盖商品属性相关任务，可直接补充 GLiNER2 的品牌/型号/属性微调与回归集，尤其适合验证同一动态 Schema 在多种电商文本任务上的迁移稳定性。 | https://github.com/fzp0424/EC-Guide-KDDUP-2024 |
+| AdaSeq 的 RaNER 在电商 NER 上用“检索相似样本→联合编码/投票”增强领域实体识别；可迁移为 GLiNER2 的候选上下文层，为长尾品牌、型号和别名抽取提供相似商品证据。 | https://github.com/modelscope/AdaSeq/tree/master/examples/RaNER |
+| Jellyfish-8B 明确在 AE-110K、OA-Mine 商品属性值抽取基准上给出结果，可作为 GLiNER2 的生成式/数据处理中型基线，帮助比较动态 Schema 抽取与 LLM AVE 在精度、成本和结构化输出上的差异。 | https://huggingface.co/NECOUDBFM/Jellyfish-8B |
+| DataWeBot 的目录富化链路明确覆盖 brand、manufacturer、MPN/model number、技术规格、类目专属 Schema，并配套归一化、冲突消解和 QA；适合参考 GLiNER2 从抽取到 PIM/目录入库的工程字段契约与质量门禁。 | https://www.datawebot.com/solutions/product-catalog-enrichment |
