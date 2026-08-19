@@ -275,3 +275,8 @@ https://github.com/TrophySecure/carrefour-scraper
 https://github.com/AbsoluteAnchor/extract-iherb-product-listings-from-search
 https://github.com/NewNautilus/home-depot-clearance-scraper
 https://github.com/oxylabs/ecommerce-category-scraper
+https://trykinect.ai/blog/scoring-catalog-enrichment
+https://github.com/context-dot-dev/ad-maker
+https://github.com/jawadhaider0024/products-web-scraper
+https://github.com/DevanshBCA25/Product-Attribute-Extraction
+https://github.com/sanjaysam410/Amazon-ML-Hackathon
