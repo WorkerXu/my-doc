@@ -265,3 +265,6 @@
 | DigiKey Scraper 直接提供 manufacturer、manufacturer_part_number、series 以及 30+ 参数规格和 datasheet；适合构造电子元器件场景的 GLiNER2 品牌/MPN/规格回归集，并把说明书抽取结果与标准目录字段逐项校验。 | https://github.com/omkarcloud/digikey-scraper |
 | Open Icecat API 支持用 Brand + ProductCode 或 GTIN 定位标准商品记录；适合接在 GLiNER2 品牌/型号/货号抽取后做目录反查、实体归一和错误拦截，也可据此自动生成带可信标识符的评测样本。 | https://github.com/Tjark-Kuehl/open-icecat |
 | 该 2026 商品匹配项目在 Amazon/Walmart 商品上以 brand、size、color、pack count、model year 等 10 个关键属性做二阶段校验，并设置自动合并/人工复核/拒绝区间；适合验证 GLiNER2 抽取字段能否直接支撑同款归并，并参考低置信结果的质量门禁。 | https://github.com/Wijt/product-matching |
+| Cốc Cốc 的实战方案从约 200 万条越南电商 Listing 构建商品属性 NER 数据与词典，字段直接覆盖品牌、商品编码、尺寸、颜色等，并结合规则、聚类和置信度筛选弱标注；适合为 GLiNER2 的品牌/型号/规格字段低成本构造训练数据与难例词典。 | https://careers.coccoc.com/blogs/attribution-extraction-of-e-commerce-product-listing-part-1 |
+| 该开源商品入库流水线覆盖供应商 XML、Playwright 商品页抓取、技术规格/属性/尺寸/重量信息抽取、规范化以及 Shopify CSV 落库；适合参考把 GLiNER2 放进真实供应商目录处理链路，负责 brand/model/规格语义抽取并接后续标准化与增量更新。 | https://github.com/vaskyp/product-scraping-shopify-csv-automation-pipeline |
+| product-query-ner 在 Amazon ESCI QueryNER 基础上加入欧洲品牌与多语言商品名数据，保留 brand、product name、UoM、color、material 等 17 类标签，并提供 span 后处理与量化部署版本；适合作为 GLiNER2 多语言商品查询品牌/属性抽取的新增对照基线。 | https://huggingface.co/thepian/product-query-ner |
