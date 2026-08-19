@@ -250,3 +250,6 @@
 | Firecrawl 的 Amazon 商品案例用 Pydantic/JSON Schema 约束网页抽取并明确采集品牌等商品详情字段；适合放在 GLiNER2 前后作为网页正文获取与结构化 Schema 对照，尤其参考 PDP 批量采集、字段契约和可验证输出。 | https://github.com/firecrawl/firecrawl/blob/main/examples/blog-articles/amazon-price-tracking/notebook.md |
 | 这篇电商 Schema 设计指南专门讨论跨 Amazon、Shopify 等不同站点抽统一商品字段，并以 brand、SKU 等作为商品页基础字段；适合指导 GLiNER2 按商品详情页设计 brand/model/规格 Schema、处理字段缺失与跨站差异。 | https://scrapewithruno.com/blog/schema-design-ecommerce/ |
 | 该多模态电商数据富化研究用“规则手册 + 动态 Prompt”按商品类型确定应抽属性并输出指定结构，且规则式提示显著优于零样本；适合迁移到 GLiNER2 的类目专属 Schema、属性定义约束、图片补证和抽取一致性校验。 | https://www.bibliomed.org/?mno=243170 |
+| OpenTag 原始工作把商品标题/描述中的开放词表属性值抽取建模为序列标注，并结合注意力与主动学习，在少量标注下发现训练中未见的新属性值；适合参考 GLiNER2 对长尾品牌、新型号、规格新值的开放抽取能力及低成本标注/难例采样策略。 | https://www.amazon.science/publications/opentag-open-attribute-extraction-from-product-profiles |
+| 该研究从非结构化多语言商品网页中抽取细粒度、标准化商品属性，并验证模型可跨网店、跨语言迁移，同时支持商品 taxonomy 对齐；适合评估 GLiNER2 的品牌/型号/规格字段在跨站点、多语言目录中的泛化，以及抽取后字段标准化与类目映射。 | https://arxiv.org/abs/2302.12139 |
+| 这个 Ruby/ONNX 的 GLiNER2 推理封装直接给出 iPhone 商品结构化抽取示例，可一次得到完整型号、storage、processor、price 等字段，并支持 INT8 ONNX；适合参考 GLiNER2 商品品牌/型号/规格服务的跨语言封装、本地低成本部署和固定 Schema 输出。 | https://github.com/elcuervo/gliner |

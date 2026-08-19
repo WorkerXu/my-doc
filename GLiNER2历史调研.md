@@ -95,3 +95,6 @@ https://github.com/iethes/product-taxonomy-extraction
 https://github.com/firecrawl/firecrawl/blob/main/examples/blog-articles/amazon-price-tracking/notebook.md
 https://scrapewithruno.com/blog/schema-design-ecommerce/
 https://www.bibliomed.org/?mno=243170
+https://www.amazon.science/publications/opentag-open-attribute-extraction-from-product-profiles
+https://arxiv.org/abs/2302.12139
+https://github.com/elcuervo/gliner
