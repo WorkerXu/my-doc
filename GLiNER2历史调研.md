@@ -217,3 +217,7 @@ https://www.datawebot.com/services/product-data-extraction
 https://mydatascraper.com/ecommerce-data-scraping-services/
 https://www.meesho.io/ai/data-challenge
 https://akeneo.helpjuice.com/2026/april-2026-serenity-updates
+https://patents.justia.com/patent/20260064648
+https://github.com/abdurrehman616/vehicle-parts-scraper
+https://github.com/Bhanuraj23m0316iitb/Asset-Information-Extraction-System
+https://github.com/Habtamu91/Amharic-Ecommerce-NER
