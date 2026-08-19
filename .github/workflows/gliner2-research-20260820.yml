@@ -1,19 +1,21 @@
 name: GLiNER2 research append once
 
 on:
-  push:
-    paths:
-      - '.github/workflows/gliner2-research-20260820.yml'
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: write
 
 jobs:
   append:
-    if: ${{ github.event.head_commit.message == 'chore: run GLiNER2 append research' }}
+    if: ${{ github.head_ref == 'gliner2-research-tmp' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
       - name: Append researched links
         shell: bash
         run: |
@@ -61,8 +63,7 @@ jobs:
                   if history_text and not history_text.endswith("\n"):
                       f.write("\n")
                   for _, url in new_rows:
-                      if url not in history_text:
-                          f.write(url + "\n")
+                      f.write(url + "\n")
           PY
 
       - name: Commit appended research
@@ -75,6 +76,4 @@ jobs:
             exit 0
           fi
           git commit -m "docs: append GLiNER2 product extraction research"
-          git push
-
-# trigger
+          git push origin HEAD:${{ github.head_ref }}
