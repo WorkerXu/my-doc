@@ -98,3 +98,11 @@ https://www.bibliomed.org/?mno=243170
 https://www.amazon.science/publications/opentag-open-attribute-extraction-from-product-profiles
 https://arxiv.org/abs/2302.12139
 https://github.com/elcuervo/gliner
+https://aclanthology.org/2025.emnlp-industry.184/
+https://arxiv.org/abs/1907.06330
+https://huggingface.co/datasets/roundspecs/tech-product-ner
+https://github.com/hsinjuitsai/datasheet_extractor
+https://github.com/AbsoluteAnchor/alibaba-single-product-details-scraper
+https://github.com/commercetxt/commercetxt/blob/main/spec/README.md
+https://github.com/myselfshravan/third-eye
+https://github.com/fastino-ai/GLiNER2/blob/main/tutorial/10-lora_adapters.md
