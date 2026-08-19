@@ -152,3 +152,7 @@ https://www.scitepress.org/PublishedPapers/2010/28743/pdf/index.html
 https://doi.org/10.1145/2857054
 https://doi.org/10.14778/1988776.1988777
 https://journals.sagepub.com/doi/10.3233/SW-180300
+https://www.width.ai/post/product-attribute-enrichment-2026
+https://help.akeneo.com/using-ai-in-the-pim/what-is-web-based-attribute-enrichment
+https://www.productdatascrape.com/automated-product-matching-by-model-number.php
+https://aimodels.deepdigitalventures.com/blog/ai-models-for-ecommerce-catalog-enrichment-which-models-best-clean-up-product-titles-attributes-and-categories/

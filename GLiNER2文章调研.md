@@ -307,3 +307,7 @@
 | 该研究从多个电商站点的商品描述页无监督抽取热门商品属性，并利用评论侧信息跨越页面与用户表达的词汇差异；适合补充 GLiNER2 固定 Schema 之外的属性发现、长尾字段候选生成和新类目冷启动。 | https://doi.org/10.1145/2857054 |
 | 该 VLDB 工作面向在线商品目录自动维护，从商家 offer 落地页抽取属性-值对并通过 Schema Reconciliation 消除不同来源字段噪声；适合参考 GLiNER2 抽取后的 supplier 字段归并、同义属性对齐和多来源目录入库。 | https://doi.org/10.14778/1988776.1988777 |
 | 该产品集成研究用网页中已有结构化商品数据作为弱监督，训练模型从非结构化商品描述抽取 attribute-value pairs，再用于商品匹配和分类；适合借鉴用现有 PIM/商城字段自动构造 GLiNER2 的 brand/model/规格伪标注并验证抽取对同款匹配的业务增益。 | https://journals.sagepub.com/doi/10.3233/SW-180300 |
+| Width.ai 的 2026 商品属性富化实践明确把 brand、model、voltage、color、weight 等作为结构化目标字段，并强调先做来源检索再按规则、示例和阈值生成/校验；适合让 GLiNER2 负责固定 Schema 的快速抽取，再用来源证据与阈值复核型号和规格，降低脏目录中的误抽与幻觉。 | https://www.width.ai/post/product-attribute-enrichment-2026 |
+| Akeneo 2026 的 Web-based Attribute Enrichment 已在 PIM 中落地“缺失字段→联网查证→带来源建议→人工/工作流审核”，用例直接包含 brand、manufacturer、model 和技术规格；适合把 GLiNER2 作为现有标题/描述/供应商文档的一阶段本地抽取器，仅对缺失或低置信字段触发联网补证。 | https://help.akeneo.com/using-ai-in-the-pim/what-is-web-based-attribute-enrichment |
+| 这篇 2026 商品目录实践专门围绕 model number 自动抽取与跨商城匹配，强调型号作为同款识别、去重、目录标准化和持续更新的核心标识；适合把 GLiNER2 的 model/model number/MPN 抽取结果接到规范化与商品匹配层，并据匹配冲突反向发现型号误抽。 | https://www.productdatascrape.com/automated-product-matching-by-model-number.php |
+| 该 2026 目录富化选型文章建议把批量标题清洗、Schema 可靠的属性抽取、复杂类目推理和多模态兜底分层处理；很适合 GLiNER2 作为低成本本地 brand/model/属性主抽取器，仅将难例、隐式属性或图片证据缺失的商品升级到更强模型，控制大规模目录处理成本。 | https://aimodels.deepdigitalventures.com/blog/ai-models-for-ecommerce-catalog-enrichment-which-models-best-clean-up-product-titles-attributes-and-categories/ |
