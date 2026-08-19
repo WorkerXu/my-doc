@@ -203,3 +203,8 @@ https://huggingface.co/datasets/thepian/product-query-benchmark
 https://github.com/omkarcloud/homedepot-scraper
 https://github.com/omkarcloud/walmart-scraper
 https://huggingface.co/Martsv07/rubert-ner-search-queries
+https://github.com/hopit-ai/Moda
+https://huggingface.co/Atkr07/gemma4-priority-attribute-extraction
+https://huggingface.co/gabrielgts/phi4-3b-ec-magento
+https://huggingface.co/thebajajra/RexBERT-large
+https://github.com/shreyar04/german-ecommerce-ner-xlmr

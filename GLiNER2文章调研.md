@@ -202,3 +202,8 @@
 | Home Depot Scraper 能实时返回商品标题/描述以及 brand、model number、UPC、SKU、类目和分组规格等 30+ 结构化字段；适合作为 GLiNER2 线上数据采集与自动造回归集的上游，对抽取结果可直接和页面结构化真值做差异检查。 | https://github.com/omkarcloud/homedepot-scraper |
 | Walmart Scraper 的商品详情 JSON 明确包含 brand、model_number、product_category、specifications、variant options、ingredients 等字段；可用来持续采集真实目录样本，验证 GLiNER2 在标题/描述中抽出的品牌、型号与规格是否和商城结构化字段一致。 | https://github.com/omkarcloud/walmart-scraper |
 | RuBERT 电商查询 NER 面向短、噪声较大的俄语商品查询，直接识别 TYPE、BRAND、VOLUME、PERCENT，并强调大小写、缩写和轻微拼写错误；适合作为 GLiNER2 多语言品牌/规格抽取在真实搜索词噪声下的对照基线。 | https://huggingface.co/Martsv07/rubert-ner-search-queries |
+| MODA 在完整时尚商品检索流水线中直接使用 GLiNER2（fastino/gliner2-base-v1）做零样本 fashion attribute extraction，并保留 GLiNER v1/GLiNER2 消融结果；非常适合直接参考 GLiNER2 商品属性抽取在检索链路中的集成方式、字段增益评估和回归测试。 | https://github.com/hopit-ai/Moda |
+| 该 B2B 商品查询项目直接抽取 brand、product type、power 等属性，并同时学习 canonical key 名称及属性优先级；适合对照 GLiNER2 的动态 Schema，把 manufacturer/brand 等同义字段统一、按业务优先级输出，并设计 key+value 精确评测。 | https://huggingface.co/Atkr07/gemma4-priority-attribute-extraction |
+| phi4-3b-ec-magento 专门把商品文本或 Magento custom_attributes 按“目标属性→JSON”抽取，并明确用 None 表示字段不存在；适合与 GLiNER2 对照动态单字段/多字段抽取、缺失字段 abstain、严格 JSON 解析和 Magento/PIM 入库接口。 | https://huggingface.co/gabrielgts/phi4-3b-ec-magento |
+| RexBERT-large 是电商领域专用 encoder，官方用途直接包含 brand、color、size、material 的 attribute extraction/slot filling，并针对长商品页和属性块做领域预训练；适合作为 GLiNER2 商品字段抽取的固定标签监督基线与领域编码器对照。 | https://huggingface.co/thebajajra/RexBERT-large |
+| german-ecommerce-ner-xlmr 提供完整的商品标题属性 NER 工程流程，覆盖 BIO 标注、子词标签对齐、XLM-R 微调、span 解码和置信度过滤；适合用作 GLiNER2 多语言商品标题 brand/model/规格抽取的数据加工、监督基线和低置信度门禁参考。 | https://github.com/shreyar04/german-ecommerce-ner-xlmr |
