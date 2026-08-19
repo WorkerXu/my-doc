@@ -194,3 +194,11 @@
 | AIWebscraper 从电子商品网页直接抽取 Brand、Model、Price、Availability、Condition、Category 等实体；适合参考 GLiNER2 与网页抓取层衔接后的字段 Schema，以及从商品详情页文本到结构化目录记录的端到端流程。 | https://github.com/TopreGroup/AIWebscraper |
 | OFBiz-NER 以可部署插件形式识别 brand、color、garment type/style、garment number、size 等商品字段，并兼顾中英文分词；适合参考 GLiNER2 商品抽取服务的业务系统集成，以及品牌/货号/尺码等固定字段的对照基线。 | https://github.com/YYWorks/OFBiz-NER |
 | Product_Info_Extractor 直接从原始商品名抽取 Brand、Core Name、Size，并把结果用于外部供应商清单与内部目录的商品匹配；适合验证 GLiNER2 的品牌/核心品名/规格抽取能否直接支撑同款匹配和目录对齐。 | https://github.com/Taha-azizi/Product_Info_Extractor |
+| Home Depot Smart Home 数据集把商品标题与 brand、model_number、UPC、SKU、color、尺寸等结构化真值放在同一记录中，且品牌/型号覆盖完整；很适合直接构造 GLiNER2 的“标题/描述→品牌、型号、规格”回归集，并用标识符校验抽取结果。 | https://huggingface.co/datasets/crawlfeeds/HomeDepot-Smart-Home-Dataset |
+| Amazon 2023 样例元数据同时提供 title 与 brand、manufacturer、item_model_number、color、material、size、dimensions 等大量目录字段；可批量生成 GLiNER2 的真实商品多字段评测样本，尤其适合测试字母数字型号和跨类目属性 Schema。 | https://huggingface.co/datasets/smartcat/Amazon_Sample_Metadata_2023 |
+| Shein 商品样例直接包含 brand、model_number、size/all_available_sizes、other_attributes、类目树等字段；适合用服饰短标题验证 GLiNER2 对品牌、SKU/型号、尺码和长尾变体属性的 span 边界，并评估类目约束 Schema。 | https://github.com/luminati-io/Shein-dataset-samples |
+| IKEA 样例同时给出 brand、model_name、model_number、product_series、color、size、materials_description、measurements 和 other_attributes；非常适合专项验证 GLiNER2 如何区分品牌、系列、型号与规格，并覆盖家居类多值属性。 | https://github.com/luminati-io/Ikea-dataset-sample |
+| Product Query Benchmark 基于 Amazon ESCI 并补充 EUIPO/Wikidata 可验证品牌 ID、多语言品牌别名及查询-品牌标注；适合评测 GLiNER2 的品牌抽取、别名归一和跨语言品牌泛化，并把 span 结果进一步映射到稳定品牌实体。 | https://huggingface.co/datasets/thepian/product-query-benchmark |
+| Home Depot Scraper 能实时返回商品标题/描述以及 brand、model number、UPC、SKU、类目和分组规格等 30+ 结构化字段；适合作为 GLiNER2 线上数据采集与自动造回归集的上游，对抽取结果可直接和页面结构化真值做差异检查。 | https://github.com/omkarcloud/homedepot-scraper |
+| Walmart Scraper 的商品详情 JSON 明确包含 brand、model_number、product_category、specifications、variant options、ingredients 等字段；可用来持续采集真实目录样本，验证 GLiNER2 在标题/描述中抽出的品牌、型号与规格是否和商城结构化字段一致。 | https://github.com/omkarcloud/walmart-scraper |
+| RuBERT 电商查询 NER 面向短、噪声较大的俄语商品查询，直接识别 TYPE、BRAND、VOLUME、PERCENT，并强调大小写、缩写和轻微拼写错误；适合作为 GLiNER2 多语言品牌/规格抽取在真实搜索词噪声下的对照基线。 | https://huggingface.co/Martsv07/rubert-ner-search-queries |
