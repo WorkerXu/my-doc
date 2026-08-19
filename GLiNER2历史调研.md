@@ -44,3 +44,11 @@ https://aclanthology.org/2020.emnlp-main.166/
 https://arxiv.org/abs/2312.06684
 https://arxiv.org/abs/2306.00379
 https://arxiv.org/abs/2403.00863
+https://aclanthology.org/2023.emnlp-industry.55/
+https://huggingface.co/bltlab/queryner-bert-base-uncased
+https://huggingface.co/clw8998/Product-Name-NER-model
+https://huggingface.co/cihatyldz/carsi-bert-turkish-ecommerce-ner
+https://github.com/ai-luizalabs/AI-PAVE-Br
+https://blog.tensorflow.org/2020/10/how-netease-yanxuan-uses-tensorflow-for-chatbots.html
+https://aclanthology.org/2024.naacl-industry.40/
+https://aclanthology.org/2025.acl-long.85/
