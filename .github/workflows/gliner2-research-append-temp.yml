@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   append:
-    if: github.event.head_commit.message == 'temp: append GLiNER2 research'
+    if: github.event.head_commit.message == 'trigger: append GLiNER2 research'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,24 +19,44 @@ jobs:
       - name: Append new GLiNER2 research
         shell: bash
         run: |
-          cat >> 'GLiNER2文章调研.md' <<'EOF'
-          | 该研究针对京东中文商品标题中的大量专业属性词和非规范短文本，用标签语义与多粒度上下文提升实体边界识别；适合参考 GLiNER2 中文 brand/model/规格 Schema 的字段描述、相似字段区分和短标题回归测试。 | https://doi.org/10.1111/coin.12654 |
-          | 该 2025 电商实体抽取研究用 BERT-BiLSTM-CRF 处理复杂、非标准化商品描述，并基于真实任务自建数据验证高精度实体抽取；适合作为 GLiNER2 商品文本 span 抽取的监督基线及脏文本难例对照。 | https://doi.org/10.1007/s11227-025-07035-x |
-          | Rakuten 的研究直接比较 ChatGPT、Gemini 与 Llama-2 系模型在日本时尚商品属性抽取上的准确率、结构化输出、基础设施和成本；适合给 GLiNER2 做生产选型对照，重点评估字段一致性、批量成本与本地模型优势。 | https://doi.org/10.1145/3678610.3678619 |
-          | Rakuten 的互联网规模商品匹配方案在标题/描述上做类目专属 NER 属性抽取，并用知识图谱字段定义、Snorkel 弱监督和持续训练支撑商品匹配；很适合参考 GLiNER2 的“类目 Schema→弱标注→属性抽取→同款匹配”生产链路。 | https://doi.org/10.1145/3556089.3556149 |
-          | 该开源项目对应“电商商品标题 NER”硕士研究，围绕品牌及选定商品属性构建多语言数据与基准；适合拿来补充 GLiNER2 在英、波、德、西、法等多语言标题上的 brand/属性 span 评测和 few-shot 对照。 | https://github.com/grant-TraDA/named-entity-recognition-in-titles-of-e-commerce-products |
-          | 该商品属性抽取研究明确覆盖 brand、size、weight、dimension 等字段，同时尝试用商品描述预测品牌并用无监督方法关联属性名和值；适合和 GLiNER2 对照品牌抽取、属性值配对及低标注数据场景。 | https://doi.org/10.13140/RG.2.2.11045.47842 |
-          EOF
-          cat >> 'GLiNER2历史调研.md' <<'EOF'
-          https://doi.org/10.1111/coin.12654
-          https://doi.org/10.1007/s11227-025-07035-x
-          https://doi.org/10.1145/3678610.3678619
-          https://doi.org/10.1145/3556089.3556149
-          https://github.com/grant-TraDA/named-entity-recognition-in-titles-of-e-commerce-products
-          https://doi.org/10.13140/RG.2.2.11045.47842
-          EOF
+          python - <<'PY'
+          from pathlib import Path
+
+          article_path = Path('GLiNER2文章调研.md')
+          history_path = Path('GLiNER2历史调研.md')
+
+          rows = [
+              ('该研究针对京东中文商品标题中的大量专业属性词和非规范短文本，用标签语义与多粒度上下文提升实体边界识别；适合参考 GLiNER2 中文 brand/model/规格 Schema 的字段描述、相似字段区分和短标题回归测试。', 'https://doi.org/10.1111/coin.12654'),
+              ('该 2025 电商实体抽取研究用 BERT-BiLSTM-CRF 处理复杂、非标准化商品描述，并基于真实任务自建数据验证高精度实体抽取；适合作为 GLiNER2 商品文本 span 抽取的监督基线及脏文本难例对照。', 'https://doi.org/10.1007/s11227-025-07035-x'),
+              ('Rakuten 的研究直接比较 ChatGPT、Gemini 与 Llama-2 系模型在日本时尚商品属性抽取上的准确率、结构化输出、基础设施和成本；适合给 GLiNER2 做生产选型对照，重点评估字段一致性、批量成本与本地模型优势。', 'https://doi.org/10.1145/3678610.3678619'),
+              ('Rakuten 的互联网规模商品匹配方案在标题/描述上做类目专属 NER 属性抽取，并用知识图谱字段定义、Snorkel 弱监督和持续训练支撑商品匹配；很适合参考 GLiNER2 的“类目 Schema→弱标注→属性抽取→同款匹配”生产链路。', 'https://doi.org/10.1145/3556089.3556149'),
+              ('该开源项目对应“电商商品标题 NER”硕士研究，围绕品牌及选定商品属性构建多语言数据与基准；适合拿来补充 GLiNER2 在英、波、德、西、法等多语言标题上的 brand/属性 span 评测和 few-shot 对照。', 'https://github.com/grant-TraDA/named-entity-recognition-in-titles-of-e-commerce-products'),
+              ('该商品属性抽取研究明确覆盖 brand、size、weight、dimension 等字段，同时尝试用商品描述预测品牌并用无监督方法关联属性名和值；适合和 GLiNER2 对照品牌抽取、属性值配对及低标注数据场景。', 'https://doi.org/10.13140/RG.2.2.11045.47842'),
+          ]
+
+          article = article_path.read_text(encoding='utf-8')
+          if article and not article.endswith('\n'):
+              article += '\n'
+          for reason, url in rows:
+              if url not in article:
+                  article += f'| {reason} | {url} |\n'
+          article_path.write_text(article, encoding='utf-8')
+
+          history = history_path.read_text(encoding='utf-8')
+          if history and not history.endswith('\n'):
+              history += '\n'
+          existing = {line.strip() for line in history.splitlines() if line.strip()}
+          for _, url in rows:
+              if url not in existing:
+                  history += url + '\n'
+                  existing.add(url)
+          history_path.write_text(history, encoding='utf-8')
+          PY
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add 'GLiNER2文章调研.md' 'GLiNER2历史调研.md'
-          git commit -m 'docs: append new GLiNER2 product extraction research'
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m 'docs: append six new GLiNER2 product extraction research items'
           git push
