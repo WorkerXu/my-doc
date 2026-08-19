@@ -199,3 +199,9 @@ https://www.amazon.science/publications/cma-clip-cross-modality-attention-clip-f
 https://www.amazon.science/publications/pge-robust-product-graph-embedding-learning-for-error-detection
 https://www.amazon.science/publications/study-on-price-consistency-regarding-pack-size-via-product-variant-retrieval-and-pack-size-extraction
 https://www.amazon.science/publications/automatic-validation-of-textual-attribute-values-in-e-commerce-catalog-by-learning-with-limited-labeled-data
+https://www.amazon.science/publications/building-natural-language-interface-for-product-search
+https://medium.com/walmartglobaltech/joint-intent-classification-and-entity-recognition-for-conversational-commerce-35bf69195176
+https://medium.com/walmartglobaltech/understanding-conversational-search-refinement-queries-in-walmart-shopping-assistant-fc04e4f97532
+https://medium.com/walmartglobaltech/retail-graph-walmarts-product-knowledge-graph-6ef7357963bc
+https://huggingface.co/aagzamov/search-query-parser
+https://github.com/drawrowfly/amazon-product-api
