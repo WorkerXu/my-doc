@@ -476,3 +476,6 @@
 | SocialCrawl 的 Home Depot Product API 将真实商品页统一输出 title、brand、model number、UPC、描述和分组 specifications，且页面在 2026 年 8 月仍维护；适合持续构造 GLiNER2 品牌/型号/规格回归样本，并用商城结构化字段做字段级对照真值。 | https://www.socialcrawl.dev/platforms/home_depot/product |
 | Feedoptimise 的 Shopify 富化方案可直接从商品及变体图片抽取 brand、color、pattern、style 等属性，并对整店 Feed 做 AI 批量补全；适合在 GLiNER2 文本品牌/型号/属性主抽取之外增加图片侧证据，补齐视觉属性并做跨模态一致性校验。 | https://www.feedoptimise.com/integrations/sources/shopify |
 | Claro 2026 的商品数据证据链实践要求每个结构化属性都携带来源位置、原始片段、抽取方法/版本、归一化变换、置信度、校验与回写审计；很适合给 GLiNER2 的 brand/model/规格结果增加逐字段 provenance、低置信复核和安全写入 PIM/ERP 的生产门禁。 | https://getclaro.ai/resources/guides/why-ai-enriched-product-data-needs-evidence/ |
+| EcomEval 基于真实电商查询与交易日志构建多语言、多模态基准，任务中直接包含 Product Attribute Extraction、Brand Model 和 Brand Knowledge；适合把 GLiNER2 的品牌、型号、属性 Schema 放进真实跨语言回归评测，暴露短查询、噪声与多模态场景下的失败模式。 | https://arxiv.org/abs/2510.20632 |
+| polite-retail-scrapers 用统一 Schema 封装 16 家主流零售站点解析器，公共字段包含 brand、description、specs、variations，技术类站点还提供 model_number、UPC；适合作为 GLiNER2 的网页采集上游和对照真值，批量构造品牌/型号/规格回归样本。 | https://pypi.org/project/polite-retail-scrapers/ |
+| Google Merchant Center 官方规范明确区分 brand、MPN、GTIN 与店铺内部 SKU，并要求标识符不确定时不要猜测；适合据此定义 GLiNER2 的品牌/型号/MPN/SKU 字段边界、空值策略与后处理校验，减少相似字母数字串误抽。 | https://support.google.com/merchants/answer/160161?hl=en |
