@@ -169,7 +169,7 @@
 | 该弱监督信息抽取方案用原型表示自动过滤噪声标注，并在电商属性值抽取上提升下游精度；适合用于清洗词典、规则或商品目录自动生成的 GLiNER2 品牌/型号/属性伪标注，降低脏标签对微调效果的影响。 | https://www.amazon.science/publications/prototype-representations-for-training-data-filtering-in-weakly-supervised-information-extraction |
 | 该数据质量框架通过 QA 式属性值抽取识别商品描述缺失的关键信息，并产出类目级缺失字段报告；可参考在 GLiNER2 抽取之后增加“字段是否缺失/描述是否完整”的质量检查，避免必填品牌、型号或规格缺失时直接入库。 | https://aclanthology.org/2022.ecnlp-1.4/ |
 | Amazon 的大规模商品 Schema 匹配方案面向海量制造商/供应商异构字段，用属性语义相似度和业务相关性自动对齐统一目录字段；适合衔接 GLiNER2，将 manufacturer、model no.、capacity 等来源字段归并到 canonical brand/model/规格 Schema，减少重复字段与人工映射。 | https://www.amazon.science/publications/attribute-similarity-and-relevance-based-product-schema-matching-for-targeted-catalog-enrichment |
-| AutoKnow 是已覆盖 11K+ 商品类型的自动商品知识采集系统，包含商品属性识别、知识抽取、异常检测和同义词发现；适合参考 GLiNER2 的“类目/属性体系→字段抽取→别名归并→异常校验→商品知识库”端到端生产架构。 | https://www.amazon.science/publications/autoknow-self-driving-knowledge-collection-for-products-of-thousands-of-types |
+| AutoKnow 是已覆盖 11K+ 商品类型的自动商品知识采集系统，包含商品属性识别、知识抽取、异常检测和同义词发现；适合参考 GLiNER2 的“类目/属性体系→字段抽取→别名归并→异常校验→商品知识库”端到端生产架构。 | https://www.amazon.science/publications/autoknow-self-driving-knowledge-collection-for-products-of-thousands-types |
 | 该电商 NER 工作用正-未标注学习、种子词典和迭代扩展在低资源商品描述上训练实体识别；适合为 GLiNER2 的长尾品牌、新型号、货号等字段构造低成本训练数据，并利用未标注商品语料持续扩充实体覆盖。 | https://aclanthology.org/2020.ecnlp-1.1/ |
 | LINE Shopping TW 在 2000 万级商品规模上用 LLM 做属性抽取，明确拆分 Brand、Model Number、Series Name，并给出型号严格排除项、品牌特定格式、后处理、批处理和评测策略；非常适合直接参考 GLiNER2 的型号边界定义、字段 Schema 与生产质量门禁。 | https://speakerdeck.com/lycorptech_jp/ai-frontiers-revealed-transforming-line-shopping-tw-with-llm-driven-product-attribute-extraction |
 | Stanford CS229 项目基于 BestBuy 电商 NER 数据，从商品描述中抽取 Brand、ModelName、ScreenSize、Storage、RAM 等字段，并比较 SVM、GBT、CRF；适合做 GLiNER2 品牌/型号/规格 span 抽取的传统监督基线与逐字段误差对照。 | https://cs229.stanford.edu/proj2018/report/190.pdf |
@@ -436,3 +436,9 @@
 | 该 Amazon 商品目录工程用规则/启发式从复杂文本抽取 brand、包装数量和标准化基础数量，再接文本清洗与向量化；适合与 GLiNER2 形成“品牌等语义字段用模型、数量/单位等强规则字段用确定性抽取”的混合方案。 | https://github.com/sanjaysam410/Amazon-ML-Hackathon |
 | ShelfSense 直接把杂乱零售商品标题抽成 brand、product_name、category、size、pack_count、variant 等 8 个 Schema 校验字段，并逐字段统计准确率、Schema 有效率、延迟与成本；非常适合参考 GLiNER2 的字段边界定义、缺失值处理、逐字段回归评测和生产质量门禁。 | https://github.com/adilet0212/shelfsense |
 | 该 Product Attribute Extraction API 将非结构化服饰描述一次抽成 silhouette、fabric、neckline、sleeve、length、embellishment、color、category，并返回逐字段置信度、FastAPI 接口和固定标签评测；适合与 GLiNER2 做多属性结构化输出、置信度阈值和服务化接口的轻量基线对照。 | https://github.com/Aayush20art/Product-Attribute-Extraction-API |
+| 该 2026 专利专门对多源商品标题做 AI 解析，直接抽取 brand、model、product name、color、unit、size 六个核心字段并输出置信度；字段集合与 GLiNER2 商品 Schema 高度重合，适合参考多平台标题归一、置信度门禁和人工复核。 | https://eureka.patsnap.com/patent/CN122389861A |
+| 该商品标题智能属性抽取专利用词级标注把 product type、brand、model number 和规格映射到 title token，示例明确区分品牌与多个设备型号；适合作为 GLiNER2 brand/model/spec span 边界、候选型号判别和规则/序列标注基线参考。 | https://patents.google.com/patent/WO2022153092A1/fr |
+| 该 eBay 笔记本 NER 项目直接从商品描述抽 Product Brand、Product Model、硬盘类型/容量、显示类型等实体，并把型号做标准化；与 GLiNER2 的品牌/型号/规格抽取几乎同构，适合做监督基线与型号归一化对照。 | https://github.com/ruchbagwe/Product-description-classification-NER |
+| Claro 2026 实际客户流程从制造商/供应商 PDF、表格和弱标准数据中先对齐到正确 product/model，再按类目 Schema 抽取、单位归一、证据与置信度校验规格；适合参考 GLiNER2 在产品说明书/供应商数据中的“型号对齐→动态 Schema→规格抽取→可信入库”链路。 | https://getclaro.ai/customers/structuring-product-specifications-for-a-construction-tech-platform |
+| SKU LookUp API 用 product_schema 显式定义 brand、model、RAM 等字段及逐字段 extraction prompt，并支持 SKU/MPN/EAN 作为商品标识批量富化；和 GLiNER2 动态 Schema 很接近，可参考字段契约、类目/品牌约束和批量处理接口。 | https://skulookup.io/docs/api-documentation |
+| Dealophant 的线上 Amazon 标题解析把正则数量抽取、LLM unit family 分类和平台 pricePerUnit 校验组合起来，处理 pack count、重量、容量、servings；适合 GLiNER2 对容量/包装数/单位等强规则规格采用“模型抽取+确定性校验/归一化”的混合方案。 | https://dealophant.com/how-it-works |
