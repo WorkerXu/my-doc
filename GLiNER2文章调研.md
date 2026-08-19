@@ -187,3 +187,4 @@
 | Shopify The Catalogue 含 4.8 万+真实商品的 title、description、ground_truth_brand 和层级类目；可用于评测 GLiNER2 品牌抽取及“类目→字段 Schema”路由，尤其适合真实目录噪声和跨类目泛化测试。 | https://huggingface.co/datasets/Shopify/product-catalogue |
 | Bright Data 的 Home Depot 样例数据把 product_name 与 model_number、manufacturer、SKU、dimensions 等结构化字段放在同一记录中；可直接生成“标题→品牌/制造商、型号、货号”对照样本，专项测试 GLiNER2 对字母数字混合型号和 SKU 边界的抽取稳定性。 | https://github.com/luminati-io/Home-Depot-dataset-sample |
 | Shopify Product Taxonomy 是开源商品分类与属性标准，覆盖 25+ 垂直领域并维护 categories、attributes、values 及跨 taxonomy 映射；适合给 GLiNER2 按类目动态生成字段 Schema，并对抽取后的属性名和值做标准化与约束校验。 | https://github.com/Shopify/product-taxonomy |
+| 该研究针对商品信息抽取提出“PLM 一次预测 + LLM 二次校验”的两阶段验证，并专门提升弱表达、低显著度字段的识别，同时支持本地部署；适合给 GLiNER2 的品牌、型号、规格等低置信度结果增加轻量复核层，减少漏抽和误抽。 | https://arxiv.org/abs/2607.26780 |
