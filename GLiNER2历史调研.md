@@ -311,3 +311,6 @@ https://huggingface.co/fastino/gliner2-multi-v1
 https://www.catalogmind.com/
 https://catalogenrich.com/
 https://wizzy.ai/agents/catalog-enrichment
+https://www.etsy.com/codeascraft/understanding-etsyas-vast-inventory-with-llms
+https://medium.com/@jsanca/from-information-retrieval-to-product-extraction-reusing-myir-to-understand-an-e-commerce-site-79922c6c9d10
+https://medium.com/@hayrikar54/the-0-pim-automating-magento-catalog-enrichment-with-ai-and-google-sheets-ce067114e18f
