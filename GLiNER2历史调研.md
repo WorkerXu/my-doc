@@ -1,0 +1,9 @@
+https://github.com/fastino-ai/GLiNER2/blob/main/tutorial/4-combined.md
+https://aclanthology.org/2024.ecnlp-1.13/
+https://arxiv.org/abs/2405.10918
+https://aclanthology.org/P19-1514/
+https://aclanthology.org/2022.ecnlp-1.19/
+https://github.com/xinyangz/oamine
+https://github.com/google-research-datasets/mave
+https://github.com/wbsg-uni-mannheim/wdc-pave
+https://github.com/Alibaba-NLP/EcomGPT
