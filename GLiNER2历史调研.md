@@ -86,3 +86,8 @@ https://aclanthology.org/2026.findings-eacl.159/
 https://arxiv.org/abs/2402.08802
 https://arxiv.org/abs/2409.12695
 https://arxiv.org/abs/2207.07278
+https://github.com/ACJLabs/catalog-normalizer
+https://arxiv.org/abs/2311.04196
+https://arxiv.org/abs/2308.08413
+https://arxiv.org/abs/2310.07137
+https://aclanthology.org/2021.ecnlp-1.10/
