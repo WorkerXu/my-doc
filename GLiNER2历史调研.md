@@ -189,3 +189,9 @@ https://huggingface.co/datasets/Shopify/product-catalogue
 https://github.com/luminati-io/Home-Depot-dataset-sample
 https://github.com/Shopify/product-taxonomy
 https://arxiv.org/abs/2607.26780
+https://github.com/hetonghui02/Fine-Granularity-extraction-of-product-name-information
+https://github.com/YuTian8328/NER-Multilingual-Product
+https://github.com/mahathi-p/Classification_of_Products_using_NER
+https://github.com/TopreGroup/AIWebscraper
+https://github.com/YYWorks/OFBiz-NER
+https://github.com/Taha-azizi/Product_Info_Extractor
