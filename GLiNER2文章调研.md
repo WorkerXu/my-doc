@@ -25,3 +25,14 @@
 | SelfRefinement4ExtractGPT 直接对 Brand 等商品字段做 JSON 抽取，并利用错误样本自动改写属性定义与自纠错；非常适合迁移到 GLiNER2 的实体描述/Schema 定义优化和失败样本闭环。 | https://github.com/wbsg-uni-mannheim/SelfRefinement4ExtractGPT |
 | AWS Smart Product Onboarding 是完整商品入库项目，先做商品分类，再依据类目专属 Schema 一次抽取多个属性，并支持类目树变化；适合参考 GLiNER2 的“类目→Schema→字段抽取”生产架构。 | https://github.com/aws-samples/aws-smart-product-onboarding |
 | brand-ner 项目专门从 Amazon 商品标题中识别品牌，包含清洗后的数据、训练流程和 spaCy/Flair 基线；可作为 GLiNER2 品牌字段的独立测试集、规则对照和长短标题误差分析参考。 | https://github.com/annis-souames/brand-ner |
+| 该研究把商品属性值提取改造成统一生成任务，让单模型从商品标题覆盖多类属性并适应开放世界值；适合对照 GLiNER2 单次多字段抽取在长尾属性、未见值和跨类目泛化上的表现。 | https://aclanthology.org/2021.ecnlp-1.2/ |
+| AVEQA 把“属性名”作为问题，从商品上下文定位对应属性值，并显式处理无答案情况；适合参考 GLiNER2 对 brand、model、color 等动态字段的 Schema 描述、缺失字段判定和零样本泛化设计。 | https://research.google/pubs/learning-to-extract-attribute-value-from-product-via-question-answering-a-multi-task-approach/ |
+| TXtract 面向约 4000 个商品类目的层级 taxonomy，用单模型提取类目特定属性值；适合设计 GLiNER2 的“类目约束→字段集合→抽取”机制，避免所有类目共用一个过大的 Schema。 | https://aclanthology.org/2020.acl-main.751/ |
+| AdaTag 用属性 embedding 动态生成不同属性的解码器，在共享知识的同时保留字段特性；其思路很适合对照 GLiNER2 为 brand、model、规格等字段编写差异化描述并验证字段间迁移效果。 | https://aclanthology.org/2021.acl-long.362/ |
+| Ask-and-Verify 先为指定商品属性召回多个候选 span，再做验证过滤，可扩展到数千属性；适合给 GLiNER2 增加候选校验层，重点降低型号、规格等相似字符串的漏抽和误抽。 | https://aclanthology.org/2022.emnlp-industry.9/ |
+| 该方案把部分闭集商品属性改成极端多标签分类，并利用电商属性 taxonomy 做 label masking；适合与 GLiNER2 组合成“开放字段用抽取、稳定枚举字段用分类”的混合架构。 | https://aclanthology.org/2022.ecnlp-1.16/ |
+| AVEN-GR 联合做商品查询中的 NER 与实体链接，把 brand、material、color 等抽取结果映射到商品图谱实体；适合补足 GLiNER2 只抽 span 后的品牌别名消歧、属性标准化与目录 ID 对齐。 | https://aclanthology.org/2023.acl-industry.14/ |
+| GAVI 是面向品牌值识别的类目感知生成方案，强调商品类别对品牌判断的约束；适合用于 GLiNER2 品牌抽取的类目条件设计，尤其可帮助处理品牌词与普通词重名、跨类目歧义。 | https://aclanthology.org/2023.icnlsp-1.11/ |
+| SANTA 专门解决电商文本属性值规范化，可把同义缩写和不同表述映射到统一 canonical value；适合接在 GLiNER2 抽取之后，对型号别名、系统版本、尺寸单位等字段做标准化。 | https://aclanthology.org/2021.ecnlp-1.12/ |
+| 该论文让模型从商品文本一次生成一组属性-值对，并专门处理未见值、多值属性与 canonicalized values；适合对照 GLiNER2 结构化多字段输出及属性值归一化的一体化方案。 | https://aclanthology.org/2023.findings-acl.413/ |
+| MixPAVE 聚焦新商品属性只有少量标注数据时的属性值抽取，通过混合 Prompt Tuning 提升 few-shot 能力；适合指导 GLiNER2 在新增类目、新增品牌/型号字段时的小样本评测和快速适配。 | https://aclanthology.org/2023.findings-acl.633/ |
