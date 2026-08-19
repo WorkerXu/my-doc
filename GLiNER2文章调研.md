@@ -138,3 +138,9 @@
 | GLiNER2 官方论文系统说明了 Schema 驱动的实体、分类与层级结构化抽取能力，并强调单一紧凑模型和 CPU 友好部署；适合把 brand、model、SKU、规格等定义成动态 Schema，作为商品字段抽取服务的核心方法依据。 | https://aclanthology.org/2025.emnlp-demos.10/ |
 | revizor 是专门拆解商品标题的 NER 项目，直接输出 type、brand、model、vendor_code，并给出品牌与型号的逐类效果；和 GLiNER2 目标字段几乎一一对应，可作为品牌/型号/货号抽取的监督基线及自动构造训练数据的参考。 | https://github.com/bureaucratic-labs/revizor |
 | Amazon Catalog Team 的生产实践会从商品提交中抽取 dimensions、materials、compatibility、technical specifications，并用多小模型共识、强模型监督和知识库回流持续降低错误；适合给 GLiNER2 增加低置信度复核、难例沉淀与持续优化闭环。 | https://aws.amazon.com/blogs/machine-learning/how-the-amazon-com-catalog-team-built-self-learning-generative-ai-at-scale-with-amazon-bedrock/ |
+| 该论文直接从商品标题联合识别属性及其值，示例把 Seiko、SUJ708、Gold 分别对应 Brand、Model number、Band color；与 GLiNER2 一次抽取 brand/model/color 等字段非常贴合，适合构建联合字段回归集并校验型号 span 边界。 | https://arxiv.org/abs/2208.07130 |
+| DiffXtract 不要求只抽预先给定的值，而是联合识别区分商品变体的属性类型及对应值；适合在 GLiNER2 固定 Schema 之外发现 finish、pack size 等变体字段，并验证“动态属性发现→Schema 增补→再抽取”的流程。 | https://www.amazon.science/publications/diffxtract-joint-discriminative-product-attribute-value-extraction |
+| Home Depot 的商品变体识别方案会从非结构化标题提取商品家族信息，并利用相似型号进行变体归组；适合把 GLiNER2 的 brand/model/color/pack size 结果接到 SKU 变体聚类、型号一致性校验和误抽纠偏。 | https://arxiv.org/abs/2104.05504 |
+| Amazon 的半监督视觉属性抽取使用未标注商品图片增强 ViT，在减少标注数据的同时提升属性提取覆盖；适合作为 GLiNER2 文本抽取的视觉兜底，补充标题里缺失的颜色、材质、款式等可见属性。 | https://www.amazon.science/publications/semi-supervised-learning-and-visual-transformers-for-product-attribute-extraction-from-e-commerce-images |
+| Mercado Libre 在数亿级商品数据清洗中专门处理品牌拼写错误、属性不一致和跨语言值，并让 GenAI 返回标准化 JSON；非常适合接在 GLiNER2 后面做品牌别名、拼写纠错、属性值翻译与 canonicalization。 | https://medium.com/mercadolibre-tech/genai-meets-crisp-dm-advancing-data-science-for-e-commerce-a9d6d98a9142 |
+| Mercado Libre 的商品迁移案例覆盖类目预测、类目专属必填属性、属性映射与批量 Listing；适合参考 GLiNER2 的“类目路由→动态 Schema→字段抽取→平台字段映射/校验”生产编排。 | https://medium.com/mercadolibre-tech/boosting-store-integration-mcp-and-agentic-ides-for-mercado-libre-listings-6bf616a914f2 |
