@@ -233,3 +233,8 @@
 | Shopee Product Listings 提供真实 marketplace 标题/描述、brand/brandId 以及 models 变体/SKU JSON，且包含中文与东南亚电商噪声文本；适合测试 GLiNER2 的长尾品牌、字母数字型号、变体规格抽取以及结果到目录 ID 的映射。 | https://huggingface.co/datasets/rebrowser/shopee-dataset |
 | PCPartPicker Parts 将商品名与 brand、category 和 category-specific specs JSON 对齐，标题中大量包含 Ryzen 9800X3D、MAG A750GL 等型号；很适合构建 GLiNER2 电子硬件品牌/型号/功率/容量等规格字段的高难度回归集。 | https://huggingface.co/datasets/Doshiba/pcpartpicker-parts-dataset |
 | Tesco Grocery UK 数据把商品名与 brand、category、unit、price_per_unit 等目录字段对齐，并明确支持 NER 用途；适合用 GLiNER2 抽取品牌、包装规格、计量单位等快消字段，并验证数值+单位的 span 与标准化。 | https://huggingface.co/datasets/crawlfeeds/tesco-grocery-uk |
+| DEFLATE 将商品属性抽取统一为“多模态候选生成 + 判别校验”，同时覆盖文本显式值和图片/语义中的隐式值；适合把 GLiNER2 作为高效显式 span 主抽取器，再为缺失/低置信度 brand、model、颜色、材质等字段接视觉/生成式兜底与验证。 | https://aclanthology.org/2023.findings-acl.831/ |
+| ImPaKT 面向购物指南做开放 Schema 信息抽取，标注了商品属性、属性类型、属性摘要及复合/原子属性关系；适合在 GLiNER2 固定 brand/model/规格 Schema 之外发现新字段并归并同义/复合属性，形成“属性发现→审核→Schema 扩充”的冷启动数据。 | https://arxiv.org/abs/2212.10770 |
+| KG-FLIP 直接利用商品属性 Schema 做电商多模态预训练，并已用于 Amazon Catalog 回填缺失属性；适合参考 GLiNER2 的类目字段 Schema 与图片表征结合，在文本缺失颜色、材质、款式等属性时做目录补全。 | https://aclanthology.org/2023.acl-industry.9/ |
+| Tab-Cleaner 在百万级 Amazon 商品目录上同时做“属性是否适用”和“属性值是否可信”的弱监督校验；适合接在 GLiNER2 抽取后，对 brand/model/规格等字段先判断类目适用性再做值校验，减少无关字段误抽和脏值入库。 | https://aclanthology.org/2023.acl-industry.18/ |
+| PV2TEA 专门把视觉信息补到已有文本属性抽取器中，并针对图文松耦合、背景噪声和文本弱标注偏差设计纠偏；适合保留 GLiNER2 文本主抽取链路，同时用商品图片补强颜色、形状、图案等字段并校验文本误导。 | https://aclanthology.org/2023.findings-acl.127/ |
