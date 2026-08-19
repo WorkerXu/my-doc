@@ -101,3 +101,11 @@ https://arxiv.org/abs/1803.11284
 https://aclanthology.org/D11-1144/
 https://doi.org/10.1007/978-981-95-3343-5_9
 https://doi.org/10.1007/978-981-95-3343-5_17
+https://www.sciencedirect.com/science/article/pii/S0957417423033523
+https://arxiv.org/abs/2201.02896
+https://doi.org/10.1145/3106426.3106449
+https://doi.org/10.14778/2831360.2831372
+https://webdatacommons.org/productcorpus/index.html
+https://huggingface.co/lighthousefeed/yoda-ner
+https://huggingface.co/xinyacs/ecombert-ner-v1
+https://huggingface.co/Purva17/b2b-ecomm-ner
