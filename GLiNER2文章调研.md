@@ -429,3 +429,8 @@
 | iHerb 商品列表抓取项目明确输出 product_part_no、product_brand_id、product_brand_name 与商品标题，可作为 GLiNER2 品牌与厂商料号/型号抽取的真实弱标注数据源，尤其适合评测品牌词和型号编码同时出现的短标题。 | https://github.com/AbsoluteAnchor/extract-iherb-product-listings-from-search |
 | 该 Home Depot GraphQL 抓取项目把 product name、brand、model number、SKU、product type 与类目路径一起结构化输出；适合构造 GLiNER2 的 brand/model/SKU 多字段对照集，并利用类目上下文检查型号和品牌抽取一致性。 | https://github.com/NewNautilus/home-depot-clearance-scraper |
 | Oxylabs 的电商类目抓取器支持按用户 Prompt 或 JSON Schema 抽取结构化商品数据；适合参考“网页采集→Schema 化字段定义→结构化结果”的前置层，把 brand/model/规格字段配置与 GLiNER2 动态 Schema 对齐。 | https://github.com/oxylabs/ecommerce-category-scraper |
+| Kinect 这篇 2026 目录富化评测文章把任务明确按信息抽取来评分，并重点讨论 F1 对幻觉、可核查事实和结构化属性质量的遮蔽；适合为 GLiNER2 的品牌/型号/属性抽取建立字段级精度、幻觉率与人工抽检门禁。 | https://trykinect.ai/blog/scoring-catalog-enrichment |
+| Branda 从公开网站并行获取品牌资料和页面 Markdown，再用 Zod 生成 JSON Schema 做经过事实校验的结构化商品抽取；适合参考 GLiNER2 的“网页取数→品牌/商品 Schema→事实校验→结构化结果”链路。 | https://github.com/context-dot-dev/ad-maker |
+| products-web-scraper 采用“结构化数据→站点规则→Headless→LLM 兜底”的分层商品抽取，并在输出端用 validator 拒绝空 SKU、异常价格等不可信值；适合把 GLiNER2 放在语义兜底层，同时保留确定性数据优先和结果校验。 | https://github.com/jawadhaider0024/products-web-scraper |
+| 该 spaCy NER + FastAPI 项目直接从商品描述抽取 Category、Fabric、Neckline、Sleeve、Length、Silhouette、Embellishment、Color，并记录未见属性、多值和拼写噪声失败类型；适合作为 GLiNER2 商品属性 span 抽取的固定标签基线和接口实现参考。 | https://github.com/DevanshBCA25/Product-Attribute-Extraction |
+| 该 Amazon 商品目录工程用规则/启发式从复杂文本抽取 brand、包装数量和标准化基础数量，再接文本清洗与向量化；适合与 GLiNER2 形成“品牌等语义字段用模型、数量/单位等强规则字段用确定性抽取”的混合方案。 | https://github.com/sanjaysam410/Amazon-ML-Hackathon |
