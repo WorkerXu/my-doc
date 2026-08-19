@@ -167,3 +167,7 @@ https://pypi.org/project/extract-product/
 https://github.com/numindai/nuextract
 https://skulaunch.com/platform/product-data-extraction
 https://docs.upsonic.ai/examples/business-sales/find-example-product
+https://doi.org/10.1007/978-3-319-16354-3_27
+https://scrapfly.io/docs/extraction-api/automatic-ai/models/product
+https://shopedia.com/platform/product-categorization-enrichment-platform/product-attributes-specifications-24
+https://github.com/BlackFalconData-org/ebay-scraper
