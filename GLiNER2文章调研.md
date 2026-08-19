@@ -291,3 +291,9 @@
 | OneSearch 的开源代码在真实电商搜索链路中用 NER 维护 18 类结构化属性，直接包含 Brand、Model、Specifications、Color、Material，并把这些字段用于 query/item 语义增强；适合将 GLiNER2 作为动态 Schema 抽取器接入，验证品牌、型号和规格抽取对检索链路的实际增益。 | https://github.com/benchen4395/onesearch-family |
 | OneRetrieval 的开源实现把电商 Brand、Model/GOOD_MODEL、Specification、Color、Material 等细粒度属性先抽取和归并，再编码进可检索的结构化表示；适合参考 GLiNER2 抽取后的字段分组、词典维护、增量更新以及“抽取→检索”衔接。 | https://github.com/xuxinzhang/oneretrieval |
 | KuaiSearch 提供 1800 万级真实电商商品的 title+brand，以及 query/title/brand_name/attribute 相关性数据；可用现成目录字段构造 GLiNER2 品牌与属性弱标注/回归集，并直接评估抽取结果对召回、相关性和排序的业务价值。 | https://github.com/benchen4395/KuaiSearch |
+| SchemaRAG 在真实电商数据上用检索动态裁剪大 Schema，最高提升 micro-F1 8.8%、延迟降低 47%、Token 成本降低 48%；适合在 GLiNER2 面对大量类目属性时先按商品文本召回 brand/model/规格候选字段，减少无关 Schema 干扰和推理成本。 | https://aclanthology.org/2026.acl-industry.78/ |
+| 这个土耳其电商 NER 基准直接把 GLiNER2 与微调 Qwen、GLiNER、BERT 放在同一 200 条留出集上比较，标签明确包含 BRAND、MODEL、COLOR、SIZE_VARIANT、MATERIAL、SPECIFICATION；非常适合复用为 GLiNER2 品牌/型号/规格多语言回归基准。 | https://github.com/gururaser/magibu-uygulamali-yz-egitim/tree/main/les4/unsloth_ecommerce_ner_benchmark |
+| fast_gliner 为 GLiNER2 提供 Rust + ONNX Runtime 的 Python 推理实现，支持 NER、结构化抽取和多任务 Schema，README 直接给出商品 name/price/features/category 抽取示例并报告约 4× CPU 加速；适合商品目录高吞吐批处理和本地服务部署。 | https://github.com/talmago/fast_gliner |
+| Product Extraction Benchmark 提供真实商品页 HTML/WARC、ground truth、评测代码和开源基线，标注中包含 brand、GTIN、SKU，并专门分析 SKU/MPN 混淆；适合扩展成 GLiNER2 网页商品品牌/型号/货号抽取的固定输入回归集，避免线上页面变化影响对比。 | https://github.com/scrapinghub/product-extraction-benchmark |
+| DySECT 是 2026 ACL 的动态自演化结构化抽取系统，会把抽取结果持续沉淀到可扩展知识库并适应新术语和罕见离群值；适合借鉴到 GLiNER2 长尾品牌、新型号、新规格的“抽取→知识库积累→候选增强/校验”持续演化闭环。 | https://aclanthology.org/2026.acl-demo.69/ |
+| GLiNER2Swift 是 GLiNER2 的 Swift/MLX 原生实现，支持 NER、结构化抽取与 LoRA Adapter，并可在 Apple Silicon/iOS/macOS 本地运行；若商品扫描、离线识别或端侧目录工具需要提取 brand/model/规格，可参考其端侧部署与适配器复用方式。 | https://github.com/MacPaw/Gliner2Swift |
