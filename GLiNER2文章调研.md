@@ -325,3 +325,5 @@
 | Scrapfly 的 Product Extraction Schema 直接从非结构化商品页定义并抽取 brand、SKU、MPN、specifications、color、size、variants 等字段；适合参考 GLiNER2 的动态商品 Schema、网页抽取字段契约以及与结构化页面结果的交叉校验。 | https://scrapfly.io/docs/extraction-api/automatic-ai/models/product |
 | Shopedia 可从普通商品文本自动拆出 Manufacturer、Family、Model Code、Model Suffix、Model Version、Model Generation、Model Year 与 MPN；适合直接校准 GLiNER2 中 brand/family/model/model_number 等相近字段的边界和归一化规则。 | https://shopedia.com/platform/product-categorization-enrichment-platform/product-attributes-specifications-24 |
 | BlackFalconData 的 eBay Scraper 深度模式对真实 Listing 固定输出 brand、model、MPN、EAN 和完整 itemSpecifics；适合持续采集 GLiNER2 品牌/型号/属性回归样本，并用商城结构化字段做伪标签或抽取结果一致性校验。 | https://github.com/BlackFalconData-org/ebay-scraper |
+| Basalam 的 product-catalog-generator 提供电商商品专用 LLM/VLM 微调代码、合成数据集和模型，直接从商品数据推断 product type 与 attributes；适合对照 GLiNER2 的类目路由、动态 Schema、多字段抽取和文本/图片联合富化方案。 | https://github.com/basalam/product-catalog-generator |
+| 这篇电商目录案例从商品名/描述自动推断 brand、size、organic 等属性，并进一步做新品牌发现与实体归一；和 GLiNER2 的“字段抽取→品牌 taxonomy 扩充→标准化入库”链路高度吻合，适合参考质量校验与实体解析设计。 | https://www.rohan-paul.com/p/ml-case-study-interview-question-861 |
