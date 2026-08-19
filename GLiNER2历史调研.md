@@ -7,3 +7,11 @@ https://github.com/xinyangz/oamine
 https://github.com/google-research-datasets/mave
 https://github.com/wbsg-uni-mannheim/wdc-pave
 https://github.com/Alibaba-NLP/EcomGPT
+https://github.com/wbsg-uni-mannheim/ExtractGPT
+https://github.com/a-dwivedi/llm-product-attribute-extraction
+https://aclanthology.org/2022.ecnlp-1.12/
+https://aclanthology.org/2022.findings-emnlp.20/
+https://aclanthology.org/2023.acl-industry.29/
+https://aclanthology.org/2025.emnlp-industry.147/
+https://arxiv.org/abs/1608.04670
+https://www.mdpi.com/2079-9292/14/10/1930
