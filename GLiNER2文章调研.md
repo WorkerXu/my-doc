@@ -61,3 +61,9 @@
 | 该研究用零样本/少样本提示从商品标题和描述中直接抽取属性-值对，重点考察对未见属性和值的泛化；适合拿来与 GLiNER2 动态 Schema 的零样本抽取做基准对照，并参考缺失字段与 OOD 评测设计。 | https://arxiv.org/abs/2306.14921 |
 | Smart-Shopper 的生产化 NER 流水线会先做品牌/商品词表归一化和模糊匹配，再抽取 brand、product、color、budget 等字段，示例能把拼写噪声下的 Samsung Galaxy A15 正确结构化；适合借鉴 GLiNER2 前后处理、品牌别名和型号纠错链路。 | https://github.com/AmineElAtrache/Smart-Shopper |
 | NVIDIA Retail Catalog Enrichment 直接输出包含 brand、model_or_variant、颜色、材质及商品详情的富 JSON，并把结果映射到商品协议 Schema；适合参考 GLiNER2 的结构化字段设计、多模态补充、字段证据校验和商品目录入库接口。 | https://github.com/NVIDIA-AI-Blueprints/Retail-Catalog-Enrichment |
+| Shopify 全球商品目录的多模态 LLM 方案会直接抽取并归一化 color、size、material、brand、model 等核心字段，并把属性绑定到类目 taxonomy；非常适合参考 GLiNER2 的“类目→Schema→多字段抽取→标准化”大规模生产链路。 | https://shopify.engineering/leveraging-multimodal-llms |
+| Shopify Catalog 的商品聚类流程先从每条商品记录抽取严格 JSON 格式的 brand 和 model，再用 brand:model 组合归并同款并二次校验异常；适合把 GLiNER2 的品牌/型号结果接入商品去重、同款聚合与结果纠错。 | https://shopify.engineering/catalog-clustering |
+| BEATS 从缺少属性体系的商品目录出发，用 LLM + 人工反馈迭代生成类目属性 taxonomy，再对单品做结构化属性标注，已覆盖 540 多万商品；适合参考 GLiNER2 的 Schema 冷启动、类目级字段维护和持续扩展机制。 | https://arxiv.org/abs/2606.04909 |
+| 该研究同时评估商品属性“抽取+归一化”，覆盖名称扩展、泛化、单位转换和字符串规整等后处理；适合把 GLiNER2 的 span 抽取结果接入统一 canonical value 层，并作为端到端基准对照。 | https://arxiv.org/abs/2403.02130 |
+| 该框架通过可控修改、负样本生成和属性删除来合成高质量商品数据，并在 MAVE 上验证可接近真实训练数据效果；适合给 GLiNER2 的品牌/型号/规格字段构造低资源训练集、困难负样本和缺失字段测试集。 | https://arxiv.org/abs/2601.04200 |
+| 该工业方案自动迭代生成用于“商品类目-属性”质量检查的提示，在数万种字段组合和多语言场景中提升质检准确率；适合放在 GLiNER2 抽取之后做字段合法性、类目匹配和异常值复核层。 | https://aclanthology.org/2025.emnlp-industry.63/ |
