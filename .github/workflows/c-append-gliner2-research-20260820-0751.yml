@@ -1,0 +1,69 @@
+name: c append gliner2 research 20260820 0751
+
+on:
+  push:
+    paths:
+      - '.github/workflows/c-append-gliner2-research-20260820-0751.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Append c GLiNER2 research rows
+        shell: bash
+        run: |
+          set -e
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+          for attempt in 1 2 3; do
+            git fetch origin main
+            git reset --hard origin/main
+
+            python - <<'PY'
+          from pathlib import Path
+
+          main = Path('GLiNER2文章调研.md')
+          history = Path('GLiNER2历史调研.md')
+          entries = [
+              ('这个 2026 eBay 德语商品标题 NER 项目把 BMW、320d、Ölfilter、Mann 分别抽成 CAR_BRAND、CAR_MODEL、PART_NAME、MANUFACTURER，并提供 spaCy 训练/测试流程；适合直接做 GLiNER2 品牌/型号/零件名字段的短标题回归基线，尤其验证字母数字型号边界。', 'https://github.com/vaishnaviagrawal26/ner-german-ecommerce'),
+              ('tensor-house 的 Notebook 把商品数据治理拆成“新商品类型/Schema 发现→按已知 Schema 抽 brand、material、features 等值→单位与分类体系 harmonization”，并输出严格 JSON；和 GLiNER2 动态 Schema→结构化字段→归一化的生产链路高度一致。', 'https://github.com/ikatsov/tensor-house/blob/master/search/product-attribute-extraction-llm.ipynb'),
+              ('spacy-nlp-ecommerce-pipeline 提供面向电商的可运行 NER Notebook，直接从非结构化文本识别 products、brands、prices，并说明结果可进入知识图谱与推荐链路；适合与 GLiNER2 做固定标签 spaCy 基线、字段精度对照和服务化前处理。', 'https://github.com/stkisengese/spacy-nlp-ecommerce-pipeline'),
+          ]
+
+          main_text = main.read_text(encoding='utf-8')
+          hist_text = history.read_text(encoding='utf-8')
+          rows = [(reason, url) for reason, url in entries if url not in main_text and url not in hist_text]
+
+          if rows:
+              with main.open('a', encoding='utf-8') as f:
+                  if main_text and not main_text.endswith('\n'):
+                      f.write('\n')
+                  for reason, url in rows:
+                      f.write(f'| {reason} | {url} |\n')
+              with history.open('a', encoding='utf-8') as f:
+                  if hist_text and not hist_text.endswith('\n'):
+                      f.write('\n')
+                  for _, url in rows:
+                      f.write(f'{url}\n')
+          PY
+
+            if git diff --quiet -- 'GLiNER2文章调研.md' 'GLiNER2历史调研.md'; then
+              exit 0
+            fi
+
+            git add 'GLiNER2文章调研.md' 'GLiNER2历史调研.md'
+            git commit -m 'c 追加本轮 GLiNER2 商品字段调研 0751'
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            sleep 2
+          done
+
+          exit 1
