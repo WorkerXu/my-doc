@@ -1,0 +1,86 @@
+name: GLiNER2 research append
+
+on:
+  push:
+    paths:
+      - '.github/workflows/gliner2-research-append.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append-research:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Append new research rows and history URLs
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          article_path = Path('GLiNER2文章调研.md')
+          history_path = Path('GLiNER2历史调研.md')
+
+          entries = [
+              (
+                  '这篇 2026 Knowledge-Based Systems 研究面向电商短查询构建细粒度 NER 数据集，并系统比较微调 Transformer、CRF 与零样本 LLM 在噪声和土耳其语形态变化下的表现；适合用于 GLiNER2 品牌、型号、属性等短文本字段的多语言鲁棒性评测和噪声难例设计。',
+                  'https://www.sciencedirect.com/science/article/abs/pii/S0950705126009391'
+              ),
+              (
+                  'Enthusiast 是开源电商 AI Agent，明确支持从非结构化 product sheets 中抽取商品描述、属性和翻译，并提供验证与评估组件；适合参考 GLiNER2 抽取后的字段校验、目录富化服务化和减少幻觉的工程闭环。',
+                  'https://github.com/upsidelab/enthusiast'
+              ),
+              (
+                  'DropWise 在 35+ 电商平台上采用 JSON-LD、Meta、站点选择器、DOM 启发式和视觉兜底的五层抽取，统一输出 title、brand、SKU、seller、价格等字段；适合与 GLiNER2 组成“确定性结构化字段优先、语义字段补抽”的混合商品信息抽取链路。',
+                  'https://github.com/DevAnimecx/dropwise'
+              ),
+              (
+                  'browser-act 的 Amazon Product Detail Skill 可直接产出 Brand、Model、productOverview、attributesMapped、颜色/尺码变体等完整商品字段；很适合批量构造 GLiNER2 的品牌/型号/规格弱标注与网页回归真值，并验证不同页面区域的字段一致性。',
+                  'https://github.com/browser-act/skills/blob/main/solutions/ecommerce/amazon-product-detail/SKILL.md'
+              ),
+              (
+                  'product-ai-listing-studio 将结构化商品数据、SKU helper、平台字段映射与 AI 商品 Listing 工作流放在同一项目中；适合把 GLiNER2 抽出的 brand/model/属性作为统一中间 Schema，再映射到不同电商平台字段并检查缺失或格式不一致。',
+                  'https://github.com/pkp666/product-ai-listing-studio'
+              ),
+              (
+                  'tecdoc-car-parts 以 brand→model→engine→vehicle→category→article 的层级组织汽配数据，并暴露料号、兼容性和技术规格等细粒度属性；适合为 GLiNER2 设计汽配垂直类目的品牌/车型型号/零件号/规格 Schema 与层级约束校验。',
+                  'https://github.com/AlidaSoble/tecdoc-car-parts'
+              ),
+          ]
+
+          article = article_path.read_text(encoding='utf-8') if article_path.exists() else '| 推荐理由 | 链接地址 |\n|---|---|\n'
+          history = history_path.read_text(encoding='utf-8') if history_path.exists() else ''
+
+          article_changed = False
+          history_changed = False
+          for reason, url in entries:
+              if url not in article and url not in history:
+                  if article and not article.endswith('\n'):
+                      article += '\n'
+                  article += f'| {reason} | {url} |\n'
+                  article_changed = True
+              if url not in history:
+                  if history and not history.endswith('\n'):
+                      history += '\n'
+                  history += url + '\n'
+                  history_changed = True
+
+          if article_changed:
+              article_path.write_text(article, encoding='utf-8')
+          if history_changed:
+              history_path.write_text(history, encoding='utf-8')
+          PY
+
+          if git diff --quiet -- GLiNER2文章调研.md GLiNER2历史调研.md; then
+            echo 'No new entries to commit.'
+            exit 0
+          fi
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add GLiNER2文章调研.md GLiNER2历史调研.md
+          git commit -m 'docs: append GLiNER2 research findings'
+          git push
