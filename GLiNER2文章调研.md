@@ -387,3 +387,8 @@
 | product_tagger 专门把电商商品标题拆成核心商品词、brand 和描述性修饰词，可作为 GLiNER2 的轻量标题解析基线，尤其适合对照品牌、商品类型与颜色/性别/材质等修饰属性的边界切分。 | https://pypi.org/project/product-tagger/ |
 | Amazon-M2 的多语言商品记录同时提供 title、brand、colour、description 等结构化字段，覆盖英语、德语、日语及法语、意大利语、西班牙语；可将目录字段转成弱标签，构建 GLiNER2 多语言品牌/颜色抽取与跨语言泛化回归集。 | https://github.com/haitaomao/amazon-m2 |
 | ChocoData 的 Amazon 商品抓取项目提供当前可复现的真实 PDP 结构化样本，输出 title、brand、product_details/technical_details 等字段并保留原始响应；适合持续构造 GLiNER2 品牌与规格抽取回归集，并用页面结构化字段定位品牌槽位和规格解析误差。 | https://github.com/ChocoData-com/amazon-product-scraper |
+| ShopSavvy Python SDK 支持按 model number、条码、ASIN 或商品 URL 反查统一商品记录，并返回品牌等结构化字段且支持批量查询；适合把 GLiNER2 抽出的型号/品牌作为二阶段检索键，做跨零售商实体确认、型号纠错和目录归一。 | https://github.com/shopsavvy/sdk-python |
+| Google Product Feed Enrichment Kit 会统一识别 GTIN/EAN/UPC、MPN/manufacturer_part_number 与 brand/manufacturer 等字段别名并检查标识符是否存在；适合接在 GLiNER2 后做品牌、MPN/型号字段归一和 Feed 入库前完整性校验。 | https://github.com/Ads-insights/google-productfeed-enrichment-kit/blob/main/productfeed-identifier-exists.md |
+| Product Research Agent 已实现“商品搜索→品牌/规格抽取→Pydantic 结构化验证”的 Agent 流程，并支持从购物搜索结果汇总证据；适合给 GLiNER2 的低置信品牌、型号和规格增加联网补证与结构化复核层。 | https://github.com/scarnyc/product-research-agent |
+| Bright Data 的 Amazon Global Dataset Scraper 输出商品 title/description 的同时提供 brand、manufacturer、model_number、Model Name、颜色、容量等结构化字段；适合持续生成 GLiNER2 品牌/型号/规格回归样本，并用商城结构化值自动做字段级差异校验。 | https://github.com/luminati-io/amazon-products-global-dataset-scraper |
+| Meta Business SDK 的 ProductItem 目录对象直接定义 brand、GTIN、manufacturer_part_number、material、color 等字段；适合把 GLiNER2 的品牌、MPN/型号和属性输出映射到实际电商目录 Schema，并据目录字段约束设计入库质量门禁。 | https://github.com/facebook/facebook-python-business-sdk/blob/main/facebook_business/adobjects/productitem.py |
