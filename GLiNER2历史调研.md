@@ -166,3 +166,9 @@ https://doi.org/10.1007/978-3-031-68323-7_28
 https://doi.org/10.1145/3511808.3557161
 https://isir-ecom2022.github.io/papers/isir-ecom-2022_paper_7.pdf
 https://arxiv.org/abs/2409.13628
+https://www.amazon.science/publications/enhancement-and-analysis-of-tars-few-shot-learning-model-for-product-attribute-extraction-from-unstructured-texts
+https://www.amazon.science/publications/prototype-representations-for-training-data-filtering-in-weakly-supervised-information-extraction
+https://aclanthology.org/2022.ecnlp-1.4/
+https://www.amazon.science/publications/attribute-similarity-and-relevance-based-product-schema-matching-for-targeted-catalog-enrichment
+https://www.amazon.science/publications/autoknow-self-driving-knowledge-collection-for-products-of-thousands-of-types
+https://aclanthology.org/2020.ecnlp-1.1/
