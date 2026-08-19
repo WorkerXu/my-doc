@@ -54,3 +54,10 @@
 | 网易严选的线上电商 NER 会识别商品名、商品属性名和属性值，并对 BERT/BiLSTM-CRF 的准确率与在线推理时延做了实际对比；适合参考 GLiNER2 上线时的字段定义、下游知识图谱衔接和实时服务性能取舍。 | https://blog.tensorflow.org/2020/10/how-netease-yanxuan-uses-tensorflow-for-chatbots.html |
 | EIVEN 专门处理文本或图片中隐含、易混淆的商品属性值，并强调降低多模态 LLM 推理成本；可作为 GLiNER2 文本 span 抽取之外的补充层，用来识别无法直接从标题字面截取的隐式规格与属性。 | https://aclanthology.org/2024.naacl-industry.40/ |
 | MSIT 面向开放世界商品属性挖掘，通过多模态自纠错指令微调同时发现新的属性和值；适合在 GLiNER2 固定 Schema 覆盖不足时，用于“新属性发现→人工确认→Schema 扩充”的持续迭代流程。 | https://aclanthology.org/2025.acl-long.85/ |
+| 该方法针对 QA 式商品属性抽取中的稀有和歧义字段，用训练集中的可能属性值扩展查询，并在 AliExpress 数据上显著提升宏平均 F1；适合给 GLiNER2 的 brand/model/规格字段描述补充候选值示例或词典上下文，强化长尾字段识别。 | https://aclanthology.org/2022.acl-short.25/ |
+| Amacer 从少量高质量种子属性出发，既扩展已有属性类型的值，也自动发现新属性类型；适合用在 GLiNER2 固定 Schema 之外做“开放属性发现→人工审核→Schema 增量”的低标注成本流程。 | https://aclanthology.org/2023.acl-long.683/ |
+| GAVEL 在 2000 个商品类目、1000 多种属性上做多语言生成式属性值抽取，并通过 LLM 扩充训练数据且进行了线上 A/B 验证；适合参考 GLiNER2 大规模类目/属性覆盖、东南亚多语言适配和合成数据增强。 | https://aclanthology.org/2025.knowledgenlp-1.6/ |
+| ViOC-AG 只依赖商品图片做零样本属性值提取，并结合 OCR 与 LLM 对 OOD 属性值纠错；可作为 GLiNER2 文本品牌/型号/属性抽取的视觉补充，在标题缺失规格或包装上才出现型号时进行兜底。 | https://aclanthology.org/2025.naacl-industry.38/ |
+| 该研究用零样本/少样本提示从商品标题和描述中直接抽取属性-值对，重点考察对未见属性和值的泛化；适合拿来与 GLiNER2 动态 Schema 的零样本抽取做基准对照，并参考缺失字段与 OOD 评测设计。 | https://arxiv.org/abs/2306.14921 |
+| Smart-Shopper 的生产化 NER 流水线会先做品牌/商品词表归一化和模糊匹配，再抽取 brand、product、color、budget 等字段，示例能把拼写噪声下的 Samsung Galaxy A15 正确结构化；适合借鉴 GLiNER2 前后处理、品牌别名和型号纠错链路。 | https://github.com/AmineElAtrache/Smart-Shopper |
+| NVIDIA Retail Catalog Enrichment 直接输出包含 brand、model_or_variant、颜色、材质及商品详情的富 JSON，并把结果映射到商品协议 Schema；适合参考 GLiNER2 的结构化字段设计、多模态补充、字段证据校验和商品目录入库接口。 | https://github.com/NVIDIA-AI-Blueprints/Retail-Catalog-Enrichment |
