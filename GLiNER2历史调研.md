@@ -87,3 +87,7 @@ https://www.getcatalog.ai/blog/product-data-extraction
 https://productphilosophy.com/articles/llm-powered-catalog-enrichment
 https://trueparse.ai/blog/ai-powered-product-data-extraction-ecommerce
 https://www.scitepress.org/PublishedPapers/2019/80694/pdf/index.html
+https://github.com/fzp0424/EC-Guide-KDDUP-2024
+https://github.com/modelscope/AdaSeq/tree/master/examples/RaNER
+https://huggingface.co/NECOUDBFM/Jellyfish-8B
+https://www.datawebot.com/solutions/product-catalog-enrichment
