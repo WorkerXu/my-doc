@@ -294,3 +294,8 @@ https://github.com/DevAnimecx/dropwise
 https://github.com/browser-act/skills/blob/main/solutions/ecommerce/amazon-product-detail/SKILL.md
 https://github.com/pkp666/product-ai-listing-studio
 https://github.com/AlidaSoble/tecdoc-car-parts
+https://openai.com/index/wayfair/
+https://www.griddynamics.com/blog/g-star-ai-catalog-enrichment-case-study
+https://ficstar.medium.com/why-product-matching-is-the-hardest-part-of-competitive-pricing-programs-30a41393afb6
+https://helloretail.com/en/product-intelligence/
+https://www.applianceapi.com/features
