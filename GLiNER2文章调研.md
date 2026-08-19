@@ -188,3 +188,9 @@
 | Bright Data 的 Home Depot 样例数据把 product_name 与 model_number、manufacturer、SKU、dimensions 等结构化字段放在同一记录中；可直接生成“标题→品牌/制造商、型号、货号”对照样本，专项测试 GLiNER2 对字母数字混合型号和 SKU 边界的抽取稳定性。 | https://github.com/luminati-io/Home-Depot-dataset-sample |
 | Shopify Product Taxonomy 是开源商品分类与属性标准，覆盖 25+ 垂直领域并维护 categories、attributes、values 及跨 taxonomy 映射；适合给 GLiNER2 按类目动态生成字段 Schema，并对抽取后的属性名和值做标准化与约束校验。 | https://github.com/Shopify/product-taxonomy |
 | 该研究针对商品信息抽取提出“PLM 一次预测 + LLM 二次校验”的两阶段验证，并专门提升弱表达、低显著度字段的识别，同时支持本地部署；适合给 GLiNER2 的品牌、型号、规格等低置信度结果增加轻量复核层，减少漏抽和误抽。 | https://arxiv.org/abs/2607.26780 |
+| 该中文商品名细粒度抽取项目直接定义 brand、model、series、category、size、material、color 等字段，并给出真实商品名逐字段样例；非常适合拿来校准 GLiNER2 中文 Schema 的字段边界，尤其区分品牌、系列、款式和商品类目。 | https://github.com/hetonghui02/Fine-Granularity-extraction-of-product-name-information |
+| NER-Multilingual-Product 从 119 个供应方、67 万条英芬混合商品标题/描述中抽取 BRAND、SIZE、COLOR、VOLUME、WEIGHT 等字段，并把 NER 与正则组合；适合参考 GLiNER2 对品牌等语义字段与尺寸/单位等规则字段采用混合抽取和后处理。 | https://github.com/YuTian8328/NER-Multilingual-Product |
+| 该 Flipkart 电子商品 NER 项目直接覆盖 Brand、Model、Processor、OS、RAM、Disk、Dimension 等字段，并从结构化商品特征自动构造 span 训练数据；适合参考 GLiNER2 品牌/型号/规格伪标注生成和传统监督基线。 | https://github.com/mahathi-p/Classification_of_Products_using_NER |
+| AIWebscraper 从电子商品网页直接抽取 Brand、Model、Price、Availability、Condition、Category 等实体；适合参考 GLiNER2 与网页抓取层衔接后的字段 Schema，以及从商品详情页文本到结构化目录记录的端到端流程。 | https://github.com/TopreGroup/AIWebscraper |
+| OFBiz-NER 以可部署插件形式识别 brand、color、garment type/style、garment number、size 等商品字段，并兼顾中英文分词；适合参考 GLiNER2 商品抽取服务的业务系统集成，以及品牌/货号/尺码等固定字段的对照基线。 | https://github.com/YYWorks/OFBiz-NER |
+| Product_Info_Extractor 直接从原始商品名抽取 Brand、Core Name、Size，并把结果用于外部供应商清单与内部目录的商品匹配；适合验证 GLiNER2 的品牌/核心品名/规格抽取能否直接支撑同款匹配和目录对齐。 | https://github.com/Taha-azizi/Product_Info_Extractor |
