@@ -106,3 +106,7 @@ https://github.com/AbsoluteAnchor/alibaba-single-product-details-scraper
 https://github.com/commercetxt/commercetxt/blob/main/spec/README.md
 https://github.com/myselfshravan/third-eye
 https://github.com/fastino-ai/GLiNER2/blob/main/tutorial/10-lora_adapters.md
+https://github.com/rawford-ilderman/mobile-phone-specs
+https://github.com/omkarcloud/digikey-scraper
+https://github.com/Tjark-Kuehl/open-icecat
+https://github.com/Wijt/product-matching
