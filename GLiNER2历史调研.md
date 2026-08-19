@@ -71,3 +71,10 @@ https://arxiv.org/abs/2405.17533
 https://github.com/google-marketing-solutions/feedgen
 https://github.com/lightfeed/extractor
 https://github.com/shuttie/esci-s
+https://aclanthology.org/2026.eacl-industry.38/
+https://arxiv.org/abs/2601.15711
+https://arxiv.org/abs/2502.01555
+https://arxiv.org/abs/2606.23889
+https://arxiv.org/abs/2202.00217
+https://github.com/ninglab/eCeLLM
+https://github.com/suyan-liang/EshopInstruct
