@@ -411,3 +411,9 @@
 | 该项目直接从商品描述抽取 attribute-value pairs，并专门讨论 noisy descriptions 与 seed data generation 难题；适合用作 GLiNER2 在脏商品描述、少标注/弱监督场景下的传统基线和困难样本构造参考。 | https://github.com/vamsilnm/Attribute-Value-Extraction |
 | Ferret 是开源声明式数据抽取运行时，商品示例可从网页直接取得 brand/title/price，并支持按 Schema 对 HTML 做 AI 结构化抽取；适合放在 GLiNER2 前面做网页候选字段定位与统一输入，减少 DOM 噪声。 | https://ferretlang.org/ |
 | Match Data Studio 的工程实践会把“Samsung 65-inch 4K Smart TV QN65Q80C”拆成 brand、size、resolution、category、model number，再结合确定性规则、Embedding 和 LLM 做匹配确认；适合把 GLiNER2 抽出的品牌/型号/规格直接接到商品去重、实体匹配和低置信复核。 | https://match-data.studio/blog/deterministic-vs-probabilistic-matching/ |
+| Amazon Products 2023 将真实商品 title/description 与 brand、item_model_number、manufacturer、color、material、product_dimensions 等目录字段对齐，可直接构造 GLiNER2 品牌/型号/规格弱标注与跨类目回归集，重点验证字母数字型号和字段缺失场景。 | https://huggingface.co/datasets/smartcat/Amazon_Products_2023 |
+| Amazon Multimodal Product 数据把 Product Name、Model Number、About Product、Product Specification、Technical Details、Variants 与商品图片放在同一记录；适合验证 GLiNER2 从标题/描述/规格文本抽型号和属性，并与 VLM 图片补证方案做对照。 | https://huggingface.co/datasets/philschmid/amazon-product-descriptions-vlm |
+| test_prod_lab 直接提供“商品名→结构化 labels JSON”的对照样本，字段包含 brand、model_number、type、size、scale、color 等；很适合做 GLiNER2 动态 Schema 的快速冒烟测试、精确 JSON 回归和字段边界检查。 | https://huggingface.co/datasets/rocailler/test_prod_lab |
+| Chewy Scraper 从真实宠物商品页输出 manufacturer（品牌/制造商）、partNumber、描述、规格、库存与价格等结构化数据；适合作为 GLiNER2 商品页文本抽品牌/货号/规格的采集上游和对照真值，补充宠物用品垂直类目测试。 | https://github.com/jonmac422/chewy-scraper |
+| Nike Global Product Dataset 将商品记录与 model_number、brand_name 等核心标识字段对齐；可用于构造 GLiNER2 在运动鞋服短标题上的品牌/型号回归样本，并检查 Nike/Jordan 等品牌体系下型号边界与标准化。 | https://github.com/payal-kangsabanik/NIKE-DATA-ANALYSIS |
+| DSW 商品抽取项目直接采集真实鞋履 Listing 的 brand、名称、颜色、尺码、价格、图片等字段；适合用作 GLiNER2 鞋履类 brand/color/size 等属性抽取的网页数据源与结构化对照，并验证类目专属 Schema。 | https://github.com/getascraper/how-to-scrape-dsw/ |
