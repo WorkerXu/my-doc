@@ -425,3 +425,7 @@
 | WebMall-Interfaces 提供 91 个真实风格电商任务，其中包含按商品名或 model number 找特定商品、按精确技术规格筛选商品，并比较 RAG/MCP/NLWeb/HTML；适合把 GLiNER2 抽出的品牌/型号/规格接入检索链路做端到端任务级回归评测。 | https://github.com/wbsg-uni-mannheim/WebMall-Interfaces |
 | MeTNet 发布的 FEW-COMM 是中文电商少样本 NER 数据集，包含 66,165 条商家商品描述、140,936 个实体和 92 种由领域专家定义的商品属性类型（如材质、颜色、产地）；非常适合评估 GLiNER2 在新增类目/新增字段时的 few-shot 适配、中文长尾属性识别和动态 Schema 泛化。 | https://github.com/hccngu/MeTNet |
 | 该项目专门研究 NER 不完整标注，并公开工业电商 ecommerce 数据集；很适合处理商品品牌、型号、属性训练数据常见的漏标/弱标注问题，可用于构造 GLiNER2 的不完整标注鲁棒性基线和伪标注清洗方案。 | https://github.com/allanj/ner_incomplete_annotation |
+| Carrefour 抓取项目直接产出 sku、mpn、gtin、brand，并同时保留 color、size、weight、material、style 和扩展 attributes；很适合拿真实零售页构造 GLiNER2 的品牌/型号/标识符/规格联合回归集，并校验不同属性类型的结构化输出。 | https://github.com/TrophySecure/carrefour-scraper |
+| iHerb 商品列表抓取项目明确输出 product_part_no、product_brand_id、product_brand_name 与商品标题，可作为 GLiNER2 品牌与厂商料号/型号抽取的真实弱标注数据源，尤其适合评测品牌词和型号编码同时出现的短标题。 | https://github.com/AbsoluteAnchor/extract-iherb-product-listings-from-search |
+| 该 Home Depot GraphQL 抓取项目把 product name、brand、model number、SKU、product type 与类目路径一起结构化输出；适合构造 GLiNER2 的 brand/model/SKU 多字段对照集，并利用类目上下文检查型号和品牌抽取一致性。 | https://github.com/NewNautilus/home-depot-clearance-scraper |
+| Oxylabs 的电商类目抓取器支持按用户 Prompt 或 JSON Schema 抽取结构化商品数据；适合参考“网页采集→Schema 化字段定义→结构化结果”的前置层，把 brand/model/规格字段配置与 GLiNER2 动态 Schema 对齐。 | https://github.com/oxylabs/ecommerce-category-scraper |
