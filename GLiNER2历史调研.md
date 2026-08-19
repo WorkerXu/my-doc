@@ -148,3 +148,7 @@ https://doi.org/10.1145/3678610.3678619
 https://doi.org/10.1145/3556089.3556149
 https://github.com/grant-TraDA/named-entity-recognition-in-titles-of-e-commerce-products
 https://doi.org/10.13140/RG.2.2.11045.47842
+https://www.scitepress.org/PublishedPapers/2010/28743/pdf/index.html
+https://doi.org/10.1145/2857054
+https://doi.org/10.14778/1988776.1988777
+https://journals.sagepub.com/doi/10.3233/SW-180300

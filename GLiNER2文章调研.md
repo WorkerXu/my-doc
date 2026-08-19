@@ -303,3 +303,7 @@
 | Rakuten 的互联网规模商品匹配方案在标题/描述上做类目专属 NER 属性抽取，并用知识图谱字段定义、Snorkel 弱监督和持续训练支撑商品匹配；很适合参考 GLiNER2 的“类目 Schema→弱标注→属性抽取→同款匹配”生产链路。 | https://doi.org/10.1145/3556089.3556149 |
 | 该开源项目对应“电商商品标题 NER”硕士研究，围绕品牌及选定商品属性构建多语言数据与基准；适合拿来补充 GLiNER2 在英、波、德、西、法等多语言标题上的 brand/属性 span 评测和 few-shot 对照。 | https://github.com/grant-TraDA/named-entity-recognition-in-titles-of-e-commerce-products |
 | 该商品属性抽取研究明确覆盖 brand、size、weight、dimension 等字段，同时尝试用商品描述预测品牌并用无监督方法关联属性名和值；适合和 GLiNER2 对照品牌抽取、属性值配对及低标注数据场景。 | https://doi.org/10.13140/RG.2.2.11045.47842 |
+| 该工作从厂商官网端到端定位产品页面并自动抽取规格信息，目标是把分散网页规格直接整合进企业系统/网店；适合参考 GLiNER2 的“先定位商品正文/规格区→再按 brand、model、技术参数 Schema 抽取”的网页落地链路。 | https://www.scitepress.org/PublishedPapers/2010/28743/pdf/index.html |
+| 该研究从多个电商站点的商品描述页无监督抽取热门商品属性，并利用评论侧信息跨越页面与用户表达的词汇差异；适合补充 GLiNER2 固定 Schema 之外的属性发现、长尾字段候选生成和新类目冷启动。 | https://doi.org/10.1145/2857054 |
+| 该 VLDB 工作面向在线商品目录自动维护，从商家 offer 落地页抽取属性-值对并通过 Schema Reconciliation 消除不同来源字段噪声；适合参考 GLiNER2 抽取后的 supplier 字段归并、同义属性对齐和多来源目录入库。 | https://doi.org/10.14778/1988776.1988777 |
+| 该产品集成研究用网页中已有结构化商品数据作为弱监督，训练模型从非结构化商品描述抽取 attribute-value pairs，再用于商品匹配和分类；适合借鉴用现有 PIM/商城字段自动构造 GLiNER2 的 brand/model/规格伪标注并验证抽取对同款匹配的业务增益。 | https://journals.sagepub.com/doi/10.3233/SW-180300 |
