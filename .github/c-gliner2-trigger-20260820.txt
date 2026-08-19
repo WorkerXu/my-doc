@@ -1,1 +1,1 @@
-run c GLiNER2 append
+run c GLiNER2 append ref update
