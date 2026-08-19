@@ -1,0 +1,80 @@
+name: c GLiNER2 append once
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    if: github.event.head_commit.message == 'chore: run c GLiNER2 append'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Append new research rows idempotently
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          rows = [
+              (
+                  "Amazon 2026 工作把非结构化品牌知识库作为参照，用 LLM Agent 同时修复并匹配商品目录记录；适合接在 GLiNER2 的 brand/model span 抽取后做品牌实体归一、目录匹配和冲突校验，尤其能补强长尾品牌与脏目录场景。",
+                  "https://www.amazon.science/publications/using-brand-knowledge-bases-and-llm-agents-to-enhance-e-commerce-retailers-catalog-quality",
+              ),
+              (
+                  "Amazon 2026 的属性感知合成数据方法围绕商品属性保留、负例生成和属性移除构造可控训练样本，并在 MAVE 上达到接近真实数据训练的效果；适合为 GLiNER2 的 brand/model/规格字段批量生成难例、缺失字段和负样本，降低人工标注成本。",
+                  "https://www.amazon.science/publications/attribute-aware-controlled-product-generation-with-llms-for-e-commerce",
+              ),
+              (
+                  "Catalog Attribute Normalizer 直接接收 title、description 和 raw_attributes，输出受控字段名、规范化属性、来源 provenance 与 taxonomy 映射；适合把 GLiNER2 抽出的品牌/型号/尺寸/颜色/材质接到标准化、来源追踪和 PIM/Feed 入库层。",
+                  "https://github.com/ACJLabs/catalog-normalizer",
+              ),
+              (
+                  "CatalogRAG 会按 product type、文本相似度和品牌关系检索目录内完整样本，再预测缺失属性；适合给 GLiNER2 的低置信品牌、型号和属性增加同类商品证据召回与二次补全，并可直接参考多语言目录的检索增强方式。",
+                  "https://www.amazon.science/publications/catalograg-retrieval-guided-llm-prediction-for-multilingual-e-commerce-product-attributes",
+              ),
+              (
+                  "Amazon SIGIR 2026 的方案先从非结构化商品文本抽取类目感知的结构化属性，再构建可复用 attribute graph 服务搜索排序；适合把 GLiNER2 的 brand/model/规格抽取结果沉淀成结构化图谱，并用下游检索效果反向验证字段质量。",
+                  "https://www.amazon.science/publications/from-unstructured-to-structured-llm-guided-attribute-graphs-for-entity-search-and-ranking",
+              ),
+          ]
+
+          research_path = Path("GLiNER2文章调研.md")
+          history_path = Path("GLiNER2历史调研.md")
+          research = research_path.read_text(encoding="utf-8")
+          history = history_path.read_text(encoding="utf-8")
+          history_urls = {line.strip() for line in history.splitlines() if line.strip()}
+
+          added = 0
+          for reason, url in rows:
+              if url in history_urls:
+                  continue
+              if research and not research.endswith("\n"):
+                  research += "\n"
+              research += f"| {reason} | {url} |\n"
+              if history and not history.endswith("\n"):
+                  history += "\n"
+              history += url + "\n"
+              history_urls.add(url)
+              added += 1
+
+          if added:
+              research_path.write_text(research, encoding="utf-8")
+              history_path.write_text(history, encoding="utf-8")
+          print(f"added={added}")
+          PY
+          rm -f .github/workflows/c-gliner2-append-once-20260820.yml
+      - name: Commit append and cleanup workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add GLiNER2文章调研.md GLiNER2历史调研.md .github/workflows/c-gliner2-append-once-20260820.yml
+          if ! git diff --cached --quiet; then
+            git commit -m "docs: append c GLiNER2 research"
+            git push
+          fi
