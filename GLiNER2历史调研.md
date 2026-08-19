@@ -91,3 +91,7 @@ https://github.com/fzp0424/EC-Guide-KDDUP-2024
 https://github.com/modelscope/AdaSeq/tree/master/examples/RaNER
 https://huggingface.co/NECOUDBFM/Jellyfish-8B
 https://www.datawebot.com/solutions/product-catalog-enrichment
+https://github.com/iethes/product-taxonomy-extraction
+https://github.com/firecrawl/firecrawl/blob/main/examples/blog-articles/amazon-price-tracking/notebook.md
+https://scrapewithruno.com/blog/schema-design-ecommerce/
+https://www.bibliomed.org/?mno=243170

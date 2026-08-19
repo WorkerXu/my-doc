@@ -246,3 +246,7 @@
 | AdaSeq 的 RaNER 在电商 NER 上用“检索相似样本→联合编码/投票”增强领域实体识别；可迁移为 GLiNER2 的候选上下文层，为长尾品牌、型号和别名抽取提供相似商品证据。 | https://github.com/modelscope/AdaSeq/tree/master/examples/RaNER |
 | Jellyfish-8B 明确在 AE-110K、OA-Mine 商品属性值抽取基准上给出结果，可作为 GLiNER2 的生成式/数据处理中型基线，帮助比较动态 Schema 抽取与 LLM AVE 在精度、成本和结构化输出上的差异。 | https://huggingface.co/NECOUDBFM/Jellyfish-8B |
 | DataWeBot 的目录富化链路明确覆盖 brand、manufacturer、MPN/model number、技术规格、类目专属 Schema，并配套归一化、冲突消解和 QA；适合参考 GLiNER2 从抽取到 PIM/目录入库的工程字段契约与质量门禁。 | https://www.datawebot.com/solutions/product-catalog-enrichment |
+| Shopee TH/SG 的 Product Taxonomy Extraction 项目把品牌/商品体系归一、LLM 多模态字段抽取和 43 个类目的数据管道放在同一工程中；适合参考 GLiNER2 的“类目路由→brand/model/属性 Schema→抽取→品牌/商品规范化→数仓入库”完整落地链路。 | https://github.com/iethes/product-taxonomy-extraction |
+| Firecrawl 的 Amazon 商品案例用 Pydantic/JSON Schema 约束网页抽取并明确采集品牌等商品详情字段；适合放在 GLiNER2 前后作为网页正文获取与结构化 Schema 对照，尤其参考 PDP 批量采集、字段契约和可验证输出。 | https://github.com/firecrawl/firecrawl/blob/main/examples/blog-articles/amazon-price-tracking/notebook.md |
+| 这篇电商 Schema 设计指南专门讨论跨 Amazon、Shopify 等不同站点抽统一商品字段，并以 brand、SKU 等作为商品页基础字段；适合指导 GLiNER2 按商品详情页设计 brand/model/规格 Schema、处理字段缺失与跨站差异。 | https://scrapewithruno.com/blog/schema-design-ecommerce/ |
+| 该多模态电商数据富化研究用“规则手册 + 动态 Prompt”按商品类型确定应抽属性并输出指定结构，且规则式提示显著优于零样本；适合迁移到 GLiNER2 的类目专属 Schema、属性定义约束、图片补证和抽取一致性校验。 | https://www.bibliomed.org/?mno=243170 |
