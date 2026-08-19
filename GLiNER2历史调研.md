@@ -155,3 +155,8 @@ https://huggingface.co/haninebou/algerian-ner-ultimate
 https://github.com/browser-act/skills/blob/main/solutions/ecommerce/amazon-product-detail/SKILL.md
 https://huggingface.co/Dinesh-Kumar/gemma3-1b-finetuned-v3
 https://huggingface.co/jinchenliuljc/ecom_ner_model
+https://arxiv.org/abs/2607.14396
+https://arxiv.org/abs/2309.05920
+https://arxiv.org/abs/2508.01096
+https://www.sciencedirect.com/science/article/pii/S0950705126009391
+https://arxiv.org/abs/2308.16354
