@@ -238,3 +238,7 @@
 | KG-FLIP 直接利用商品属性 Schema 做电商多模态预训练，并已用于 Amazon Catalog 回填缺失属性；适合参考 GLiNER2 的类目字段 Schema 与图片表征结合，在文本缺失颜色、材质、款式等属性时做目录补全。 | https://aclanthology.org/2023.acl-industry.9/ |
 | Tab-Cleaner 在百万级 Amazon 商品目录上同时做“属性是否适用”和“属性值是否可信”的弱监督校验；适合接在 GLiNER2 抽取后，对 brand/model/规格等字段先判断类目适用性再做值校验，减少无关字段误抽和脏值入库。 | https://aclanthology.org/2023.acl-industry.18/ |
 | PV2TEA 专门把视觉信息补到已有文本属性抽取器中，并针对图文松耦合、背景噪声和文本弱标注偏差设计纠偏；适合保留 GLiNER2 文本主抽取链路，同时用商品图片补强颜色、形状、图案等字段并校验文本误导。 | https://aclanthology.org/2023.findings-acl.127/ |
+| 该 2026 实践文章把商品数据抽取目标明确为可直接消费的结构化商品记录，字段覆盖 brand、model number、variants、specs、identifiers，并强调抽取后的标准化与下游搜索/推荐/商城接口；适合用来定义 GLiNER2 品牌、型号、规格输出的数据契约和后处理边界。 | https://www.getcatalog.ai/blog/product-data-extraction |
+| 该完整落地指南把 LLM 目录富化拆成结构化属性抽取、taxonomy 映射/归一化、证据引用、幻觉控制和质量保障流水线；适合补充 GLiNER2 抽取后如何做字段约束、标准化、QA 与批量目录治理。 | https://productphilosophy.com/articles/llm-powered-catalog-enrichment |
+| 该 2026 商品数据抽取案例直接覆盖供应商 PDF、Excel、OCR 与文本等异构输入，并把结果转换为可校验的结构化数据；很适合拿来设计 GLiNER2 的多来源文本接入、品牌/型号识别、规格归一化和脏数据测试集。 | https://trueparse.ai/blog/ai-powered-product-data-extraction-ecommerce |
+| 该商品匹配研究把 brand、model id、product number、units 从非结构化商品标题中先行抽取，再用于跨商城商品去重/匹配；适合验证 GLiNER2 的品牌、型号、货号、单位字段能否直接提升同款识别，并参考字段抽取顺序与归一化策略。 | https://www.scitepress.org/PublishedPapers/2019/80694/pdf/index.html |
