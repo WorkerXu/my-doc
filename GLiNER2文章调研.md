@@ -475,3 +475,4 @@
 | Intershop Product Content Agent 会以 SKU、brand 等商品身份字段为入口，结合可信外部来源补齐结构化规格，并将结果映射回 PIM 商品数据模型；适合把 GLiNER2 作为确定性 brand/model/规格抽取器嵌入“抽取→缺失/冲突补证→PIM 回写”流程。 | https://tech.intershop.com/kb/index.php/Display/4829G4 |
 | SocialCrawl 的 Home Depot Product API 将真实商品页统一输出 title、brand、model number、UPC、描述和分组 specifications，且页面在 2026 年 8 月仍维护；适合持续构造 GLiNER2 品牌/型号/规格回归样本，并用商城结构化字段做字段级对照真值。 | https://www.socialcrawl.dev/platforms/home_depot/product |
 | Feedoptimise 的 Shopify 富化方案可直接从商品及变体图片抽取 brand、color、pattern、style 等属性，并对整店 Feed 做 AI 批量补全；适合在 GLiNER2 文本品牌/型号/属性主抽取之外增加图片侧证据，补齐视觉属性并做跨模态一致性校验。 | https://www.feedoptimise.com/integrations/sources/shopify |
+| Claro 2026 的商品数据证据链实践要求每个结构化属性都携带来源位置、原始片段、抽取方法/版本、归一化变换、置信度、校验与回写审计；很适合给 GLiNER2 的 brand/model/规格结果增加逐字段 provenance、低置信复核和安全写入 PIM/ERP 的生产门禁。 | https://getclaro.ai/resources/guides/why-ai-enriched-product-data-needs-evidence/ |
