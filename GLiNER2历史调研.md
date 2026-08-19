@@ -96,3 +96,8 @@ https://aclanthology.org/2026.findings-acl.1832/
 https://company.instacart.com/tech-innovation/scaling-catalog-attribute-extraction-with-multi-modal-llms
 https://sigir-ecom.github.io/eCom26Papers/paper_785.pdf
 https://sigir-ecom.github.io/eCom26Papers/paper_773.pdf
+https://arxiv.org/abs/2604.27410
+https://arxiv.org/abs/1803.11284
+https://aclanthology.org/D11-1144/
+https://doi.org/10.1007/978-981-95-3343-5_9
+https://doi.org/10.1007/978-981-95-3343-5_17
