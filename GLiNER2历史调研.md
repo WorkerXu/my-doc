@@ -269,3 +269,5 @@ https://shopgraph.dev/
 https://docs.datafiniti.co/docs/lookup-products-by-brand-and-model-number
 https://arxiv.org/abs/2509.01182
 https://github.com/wbsg-uni-mannheim/WebMall-Interfaces
+https://github.com/hccngu/MeTNet
+https://github.com/allanj/ner_incomplete_annotation

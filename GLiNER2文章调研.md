@@ -423,3 +423,5 @@
 | Datafiniti 的品牌+型号检索文档演示用 brand/manufacturer 与 manufacturerNumber 联合反查商品；适合把 GLiNER2 抽出的品牌+型号作为二阶段目录检索键，验证实体唯一性、处理品牌/制造商别名并辅助型号纠错。 | https://docs.datafiniti.co/docs/lookup-products-by-brand-and-model-number |
 | Q2K 针对跨平台 SKU 映射，把 brand、variant、specification、quantity 等差异拆成可核查问题，再通过联网证据与历史推理复用做判定；适合接在 GLiNER2 品牌/型号/规格抽取后做歧义消解、同款确认和低置信结果复核。 | https://arxiv.org/abs/2509.01182 |
 | WebMall-Interfaces 提供 91 个真实风格电商任务，其中包含按商品名或 model number 找特定商品、按精确技术规格筛选商品，并比较 RAG/MCP/NLWeb/HTML；适合把 GLiNER2 抽出的品牌/型号/规格接入检索链路做端到端任务级回归评测。 | https://github.com/wbsg-uni-mannheim/WebMall-Interfaces |
+| MeTNet 发布的 FEW-COMM 是中文电商少样本 NER 数据集，包含 66,165 条商家商品描述、140,936 个实体和 92 种由领域专家定义的商品属性类型（如材质、颜色、产地）；非常适合评估 GLiNER2 在新增类目/新增字段时的 few-shot 适配、中文长尾属性识别和动态 Schema 泛化。 | https://github.com/hccngu/MeTNet |
+| 该项目专门研究 NER 不完整标注，并公开工业电商 ecommerce 数据集；很适合处理商品品牌、型号、属性训练数据常见的漏标/弱标注问题，可用于构造 GLiNER2 的不完整标注鲁棒性基线和伪标注清洗方案。 | https://github.com/allanj/ner_incomplete_annotation |
