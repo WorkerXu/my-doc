@@ -284,3 +284,7 @@
 | GLiNER2 官方训练教程覆盖实体描述、JSONL 数据、验证集和完整 NER 微调流程；适合把品牌、型号、规格难例沉淀成电商训练集，并用字段描述拉开相似 Schema 的边界。 | https://github.com/fastino-ai/GLiNER2/blob/main/tutorial/9-training.md |
 | AWS Product Attribution and Personalization Guidance 用多模态 AI 从商品图片识别标准与上下文属性并映射到目录；适合在 GLiNER2 文本抽取缺少颜色、风格等字段时做视觉补证和类目属性补全。 | https://docs.aws.amazon.com/solutions/product-attribution-and-personalization-using-amazon-bedrock/ |
 | AWS 商品描述生成 Guidance 会先用计算机视觉和 NLP 分析商品图片并抽取相关属性，再生成目录内容；适合把 GLiNER2 作为文本主抽取器，并用图片侧属性作为缺失字段兜底和一致性校验。 | https://docs.aws.amazon.com/solutions/generating-product-descriptions-with-amazon-bedrock/index.html |
+| 该智能手机电商研究直接比较结构化规格表与非结构化商品标题的信息抽取，并围绕 Brand、Model、Color 等实体及其关系做 BERT 抽取；适合用来评估 GLiNER2 对品牌/型号/颜色 span 的边界，以及抽取后品牌-型号-属性组合的一致性。 | https://aclanthology.org/2021.stil-1.12/ |
+| 该中文电商 NER 研究把实体类型写成 MRC 问题，从商品描述中识别品牌与商品实体；和 GLiNER2 用自然语言 Schema 定义字段的方式很接近，适合参考中文 brand/商品实体字段描述、边界定位与少样本迁移。 | https://drpress.org/ojs/index.php/fcis/article/view/12817 |
+| 该研究专门从印尼电商商品标题联合抽取属性，结合词典、词表示与序列/联合建模处理 brand、商品名等字段；适合用作 GLiNER2 多语言短标题的传统基线，并设计品牌/品名与细粒度属性的联合 span 回归测试。 | https://www.scielo.org.mx/scielo.php?pid=S1405-55462018000401367&script=sci_arttext |
+| 该 NER 研究在电商数据集中直接使用 Brand、Product、Model 三类实体，并结合远程监督与跨域数据降低人工标注依赖；适合为 GLiNER2 的中文长尾品牌、新型号构造弱标注训练数据，并验证跨商城/跨域迁移。 | https://pmc.ncbi.nlm.nih.gov/articles/PMC9168158/ |
