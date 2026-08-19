@@ -30,24 +30,24 @@ jobs:
           url='https://www.amazon.science/publications/opentag-open-attribute-extraction-from-product-profiles'
           if ! grep -Fq "$url" "$article"; then
             cat >> "$article" <<'EOF'
-| OpenTag 原始工作把商品标题/描述中的开放词表属性值抽取建模为序列标注，并结合注意力与主动学习，在少量标注下发现训练中未见的新属性值；适合参考 GLiNER2 对长尾品牌、新型号、规格新值的开放抽取能力及低成本标注/难例采样策略。 | https://www.amazon.science/publications/opentag-open-attribute-extraction-from-product-profiles |
-EOF
+          | OpenTag 原始工作把商品标题/描述中的开放词表属性值抽取建模为序列标注，并结合注意力与主动学习，在少量标注下发现训练中未见的新属性值；适合参考 GLiNER2 对长尾品牌、新型号、规格新值的开放抽取能力及低成本标注/难例采样策略。 | https://www.amazon.science/publications/opentag-open-attribute-extraction-from-product-profiles |
+          EOF
           fi
           grep -Fqx "$url" "$history" || printf '%s\n' "$url" >> "$history"
 
           url='https://arxiv.org/abs/2302.12139'
           if ! grep -Fq "$url" "$article"; then
             cat >> "$article" <<'EOF'
-| 该研究从非结构化多语言商品网页中抽取细粒度、标准化商品属性，并验证模型可跨网店、跨语言迁移，同时支持商品 taxonomy 对齐；适合评估 GLiNER2 的品牌/型号/规格字段在跨站点、多语言目录中的泛化，以及抽取后字段标准化与类目映射。 | https://arxiv.org/abs/2302.12139 |
-EOF
+          | 该研究从非结构化多语言商品网页中抽取细粒度、标准化商品属性，并验证模型可跨网店、跨语言迁移，同时支持商品 taxonomy 对齐；适合评估 GLiNER2 的品牌/型号/规格字段在跨站点、多语言目录中的泛化，以及抽取后字段标准化与类目映射。 | https://arxiv.org/abs/2302.12139 |
+          EOF
           fi
           grep -Fqx "$url" "$history" || printf '%s\n' "$url" >> "$history"
 
           url='https://github.com/elcuervo/gliner'
           if ! grep -Fq "$url" "$article"; then
             cat >> "$article" <<'EOF'
-| 这个 Ruby/ONNX 的 GLiNER2 推理封装直接给出 iPhone 商品结构化抽取示例，可一次得到完整型号、storage、processor、price 等字段，并支持 INT8 ONNX；适合参考 GLiNER2 商品品牌/型号/规格服务的跨语言封装、本地低成本部署和固定 Schema 输出。 | https://github.com/elcuervo/gliner |
-EOF
+          | 这个 Ruby/ONNX 的 GLiNER2 推理封装直接给出 iPhone 商品结构化抽取示例，可一次得到完整型号、storage、processor、price 等字段，并支持 INT8 ONNX；适合参考 GLiNER2 商品品牌/型号/规格服务的跨语言封装、本地低成本部署和固定 Schema 输出。 | https://github.com/elcuervo/gliner |
+          EOF
           fi
           grep -Fqx "$url" "$history" || printf '%s\n' "$url" >> "$history"
 
@@ -58,5 +58,5 @@ EOF
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -- "$article" "$history"
-          git commit -m 'docs: append new GLiNER2 product extraction research'
+          git commit -m 'a 追加本轮 GLiNER2 文章调研 1644'
           git push origin HEAD:main
