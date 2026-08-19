@@ -59,3 +59,9 @@ https://aclanthology.org/2025.naacl-industry.38/
 https://arxiv.org/abs/2306.14921
 https://github.com/AmineElAtrache/Smart-Shopper
 https://github.com/NVIDIA-AI-Blueprints/Retail-Catalog-Enrichment
+https://shopify.engineering/leveraging-multimodal-llms
+https://shopify.engineering/catalog-clustering
+https://arxiv.org/abs/2606.04909
+https://arxiv.org/abs/2403.02130
+https://arxiv.org/abs/2601.04200
+https://aclanthology.org/2025.emnlp-industry.63/
