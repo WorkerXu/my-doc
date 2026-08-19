@@ -90,3 +90,8 @@
 | KEAF 针对新商品、新属性只有少量样本的场景，利用属性描述和类目信息做多标签 few-shot 属性值抽取；适合用于 GLiNER2 新类目、新品牌/型号字段的低资源基线，并启发更有效的 Schema 字段描述。 | https://arxiv.org/abs/2308.08413 |
 | AE-smnsMLC 只需要商品级属性值弱标注、不要求值在文本中的位置，并通过语义匹配与困难负标签采样区分相似属性值；适合为 GLiNER2 的型号、容量、尺寸等易混淆字段构造 hard negatives，降低人工 span 标注成本。 | https://arxiv.org/abs/2310.07137 |
 | 该跨类目多任务属性抽取研究会自动学习不同商品类目间的属性相似度，并提升低资源字段效果；适合参考 GLiNER2 多类目 Schema 的共享/隔离策略，把相似品牌、材质、规格字段经验迁移到长尾类目。 | https://aclanthology.org/2021.ecnlp-1.10/ |
+| SynthAVE 面向大规模电商属性值抽取，构建覆盖 229 个商品类型、792 个属性、4 种语言的人审基准，并用多 LLM 投票自动质检合成标签；适合为 GLiNER2 的品牌/型号/规格字段批量构造训练集、回归集和低成本质量校验闭环。 | https://arxiv.org/abs/2607.07469 |
+| HPD 专门优化“同一商品一次抽多个属性值”的推理吞吐，利用属性值之间的条件独立性并行生成，最高可将 AVE 推理时间和成本降低 13.8 倍；适合为 GLiNER2 大 Schema 的 brand/model/规格批量抽取设计并发、缓存和压测基线。 | https://aclanthology.org/2026.findings-acl.1832/ |
+| Instacart 的 PARSE 是已覆盖百万级商品的自助式多模态属性抽取平台，按属性配置名称/类型/定义/样例，结合文本、图片、置信度自验证和低置信度人工复核；其架构与 GLiNER2 动态 Schema 落地非常贴近，可直接参考版本化配置、质量门禁和成本分层。 | https://company.instacart.com/tech-innovation/scaling-catalog-attribute-extraction-with-multi-modal-llms |
+| Amazon Catalog AI 的 CascadeAgent 在生产级目录中自动生成和维护 27,000+ 个“商品类型-属性”专属指令，并用失败样本持续改写属性定义、取值约束与 abstention 规则；非常适合迁移到 GLiNER2，自动优化 brand/model/规格等 Schema 描述并按字段独立迭代。 | https://sigir-ecom.github.io/eCom26Papers/paper_785.pdf |
+| Amazon 的该方案面向千级商品类型和百余视觉属性，用 CLIP 集成自动生成合成标签，并通过按类置信度拒绝阈值把准确率控制在 90%+；适合给 GLiNER2 文本抽取补充颜色、材质、款式等视觉属性训练数据，并设计“低置信度不入库”质量门禁。 | https://sigir-ecom.github.io/eCom26Papers/paper_773.pdf |
