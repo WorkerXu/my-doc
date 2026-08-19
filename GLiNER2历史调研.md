@@ -125,3 +125,8 @@ https://www.amazon.science/publications/queaco-borrowing-treasures-from-weakly-l
 https://ojs.aaai.org/index.php/AAAI/article/view/17773
 https://www.amazon.science/publications/pave-lazy-mdp-based-ensemble-to-improve-recall-of-product-attribute-extraction-models
 https://aclanthology.org/2023.findings-emnlp.542/
+https://aclanthology.org/2026.findings-acl.704/
+https://aclanthology.org/2026.acl-industry.41/
+https://arxiv.org/abs/2506.21585
+https://github.com/alibaba-multimodal-industrial-ai/IndustryBench-MIPU
+https://github.com/upsidelab/enthusiast
