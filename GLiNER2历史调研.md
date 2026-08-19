@@ -179,3 +179,7 @@ https://research.google/pubs/learning-transferable-node-representations-for-attr
 https://medium.com/meesho-tech/we-automated-attribute-tagging-using-deep-learning-models-part-1-b5bc455d2305
 https://www.shopify.com/enterprise/blog/product-data-enrichment-ecommerce
 https://huggingface.co/datasets/Borise/CaptionQA
+https://kaufland-ecommerce.com/blog/developing-a-large-scale-attribute-extractor-for-e-commerce/
+https://engineering.zalando.com/posts/2024/09/content-creation-copilot-ai-assited-product-onboarding.html
+https://developer.ebay.com/api-docs/sell/static/inventory/matching-products.html
+https://github.com/AitoDotAI/aito-ecommerce-demo
