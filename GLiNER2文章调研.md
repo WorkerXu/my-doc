@@ -327,3 +327,9 @@
 | BlackFalconData 的 eBay Scraper 深度模式对真实 Listing 固定输出 brand、model、MPN、EAN 和完整 itemSpecifics；适合持续采集 GLiNER2 品牌/型号/属性回归样本，并用商城结构化字段做伪标签或抽取结果一致性校验。 | https://github.com/BlackFalconData-org/ebay-scraper |
 | Basalam 的 product-catalog-generator 提供电商商品专用 LLM/VLM 微调代码、合成数据集和模型，直接从商品数据推断 product type 与 attributes；适合对照 GLiNER2 的类目路由、动态 Schema、多字段抽取和文本/图片联合富化方案。 | https://github.com/basalam/product-catalog-generator |
 | 这篇电商目录案例从商品名/描述自动推断 brand、size、organic 等属性，并进一步做新品牌发现与实体归一；和 GLiNER2 的“字段抽取→品牌 taxonomy 扩充→标准化入库”链路高度吻合，适合参考质量校验与实体解析设计。 | https://www.rohan-paul.com/p/ml-case-study-interview-question-861 |
+| Constructor 的生产级属性富化实践直接比较正则、NER 与 LLM 的文本方案，NER 示例覆盖品牌、商品名、尺码、颜色、材质等实体；适合参考 GLiNER2 作为通用文本主抽取器，并按字段搭配规则校验与 LLM 难例兜底。 | https://medium.com/constructor-engineering/attribute-enrichment-under-the-hood-acd10b8cf7a7 |
+| Semantics3 的 Text Attribute Extraction 已把非结构化商品标题/描述之外的用户问答转成结构化属性，示例覆盖防水、年龄、表盘尺寸、数量、材质等；适合让 GLiNER2 将 Q&A/评论作为补充证据源，补齐缺失规格并做跨来源一致性校验。 | https://medium.com/datascience-semantics3/introducing-attribute-extraction-from-user-generated-content-315852e3b567 |
+| Google 的 LANTERN 把网页属性抽取建模为 DOM 节点标注，并验证跨领域训练数据能提升新站点抽取；适合放在 GLiNER2 前面做商品页候选节点定位，把标题、描述、规格区域降噪后再按 brand/model/属性 Schema 做语义抽取。 | https://research.google/pubs/learning-transferable-node-representations-for-attribute-extraction-from-web-documents/ |
+| Meesho 的生产实践针对卖家属性缺失、错误 taxonomy 和数千商品类目自动补全商品属性，并将模型结果直接接入上架流程；适合参考 GLiNER2 的“类目路由→属性 Schema→自动抽取→质量检查”规模化工程设计，并用视觉模型补文本不可见字段。 | https://medium.com/meesho-tech/we-automated-attribute-tagging-using-deep-learning-models-part-1-b5bc455d2305 |
+| Shopify 2026 商品数据富化指南明确以供应商 SKU、model number、尺寸等原始数据为起点，再经过清洗、单位/类目标准化与技术属性补全形成可消费目录；适合定义 GLiNER2 抽取后的 brand/model/规格标准化、缺失字段治理和 PIM/商城入库边界。 | https://www.shopify.com/enterprise/blog/product-data-enrichment-ecommerce |
+| CaptionQA 的电商子集包含真实商品页面/图片上的品牌、型号/型号编号、颜色、尺码、材质与规格问答，可直接构造 GLiNER2 + OCR/VLM 组合链路的多模态回归集，重点验证文本缺失时的品牌/型号补证与属性一致性。 | https://huggingface.co/datasets/Borise/CaptionQA |
