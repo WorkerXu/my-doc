@@ -1,0 +1,71 @@
+name: a append gliner2 research 20260819 2335
+
+on:
+  push:
+    paths:
+      - '.github/workflows/a-append-gliner2-research-20260819-2335.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Append a GLiNER2 research rows
+        shell: bash
+        run: |
+          set -e
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+          for attempt in 1 2 3; do
+            git fetch origin main
+            git reset --hard origin/main
+
+            python - <<'PY'
+          from pathlib import Path
+
+          main = Path('GLiNER2文章调研.md')
+          history = Path('GLiNER2历史调研.md')
+          entries = [
+              ('Amazon Search 的端到端系统从短商品查询中提取 brand、color、product type 等属性并用于属性推荐；适合评估 GLiNER2 在短查询品牌/属性 span 抽取后的下游用法，并参考属性缺失时的推荐补全链路。', 'https://www.amazon.science/publications/query-attribute-recommendation-at-amazon-search'),
+              ('CMA-CLIP 在 Amazon 商品属性抽取任务上融合文本与图片并学习细粒度跨模态对齐，还能抑制无关模态；适合作为 GLiNER2 文本品牌/型号/规格抽取的图片补证和多模态鲁棒性参考。', 'https://www.amazon.science/publications/cma-clip-cross-modality-attention-clip-for-text-image-classification'),
+              ('PGE 面向商品图谱中的自由文本属性值和噪声三元组做错误检测，联合文本与图结构验证字段可靠性；适合接在 GLiNER2 抽取后，对 brand/model/规格等入库结果做图谱级一致性校验和异常拦截。', 'https://www.amazon.science/publications/pge-robust-product-graph-embedding-learning-for-error-detection'),
+              ('该 Amazon 工作在商品变体检索中直接用 NLP 抽取 pack size，并据此校验同款不同包装的价格一致性；适合专项验证 GLiNER2 对包装数量、容量、单位等规格字段的抽取与变体归并业务价值。', 'https://www.amazon.science/publications/study-on-price-consistency-regarding-pack-size-via-product-variant-retrieval-and-pack-size-extraction'),
+              ('Amazon 的文本属性校验方法会把 brand、product name、functionality、flavor 等短文本值与商品 profile 交叉验证，并专门面向少标注、多类目场景；适合放在 GLiNER2 抽取后做品牌/型号/属性值的二次真实性校验和低置信度拦截。', 'https://www.amazon.science/publications/automatic-validation-of-textual-attribute-values-in-e-commerce-catalog-by-learning-with-limited-labeled-data'),
+          ]
+
+          main_text = main.read_text(encoding='utf-8')
+          hist_text = history.read_text(encoding='utf-8')
+          rows = [(reason, url) for reason, url in entries if url not in main_text and url not in hist_text]
+
+          if rows:
+              with main.open('a', encoding='utf-8') as f:
+                  if main_text and not main_text.endswith('\n'):
+                      f.write('\n')
+                  for reason, url in rows:
+                      f.write(f'| {reason} | {url} |\n')
+              with history.open('a', encoding='utf-8') as f:
+                  if hist_text and not hist_text.endswith('\n'):
+                      f.write('\n')
+                  for _, url in rows:
+                      f.write(f'{url}\n')
+          PY
+
+            if git diff --quiet -- 'GLiNER2文章调研.md' 'GLiNER2历史调研.md'; then
+              exit 0
+            fi
+
+            git add 'GLiNER2文章调研.md' 'GLiNER2历史调研.md'
+            git commit -m 'a 追加本轮 GLiNER2 文章调研 2335'
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            sleep 2
+          done
+
+          exit 1
