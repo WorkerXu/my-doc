@@ -1,22 +1,22 @@
-name: GLiNER2 research append temp
+name: GLiNER2 Research Append Temp
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
+    paths:
+      - '.github/workflows/gliner2-research-append-temp.yml'
 
 permissions:
   contents: write
 
 jobs:
-  append:
-    if: github.event.head_commit.message == 'trigger: append GLiNER2 research'
+  append-research:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Append new GLiNER2 research
+      - name: Append deduplicated GLiNER2 research entries
         shell: bash
         run: |
           python - <<'PY'
@@ -24,7 +24,6 @@ jobs:
 
           article_path = Path('GLiNER2文章调研.md')
           history_path = Path('GLiNER2历史调研.md')
-
           rows = [
               ('该研究针对京东中文商品标题中的大量专业属性词和非规范短文本，用标签语义与多粒度上下文提升实体边界识别；适合参考 GLiNER2 中文 brand/model/规格 Schema 的字段描述、相似字段区分和短标题回归测试。', 'https://doi.org/10.1111/coin.12654'),
               ('该 2025 电商实体抽取研究用 BERT-BiLSTM-CRF 处理复杂、非标准化商品描述，并基于真实任务自建数据验证高精度实体抽取；适合作为 GLiNER2 商品文本 span 抽取的监督基线及脏文本难例对照。', 'https://doi.org/10.1007/s11227-025-07035-x'),
@@ -52,9 +51,13 @@ jobs:
                   existing.add(url)
           history_path.write_text(history, encoding='utf-8')
           PY
+          rm -f .gliner2-research-trigger-temp .github/workflows/gliner2-research-append-temp.yml
+      - name: Commit research updates
+        shell: bash
+        run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add 'GLiNER2文章调研.md' 'GLiNER2历史调研.md'
+          git add -A
           if git diff --cached --quiet; then
             exit 0
           fi
