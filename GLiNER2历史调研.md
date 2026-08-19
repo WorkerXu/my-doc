@@ -194,3 +194,8 @@ https://github.com/ixuejiaozhao/Alibaba-Custermers-Interaction-Dataset
 https://www.getcatalog.ai/blog/product-data-enrichment-ai-commerce
 https://productlasso.com/en/blog/product-data-enrichment-2026
 https://github.com/fastino-ai/GLiNER2/blob/main/docs/boundary_baseline.md
+https://www.amazon.science/publications/query-attribute-recommendation-at-amazon-search
+https://www.amazon.science/publications/cma-clip-cross-modality-attention-clip-for-text-image-classification
+https://www.amazon.science/publications/pge-robust-product-graph-embedding-learning-for-error-detection
+https://www.amazon.science/publications/study-on-price-consistency-regarding-pack-size-via-product-variant-retrieval-and-pack-size-extraction
+https://www.amazon.science/publications/automatic-validation-of-textual-attribute-values-in-e-commerce-catalog-by-learning-with-limited-labeled-data
