@@ -1,0 +1,49 @@
+name: One-time GLiNER2 research append
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/gliner2-research-append-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    if: github.event.head_commit.message == 'Add one-time GLiNER2 research append workflow'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Append unique research and remove one-time workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          article='GLiNER2文章调研.md'
+          history='GLiNER2历史调研.md'
+
+          append_row() {
+            url="$1"
+            row="$2"
+            if ! grep -Fq "$url" "$article"; then
+              printf '%s\n' "$row" >> "$article"
+            fi
+            if ! grep -Fxq "$url" "$history"; then
+              printf '%s\n' "$url" >> "$history"
+            fi
+          }
+
+          append_row 'https://github.com/basalam/product-catalog-generator' '| Basalam 的 product-catalog-generator 提供电商商品专用 LLM/VLM 微调代码、合成数据集和模型，直接从商品数据推断 product type 与 attributes；适合对照 GLiNER2 的类目路由、动态 Schema、多字段抽取和文本/图片联合富化方案。 | https://github.com/basalam/product-catalog-generator |'
+          append_row 'https://www.rohan-paul.com/p/ml-case-study-interview-question-861' '| 这篇电商目录案例从商品名/描述自动推断 brand、size、organic 等属性，并进一步做新品牌发现与实体归一；和 GLiNER2 的“字段抽取→品牌 taxonomy 扩充→标准化入库”链路高度吻合，适合参考质量校验与实体解析设计。 | https://www.rohan-paul.com/p/ml-case-study-interview-question-861 |'
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm '.github/workflows/gliner2-research-append-once.yml'
+          git add "$article" "$history"
+          git commit -m 'Append new GLiNER2 product extraction research'
+          git pull --rebase origin main
+          git push origin HEAD:main
