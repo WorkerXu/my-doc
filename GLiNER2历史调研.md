@@ -263,3 +263,9 @@ https://huggingface.co/datasets/rocailler/test_prod_lab
 https://github.com/jonmac422/chewy-scraper
 https://github.com/payal-kangsabanik/NIKE-DATA-ANALYSIS
 https://github.com/getascraper/how-to-scrape-dsw/
+https://github.com/LuciformResearch/ragforge-core/blob/main/services/gliner_service/README.md
+https://github.com/fastino-ai/GLiNER2/blob/main/tutorial/11-adapter_switching.md
+https://shopgraph.dev/
+https://docs.datafiniti.co/docs/lookup-products-by-brand-and-model-number
+https://arxiv.org/abs/2509.01182
+https://github.com/wbsg-uni-mannheim/WebMall-Interfaces
