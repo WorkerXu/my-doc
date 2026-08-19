@@ -36,3 +36,13 @@
 | SANTA 专门解决电商文本属性值规范化，可把同义缩写和不同表述映射到统一 canonical value；适合接在 GLiNER2 抽取之后，对型号别名、系统版本、尺寸单位等字段做标准化。 | https://aclanthology.org/2021.ecnlp-1.12/ |
 | 该论文让模型从商品文本一次生成一组属性-值对，并专门处理未见值、多值属性与 canonicalized values；适合对照 GLiNER2 结构化多字段输出及属性值归一化的一体化方案。 | https://aclanthology.org/2023.findings-acl.413/ |
 | MixPAVE 聚焦新商品属性只有少量标注数据时的属性值抽取，通过混合 Prompt Tuning 提升 few-shot 能力；适合指导 GLiNER2 在新增类目、新增品牌/型号字段时的小样本评测和快速适配。 | https://aclanthology.org/2023.findings-acl.633/ |
+| 该项目同时提供 BERT NER、商品图片 OCR 与类目专属词表，并用文本/图片结果交叉校验属性；适合拿来设计 GLiNER2 的“类目约束 Schema + OCR 补充 + brand/color/size 等字段一致性校验”落地链路。 | https://github.com/rishav771/Product-Attribute-Extraction |
+| productner 给出了完整的“商品类目分类→类目特定属性 NER”流水线，并用 Amazon 商品数据训练品牌识别；可直接参考在调用 GLiNER2 前先路由商品类目，再加载对应 brand/model/规格字段集合，减少大 Schema 干扰。 | https://github.com/etano/productner |
+| 该项目将印尼电商商品标题中的 16 类属性抽取建模为 BERT Token Classification，并包含数据预处理和训练代码；适合用作 GLiNER2 在多语言短标题、多属性 span 抽取上的基线与迁移评测。 | https://github.com/mhilmiasyrofi/product-attribute-extraction |
+| 这个轻量电商 NER 模型直接抽取 PRODUCT、BRAND、PRICE、QUANTITY，示例里包含 Samsung Galaxy 型号、RAM 和存储容量；很适合做 GLiNER2 品牌/型号/容量等核心字段的快速对照基线和回归测试。 | https://huggingface.co/MuneebAbro/ecommerce-ner-model |
+| AttriSage 用商品与属性关系图配合图神经网络做属性值抽取，重点提升复杂属性关联下的识别；适合在 GLiNER2 抽取后利用目录图关系校验品牌、型号与规格组合是否合理。 | https://aclanthology.org/2024.eacl-srw.8/ |
+| CoMave 通过多尺度 Masking 和困难负样本对比学习区分高度相似的细粒度属性；适合针对 GLiNER2 容易混淆的型号、系列、容量、尺寸等近邻字段设计困难样本与专项评测。 | https://aclanthology.org/2023.findings-acl.373/ |
+| 该研究联合预测商品属性类型并从文本中抽取属性值，同时引入商品图片信息；适合参考“先确定当前商品应有哪些字段，再抽具体值”的设计，并补足 GLiNER2 仅靠文本时的缺失属性。 | https://aclanthology.org/2020.emnlp-main.166/ |
+| 这套 Walmart 生产方案结合 BERT、CRF、类目-属性关系纠错和 LLM 辅助标注，并进行了线上部署验证；适合借鉴 GLiNER2 的类目约束、合成/弱标注数据扩充及错误结果二次纠偏。 | https://arxiv.org/abs/2312.06684 |
+| 该大规模多模态方案用单模型覆盖数千个“商品类型-属性”组合，支持零样本属性和值在文本缺失时的预测，并采用远程监督降低标注成本；适合参考 GLiNER2 大 Schema 分层、长尾属性扩展和缺失字段补充策略。 | https://arxiv.org/abs/2306.00379 |
+| LLM-Ensemble 在 Walmart 商品属性值抽取中通过加权集成多个模型并已用于生产；可作为 GLiNER2 落地后的高价值字段复核层，把 GLiNER2 与其他抽取器/LLM 的结果做置信度融合，降低品牌、型号冲突。 | https://arxiv.org/abs/2403.00863 |
