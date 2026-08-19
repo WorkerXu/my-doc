@@ -345,3 +345,6 @@
 | Linkfox 的 Product Title Analysis Skill 会把商品标题按 brand、material、color 等字段做结构化拆解与关键词统计；适合对照 GLiNER2 的标题级字段 Schema、批处理输出以及字段聚合分析。 | https://github.com/linkfox-ai/linkfox-skills/blob/main/skills/linkfox-product-title-analyze/SKILL.md |
 | AskPoly 将不同来源的商品引用统一解析到 canonical `brand|family|model` 键；适合接在 GLiNER2 的 brand/model 抽取之后做品牌-系列-型号归一、同款聚合和实体消歧。 | https://github.com/ask-poly/askpoly |
 | Alibaba CIC 含 189 万级淘宝服饰交互记录，每条都带商品标题和由服饰专家人工标注的属性集合；适合构造 GLiNER2 中文商品属性回归集，验证真实标题噪声下的类目属性覆盖与抽取稳定性。 | https://github.com/ixuejiaozhao/Alibaba-Custermers-Interaction-Dataset |
+| Catalog 的 2026 指南把商品数据富化拆成多源采集、字段抽取、类目/单位/变体归一，并强调抽取结果要按类目定义且可追溯来源；适合 GLiNER2 从供应商页面、PDF、Feed 中抽 brand/model/规格后，统一做证据留存与标准化再入库。 | https://www.getcatalog.ai/blog/product-data-enrichment-ai-commerce |
+| Lasso 的 2026 商品数据富化指南从供应商 SKU、model number 等原始目录字段出发，强调优先补齐高价值结构化属性并统一数据格式；适合为 GLiNER2 设计 brand/model/SKU/规格字段优先级、清洗规则和分阶段目录治理策略。 | https://productlasso.com/en/blog/product-data-enrichment-2026 |
+| GLiNER2 官方 Boundary proposer 基线显示候选组装重写后典型 CPU B=8 场景达到 8.36× 加速，并保留随机一致性、容量压力等回归检查；适合把商品 brand/model/长规格 span 抽取纳入生产吞吐压测和性能回归门禁。 | https://github.com/fastino-ai/GLiNER2/blob/main/docs/boundary_baseline.md |
