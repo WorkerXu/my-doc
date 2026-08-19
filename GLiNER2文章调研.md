@@ -401,3 +401,9 @@
 | Octoparse 的 Amazon Details Scraper 给出可直接落地的商品字段契约，统一输出 Brand、Manufacturer Part Number、Item Model Number、UPC、规格及 color/size 变体；适合用这些页面结构化字段作为 GLiNER2 品牌/型号/规格抽取的对照真值和跨站回归样本。 | https://www.octoparse.com/template/amazon-details-scraper |
 | Hiflylabs 用 BigQuery + 多模态 AI 批量校验商品标题与图片，对 brand、size、model 缺失/冲突判 MISMATCH，并输出置信度和原因；适合接在 GLiNER2 后做品牌/型号/规格的图文一致性校验与低置信度人工复核。 | https://hiflylabs.com/blog/2025/9/23/validating-ecommerce-products-bigquery-multimodal-ai |
 | SIGIR eCom 的商品标题研究把短标题生成直接建模为多类 NER，显式从商品标题抽 BRAND、FUNCTION、VARIATION、SIZE、COUNT 并用 BIO 标注训练；适合用作 GLiNER2 短标题多字段 span 抽取的传统基线和字段边界回归集设计参考。 | https://sigir-ecom.github.io/ecom2019/ecom19Papers/paper36.pdf |
+| Knowledgator 的电商查询解析 Cookbook 直接用 GLiNER 按 product_name、brand、category、color 等电商标签做零样本实体抽取；适合直接参考 GLiNER/GLiNER2 在商品搜索词中的 Schema 设计、字段解析和查询结构化落地。 | https://docs.knowledgator.com/docs/cookbooks/enterprise-search-parsing/index.html |
+| 该实践把 GLiNER 部署成 AWS SageMaker NER REST API，并以 Brand、Product 等标签做在线抽取；适合参考 GLiNER2 品牌/商品字段服务化、API 封装、云端推理和生产部署方式。 | https://dimitarmitkov.com/blog/ner-rest-api/ |
+| wdc-pave-ave 将商品标题/描述与 gold_json 对齐，类目字段直接包含 Brand、Model Number、Manufacturer Stock Number 等；很适合构建 GLiNER2 品牌/型号/货号/规格的结构化回归集，并逐字段评测缺失值。 | https://huggingface.co/datasets/siavashsaki/wdc-pave-ave |
+| 该 Amazon 服饰鞋履珠宝数据集同时提供商品文本与 brand、manufacturer、item_model_number、color、material、size 等目录字段；适合批量生成 GLiNER2 的真实商品品牌/型号/属性弱标签和跨类目回归样本。 | https://huggingface.co/datasets/smartcat/Amazon_Clothing_Shoes_and_Jewelry_2023 |
+| ScrapeGraphAI 的商品抽取提示工程指南把标题解析目标明确为 brand + model + key spec，并强调结构化输出；适合用作 GLiNER2 Schema 字段定义、网页商品文本清洗和 LLM 对照基线的工程参考。 | https://scrapegraphai.com/blog/prompt-engineering-guide |
+| Width.ai 的商品匹配实践把 brand、model number、size、condition、color 等抽取字段作为同款匹配信号，并结合标题信息抽取；适合验证 GLiNER2 抽出的品牌/型号/属性能否直接提升商品去重、归并和跨站匹配。 | https://www.width.ai/post/product-matching-in-ecommerce |
