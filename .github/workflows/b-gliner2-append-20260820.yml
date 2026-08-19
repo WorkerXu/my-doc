@@ -1,0 +1,67 @@
+name: b-gliner2-append-20260820
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/b-gliner2-append-20260820.yml
+
+permissions:
+  contents: write
+
+jobs:
+  append-research:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Append deduplicated GLiNER2 research
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          rows = [
+              (
+                  "https://pypi.org/project/product-tagger/",
+                  "| product_tagger 专门把电商商品标题拆成核心商品词、brand 和描述性修饰词，可作为 GLiNER2 的轻量标题解析基线，尤其适合对照品牌、商品类型与颜色/性别/材质等修饰属性的边界切分。 | https://pypi.org/project/product-tagger/ |",
+              ),
+              (
+                  "https://github.com/haitaomao/amazon-m2",
+                  "| Amazon-M2 的多语言商品记录同时提供 title、brand、colour、description 等结构化字段，覆盖英语、德语、日语及法语、意大利语、西班牙语；可将目录字段转成弱标签，构建 GLiNER2 多语言品牌/颜色抽取与跨语言泛化回归集。 | https://github.com/haitaomao/amazon-m2 |",
+              ),
+              (
+                  "https://github.com/ChocoData-com/amazon-product-scraper",
+                  "| ChocoData 的 Amazon 商品抓取项目提供当前可复现的真实 PDP 结构化样本，输出 title、brand、product_details/technical_details 等字段并保留原始响应；适合持续构造 GLiNER2 品牌与规格抽取回归集，并用页面结构化字段定位品牌槽位和规格解析误差。 | https://github.com/ChocoData-com/amazon-product-scraper |",
+              ),
+          ]
+
+          main_path = Path("GLiNER2文章调研.md")
+          history_path = Path("GLiNER2历史调研.md")
+          main = main_path.read_text(encoding="utf-8")
+          history = history_path.read_text(encoding="utf-8")
+
+          for url, row in rows:
+              if url not in main:
+                  if main and not main.endswith("\n"):
+                      main += "\n"
+                  main += row + "\n"
+              if not any(line.strip() == url for line in history.splitlines()):
+                  if history and not history.endswith("\n"):
+                      history += "\n"
+                  history += url + "\n"
+
+          main_path.write_text(main, encoding="utf-8")
+          history_path.write_text(history, encoding="utf-8")
+          PY
+          rm -f .github/workflows/b-gliner2-append-20260820.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add GLiNER2文章调研.md GLiNER2历史调研.md .github/workflows/b-gliner2-append-20260820.yml
+          if ! git diff --cached --quiet; then
+            git commit -m "docs: append GLiNER2 product extraction research"
+            git push origin HEAD:main
+          fi
