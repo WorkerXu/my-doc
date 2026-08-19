@@ -314,3 +314,8 @@ https://wizzy.ai/agents/catalog-enrichment
 https://www.etsy.com/codeascraft/understanding-etsyas-vast-inventory-with-llms
 https://medium.com/@jsanca/from-information-retrieval-to-product-extraction-reusing-myir-to-understand-an-e-commerce-site-79922c6c9d10
 https://medium.com/@hayrikar54/the-0-pim-automating-magento-catalog-enrichment-with-ai-and-google-sheets-ce067114e18f
+https://github.com/ysingh1305/eBayMLChallenge
+https://www.spiceworx.com/en/rfq-assistant-explainer-technical.html
+https://aisoftwaredev.io/case-studies/ecommerce-catalog-enrichment-agent
+https://github.com/echoholla/framesdirect-data-extractor
+https://docsbot.ai/prompts/productivity/complete-product-data-extraction
