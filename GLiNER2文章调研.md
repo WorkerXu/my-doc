@@ -446,3 +446,8 @@
 | DropWise 在 35+ 电商平台上采用 JSON-LD、Meta、站点选择器、DOM 启发式和视觉兜底的五层抽取，统一输出 title、brand、SKU、seller、价格等字段；适合与 GLiNER2 组成“确定性结构化字段优先、语义字段补抽”的混合商品信息抽取链路。 | https://github.com/DevAnimecx/dropwise |
 | product-ai-listing-studio 将结构化商品数据、SKU helper、平台字段映射与 AI 商品 Listing 工作流放在同一项目中；适合把 GLiNER2 抽出的 brand/model/属性作为统一中间 Schema，再映射到不同电商平台字段并检查缺失或格式不一致。 | https://github.com/pkp666/product-ai-listing-studio |
 | tecdoc-car-parts 以 brand→model→engine→vehicle→category→article 的层级组织汽配数据，并暴露料号、兼容性和技术规格等细粒度属性；适合为 GLiNER2 设计汽配垂直类目的品牌/车型型号/零件号/规格 Schema 与层级约束校验。 | https://github.com/AlidaSoble/tecdoc-car-parts |
+| Wayfair 的生产案例用单一模型构建 tag-agnostic 商品属性框架，并用 definition agent 为不同属性生成上下文定义，已覆盖上百万商品和数万属性标签；很适合借鉴 GLiNER2 的动态 Schema/字段定义、跨类目复用、置信度门禁和人工审计闭环。 | https://openai.com/index/wayfair/ |
+| Grid Dynamics 为 G-Star 的 AI Catalog Enrichment 同时从商品图片和已有内容抽取属性，并支持品牌/领域自定义词表与人工复核；适合参考 GLiNER2 的文本主抽取 + 图像补充、品牌词典约束、字段标准化和 HITL 上线流程。 | https://www.griddynamics.com/blog/g-star-ai-catalog-enrichment-case-study |
+| Ficstar 的商品匹配实践明确把 brand/manufacturer、model number/MPN、GTIN、pack count、容量/重量、颜色/存储等变体和技术规格作为结构化信号，并强调按类目配置验证规则；适合直接定义 GLiNER2 的商品字段 Schema 以及后续同款匹配/一致性校验。 | https://ficstar.medium.com/why-product-matching-is-the-hardest-part-of-competitive-pricing-programs-30a41393afb6 |
+| Hello Retail 的 Product Intelligence 会从商品标题、描述和图片中派生并补充商品属性，公开示例可把 “Blue Nike Air Max 90…” 拆成 color、brand、model、gender、category；适合用作 GLiNER2 品牌/型号/属性 Schema 的业务化样例，并验证抽取结果如何进入搜索/推荐数据层。 | https://helloretail.com/en/product-intelligence/ |
+| ApplianceAPI 已把型号查询、品牌/型号规范化、品牌别名归一做成可调用能力，并规划从客服记录等脏自由文本直接抽取 brand + model number；适合借鉴 GLiNER2 的“自由文本抽取→品牌/型号归一→型号校验→规格补全”端到端业务链路。 | https://www.applianceapi.com/features |
