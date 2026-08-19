@@ -114,3 +114,13 @@
 | 该 AI Agent 框架能从非结构化商品描述自动完成“属性本体创建/扩展→本体精炼→知识图谱填充”，不依赖预定义 Schema；适合补充 GLiNER2 固定字段之外的新属性发现，并形成可持续扩展的类目属性体系。 | https://arxiv.org/abs/2511.11017 |
 | VARM 同时识别同款商品的变体关系，并从变体组中抽取“共同属性”和“变化属性”；适合把 GLiNER2 的 brand/model/color/size/容量等结果接到 SKU 变体归并与型号差异校验，减少把系列名、型号和变体规格混淆。 | https://arxiv.org/abs/2410.02779 |
 | 该研究在 QA 式商品属性值抽取中显式融合“属性类型”特征，解决只给属性名时语义不足的问题；适合指导 GLiNER2 为 brand、model、capacity、material 等字段加入更清晰的类型/定义描述，提升相似字段和短标题场景的区分度。 | https://doi.org/10.1145/3578741.3578778 |
+| Delivery Hero QC 的生产链路从供应商标题与图片一次抽取 Brand、Flavor、Volume 等 22 类字段，并结合置信度与人工复核；非常适合参考 GLiNER2 的类目 Schema、多字段结构化抽取和低置信度质量门禁。 | https://deliveryhero.jobs/blog/how-delivery-hero-uses-agentic-ai-for-building-a-product-knowledge-base/ |
+| Amazon 的 WSDM 2026 方案把非结构化品牌知识库交给 LLM Agent，同时完成商品条目修复与匹配；适合接在 GLiNER2 品牌抽取后做品牌标准化、别名校验、品牌知识补全和错误纠正。 | https://www.amazon.science/publications/using-brand-knowledge-bases-and-llm-agents-to-enhance-e-commerce-retailers-catalog-quality |
+| AttributeForge 用 43 个专用 LLM Agent 自动完成端到端商品 Schema 建模，并配套 Schema 质量评估与自动修复；适合为 GLiNER2 自动生成、审核和持续迭代不同类目的 brand/model/规格字段定义。 | https://www.amazon.science/publications/attributeforge-an-agentic-llm-framework-for-automated-product-schema-modeling |
+| 该方案用语义检索与 LLM 做商品 Schema 匹配和重复属性检测，在 1399 个属性上达到较高匹配效果；适合在 GLiNER2 落地前合并 manufacturer/brand、model/model_number 等同义字段，避免 Schema 膨胀和重复抽取。 | https://www.amazon.science/publications/effective-product-schema-matching-and-duplicate-detection-with-large-language-models |
+| Amazon CIKM 2025 的 Tool Use 方案让 LLM 调用商品 Schema 和目录信息来修复结构化商品数据，并显著提升完整度；适合给 GLiNER2 增加目录查询/字段约束工具，对品牌、型号和规格做抽取后验证与缺失补全。 | https://www.amazon.science/publications/using-large-language-models-to-improve-product-information-in-e-commerce-catalogs |
+| Amazon 的目录质量实践会让 LLM 识别标准属性值、收集同义表达并检测错误值；很适合把 GLiNER2 输出接到 canonical value、别名字典和异常值检查层，减少品牌/型号/规格的脏值直接入库。 | https://www.amazon.science/blog/using-llms-to-improve-amazon-product-listings |
+| QUEACO 把电商查询中的 NER 抽取和属性值归一化统一起来，并用大规模弱标注行为数据做 teacher-student 学习；适合参考 GLiNER2 的“span 抽取→canonical value”链路以及低成本长尾品牌/规格数据扩充。 | https://www.amazon.science/publications/queaco-borrowing-treasures-from-weakly-labeled-behavior-data-for-query-attribute-value-extraction |
+| Home Depot 的 TripleLearn 生产 NER 直接识别 brand、product type 等电商实体，并通过多数据集迭代训练获得线上收益；适合用作 GLiNER2 品牌/商品类型抽取的生产级基线，并参考持续难例回流训练机制。 | https://ojs.aaai.org/index.php/AAAI/article/view/17773 |
+| PAVE 通过聚合相似商品邻居来提升开放词表属性抽取召回，同时保持精度；适合把 GLiNER2 的低置信度或缺失 brand/model/规格交给相似商品候选层做补全与交叉校验。 | https://www.amazon.science/publications/pave-lazy-mdp-based-ensemble-to-improve-recall-of-product-attribute-extraction-models |
+| KSelF 针对稀有和未见商品属性，利用大规模“商品档案-属性-值”预训练语料和查询扩展增强抽取，并提供 EC-AVE 基准；适合用于 GLiNER2 新类目、新字段和长尾型号的低资源训练与泛化评测。 | https://aclanthology.org/2023.findings-emnlp.542/ |
