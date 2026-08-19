@@ -113,3 +113,6 @@ https://github.com/Wijt/product-matching
 https://careers.coccoc.com/blogs/attribution-extraction-of-e-commerce-product-listing-part-1
 https://github.com/vaskyp/product-scraping-shopify-csv-automation-pipeline
 https://huggingface.co/thepian/product-query-ner
+https://github.com/SumitVermakgp/NLP-Attribute-Extraction-Flipkart
+https://github.com/visy-ani/multimodal-product-catalogue
+https://github.com/danielrosehill/Ivory-Parts-Finder
