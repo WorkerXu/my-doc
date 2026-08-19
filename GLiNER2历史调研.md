@@ -233,3 +233,8 @@ https://github.com/Sahori2003/product-matching
 https://pypi.org/project/product-tagger/
 https://github.com/haitaomao/amazon-m2
 https://github.com/ChocoData-com/amazon-product-scraper
+https://github.com/shopsavvy/sdk-python
+https://github.com/Ads-insights/google-productfeed-enrichment-kit/blob/main/productfeed-identifier-exists.md
+https://github.com/scarnyc/product-research-agent
+https://github.com/luminati-io/amazon-products-global-dataset-scraper
+https://github.com/facebook/facebook-python-business-sdk/blob/main/facebook_business/adobjects/productitem.py
