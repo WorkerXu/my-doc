@@ -337,3 +337,6 @@
 | Zalando 的 Content Creation Copilot 已把 AI 属性抽取接入商品上新流程，并通过内部属性代码映射与人工确认控制质量；适合参考 GLiNER2 的“动态 Schema 抽取→平台字段映射→人工审核→目录写回”生产闭环。 | https://engineering.zalando.com/posts/2024/09/content-creation-copilot-ai-assited-product-onboarding.html |
 | eBay 官方目录匹配规范明确把 Brand、MPN、Model、Color、Storage Capacity 等作为类目商品 aspects，并支持用 Brand+MPN 等标识匹配标准目录商品；适合把 GLiNER2 抽取结果直接用于目录实体匹配、字段校验和标准化入库。 | https://developer.ebay.com/api-docs/sell/static/inventory/matching-products.html |
 | Aito 的开源电商 Demo 在 Product Filling 场景中利用已有商品名称、品牌等字段并行预测缺失类目属性，同时返回置信度和候选值；适合把 GLiNER2 的 brand/model 等确定性抽取作为上游，再做缺失属性补全与低置信度复核。 | https://github.com/AitoDotAI/aito-ecommerce-demo |
+| PRAISE 会从商品评论与卖家描述中抽取并对比结构化属性信息，显式标记缺失、冲突和部分匹配并保留证据；适合把 GLiNER2 对标题/描述的 brand/model/规格抽取扩展到评论证据源，用于缺失属性补证和冲突字段复核。 | https://arxiv.org/abs/2506.17314 |
+| Velou Commerce-1 是面向零售专门训练的商品模型，架构显式跟踪 color、material、fit、seasonality，并支持结构化属性生成与变体聚类；可作为 GLiNER2 在商品属性抽取、同款/变体归并和实时目录服务上的领域模型对照基线。 | https://www.velou.com/commerce1 |
+| 该 Ministral 3B Magento 适配器用 5.6 万级电商指令训练，直接把商品文本或 Magento custom_attributes 按目标字段抽成 JSON，并提供本地 LoRA/GGUF 形态；适合与 GLiNER2 做 3B 级本地部署、结构化属性输出以及同一电商数据上的跨模型吞吐/精度对照。 | https://huggingface.co/gabrielgts/ministral3-3b-ec-magento |

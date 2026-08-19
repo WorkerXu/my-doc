@@ -183,3 +183,6 @@ https://kaufland-ecommerce.com/blog/developing-a-large-scale-attribute-extractor
 https://engineering.zalando.com/posts/2024/09/content-creation-copilot-ai-assited-product-onboarding.html
 https://developer.ebay.com/api-docs/sell/static/inventory/matching-products.html
 https://github.com/AitoDotAI/aito-ecommerce-demo
+https://arxiv.org/abs/2506.17314
+https://www.velou.com/commerce1
+https://huggingface.co/gabrielgts/ministral3-3b-ec-magento
