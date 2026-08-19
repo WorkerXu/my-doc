@@ -1,0 +1,58 @@
+name: GLiNER2 research append once
+
+on:
+  push:
+    paths:
+      - '.github/workflows/gliner2-research-append-20260820.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Append deduplicated research
+        shell: python
+        run: |
+          from pathlib import Path
+
+          article = Path('GLiNER2文章调研.md')
+          history = Path('GLiNER2历史调研.md')
+
+          rows = [
+              ('omkarcloud/amazon-scraper 从 Amazon PDP 返回 brand、item model number、technical details、product details、variants 等大量结构化字段；可把商城结构化结果作为 GLiNER2 从标题/描述抽取品牌、型号与规格的持续对照真值，并专项测试字母数字型号与变体字段。', 'https://github.com/omkarcloud/amazon-scraper'),
+              ('Inference.net 的商品数据抽取指南把任意电商 HTML 转为 Pydantic/Zod 约束的 typed JSON，Schema 直接含 brand、SKU/GTIN、specs、variants，并强调字段描述、缺失值和验证；适合参考 GLiNER2 动态 Schema 定义、空值处理和网页批量抽取契约。', 'https://inference.net/content/product-data-extraction/'),
+              ('DataWeBot 的独立商品数据抽取方案把 brand、manufacturer、model number、SKU/ASIN/UPC/EAN、尺寸和技术规格统一结构化；适合用来定义 GLiNER2 输出字段契约，并设计型号/标识符与规格的后处理、标准化及 PIM 入库。', 'https://www.datawebot.com/services/product-data-extraction'),
+              ('MyDataScraper 的电商抽取字段表把 Product Identity 明确拆成 Title、Brand、SKU、ASIN、Model Number、Category，并同时保留 Technical Specs 和 Size/Colour variants；适合校准 GLiNER2 的品牌/型号/平台标识边界与变体 Schema。', 'https://mydatascraper.com/ecommerce-data-scraping-services/'),
+              ('Meesho AI Data Challenge 公开按 Category + Attribute Keys/Values 组织的真实电商商品数据，并以属性级 micro/macro F1 评测；适合把 GLiNER2 动态 Schema 评测扩展到类目专属属性集合，也可用于文本主抽取与图片属性兜底的对照。', 'https://www.meesho.io/ai/data-challenge'),
+              ('Akeneo 2026 Spring 的 Smart Attribute Discovery 会自动生成属性结构（label/code/type/scope/config）并给出值/选项建议、审核与 API 流程；适合借鉴 GLiNER2 在新类目下“候选字段发现→人工审核→动态 Schema→持续迭代”的治理机制。', 'https://akeneo.helpjuice.com/2026/april-2026-serenity-updates'),
+          ]
+
+          article_text = article.read_text(encoding='utf-8')
+          history_text = history.read_text(encoding='utf-8')
+
+          add_rows = []
+          add_urls = []
+          for reason, url in rows:
+              if url not in article_text and url not in history_text:
+                  add_rows.append(f'| {reason} | {url} |')
+                  add_urls.append(url)
+
+          if add_rows:
+              article.write_text(article_text.rstrip('\n') + '\n' + '\n'.join(add_rows) + '\n', encoding='utf-8')
+              history.write_text(history_text.rstrip('\n') + '\n' + '\n'.join(add_urls) + '\n', encoding='utf-8')
+
+      - name: Commit and remove one-shot workflow
+        shell: bash
+        run: |
+          rm -f .github/workflows/gliner2-research-append-20260820.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Append new GLiNER2 product extraction research"
+          git push
