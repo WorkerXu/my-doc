@@ -135,3 +135,6 @@
 | AWS 的 AI-Powered Product Catalog 示例把商品图片进入 Product Attribution Lambda，自动抽取产品 features/attributes 并持久化到 DynamoDB；适合直接参考 GLiNER2 商品字段抽取服务在异步工作流、存储和商品入库链路中的工程位置。 | https://github.com/aws-samples/sample-ai-powered-product-catalog |
 | Google Cloud AgentSmithy 内置 Catalog Enrichment Agent，目标就是处理原始供应商数据并补齐商品目录缺失信息；适合参考把 GLiNER2 作为确定性 brand/model/规格抽取器嵌入 Agent 工具链，再由 Agent 负责搜索、补全和写入目录。 | https://github.com/GoogleCloudPlatform/agentsmithy/blob/main/agent_bar_v2/subagents/retail/intelligent_inventory_manager/sub_agents/catalog_enrichment/agent.py |
 | Tandemn 的零售批量推理案例从脏商品目录出发，明确讨论 catalog enrichment、attribute extraction 与大批量推理基础设施；适合参考 GLiNER2 在百万级商品离线批处理时的任务切分、吞吐、重试和成本治理。 | https://www.tandemn.com/blog/1 |
+| GLiNER2 官方论文系统说明了 Schema 驱动的实体、分类与层级结构化抽取能力，并强调单一紧凑模型和 CPU 友好部署；适合把 brand、model、SKU、规格等定义成动态 Schema，作为商品字段抽取服务的核心方法依据。 | https://aclanthology.org/2025.emnlp-demos.10/ |
+| revizor 是专门拆解商品标题的 NER 项目，直接输出 type、brand、model、vendor_code，并给出品牌与型号的逐类效果；和 GLiNER2 目标字段几乎一一对应，可作为品牌/型号/货号抽取的监督基线及自动构造训练数据的参考。 | https://github.com/bureaucratic-labs/revizor |
+| Amazon Catalog Team 的生产实践会从商品提交中抽取 dimensions、materials、compatibility、technical specifications，并用多小模型共识、强模型监督和知识库回流持续降低错误；适合给 GLiNER2 增加低置信度复核、难例沉淀与持续优化闭环。 | https://aws.amazon.com/blogs/machine-learning/how-the-amazon-com-catalog-team-built-self-learning-generative-ai-at-scale-with-amazon-bedrock/ |
