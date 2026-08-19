@@ -110,3 +110,6 @@ https://github.com/rawford-ilderman/mobile-phone-specs
 https://github.com/omkarcloud/digikey-scraper
 https://github.com/Tjark-Kuehl/open-icecat
 https://github.com/Wijt/product-matching
+https://careers.coccoc.com/blogs/attribution-extraction-of-e-commerce-product-listing-part-1
+https://github.com/vaskyp/product-scraping-shopify-csv-automation-pipeline
+https://huggingface.co/thepian/product-query-ner
