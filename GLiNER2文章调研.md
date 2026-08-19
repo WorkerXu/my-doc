@@ -268,3 +268,6 @@
 | Cốc Cốc 的实战方案从约 200 万条越南电商 Listing 构建商品属性 NER 数据与词典，字段直接覆盖品牌、商品编码、尺寸、颜色等，并结合规则、聚类和置信度筛选弱标注；适合为 GLiNER2 的品牌/型号/规格字段低成本构造训练数据与难例词典。 | https://careers.coccoc.com/blogs/attribution-extraction-of-e-commerce-product-listing-part-1 |
 | 该开源商品入库流水线覆盖供应商 XML、Playwright 商品页抓取、技术规格/属性/尺寸/重量信息抽取、规范化以及 Shopify CSV 落库；适合参考把 GLiNER2 放进真实供应商目录处理链路，负责 brand/model/规格语义抽取并接后续标准化与增量更新。 | https://github.com/vaskyp/product-scraping-shopify-csv-automation-pipeline |
 | product-query-ner 在 Amazon ESCI QueryNER 基础上加入欧洲品牌与多语言商品名数据，保留 brand、product name、UoM、color、material 等 17 类标签，并提供 span 后处理与量化部署版本；适合作为 GLiNER2 多语言商品查询品牌/属性抽取的新增对照基线。 | https://huggingface.co/thepian/product-query-ner |
+| Flipkart 商品属性抽取项目用字符级表示 + BiLSTM + CRF 做序列标注，示例直接标注 B_BRAND、B_COLOR、B_SLEEVE、B_TYPE，且面向卖家提供的噪声商品文本；适合作为 GLiNER2 在短商品标题上的固定标签监督基线，并用于比较品牌与细粒度属性 span 边界。 | https://github.com/SumitVermakgp/NLP-Attribute-Extraction-Flipkart |
+| multimodal-product-catalogue 把商品入库阶段的属性抽取做成独立 Agent，以严格 JSON/Pydantic 输出 colour、style、material、shape、extras，并将属性直接用于文本/图片联合检索；适合参考把 GLiNER2 作为文本属性主抽取器接入“抽取→结构化校验→向量索引→检索”的端到端目录链路。 | https://github.com/visy-ani/multimodal-product-catalogue |
+| Ivory-Parts-Finder 从真实电脑零售商品名批量抽取 manufacturer 和 part_number/SKU，并写入机器可读 JSON，样例可识别 Samsung 与 MZ-V9P2T0BW 这类品牌和字母数字型号；非常适合用来验证 GLiNER2 的品牌/型号边界、批量处理与抽取结果入库格式。 | https://github.com/danielrosehill/Ivory-Parts-Finder |
