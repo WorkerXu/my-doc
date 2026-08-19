@@ -195,3 +195,11 @@ https://github.com/mahathi-p/Classification_of_Products_using_NER
 https://github.com/TopreGroup/AIWebscraper
 https://github.com/YYWorks/OFBiz-NER
 https://github.com/Taha-azizi/Product_Info_Extractor
+https://huggingface.co/datasets/crawlfeeds/HomeDepot-Smart-Home-Dataset
+https://huggingface.co/datasets/smartcat/Amazon_Sample_Metadata_2023
+https://github.com/luminati-io/Shein-dataset-samples
+https://github.com/luminati-io/Ikea-dataset-sample
+https://huggingface.co/datasets/thepian/product-query-benchmark
+https://github.com/omkarcloud/homedepot-scraper
+https://github.com/omkarcloud/walmart-scraper
+https://huggingface.co/Martsv07/rubert-ner-search-queries
