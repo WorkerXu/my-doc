@@ -186,3 +186,8 @@ https://github.com/AitoDotAI/aito-ecommerce-demo
 https://arxiv.org/abs/2506.17314
 https://www.velou.com/commerce1
 https://huggingface.co/gabrielgts/ministral3-3b-ec-magento
+https://github.com/DFKI-NLP/fewie
+https://github.com/JinghuiZhao/product-item-name-classification
+https://github.com/linkfox-ai/linkfox-skills/blob/main/skills/linkfox-product-title-analyze/SKILL.md
+https://github.com/ask-poly/askpoly
+https://github.com/ixuejiaozhao/Alibaba-Custermers-Interaction-Dataset
