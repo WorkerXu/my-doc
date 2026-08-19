@@ -213,3 +213,8 @@
 | qwen3.5-4b-ec-magento 专门面向 Magento 电商目录，把商品文本或 custom_attributes 按目标字段抽成 JSON，并显式处理字段不存在；可用于对照 GLiNER2 的动态字段抽取、缺失字段 abstain 和 PIM/Magento 入库接口设计。 | https://huggingface.co/gabrielgts/qwen3.5-4b-ec-magento |
 | Ecommerce-AVE-Dataset 直接把商品标题/描述配成结构化目标 Schema，样例字段包含 brand、model_number、dimensions、material、features 等；很适合快速构造 GLiNER2 品牌/型号/规格的回归集，并检查多层嵌套字段与缺失值。 | https://huggingface.co/datasets/commotion/Ecommerce-AVE-Dataset |
 | Lowe’s Product Scraper 将真实 PDP 统一产出 Brand、Model Number、SKU、Description、Specification 等字段，并包含 DOM/嵌入 JSON 抽取与归一化；可用其结构化结果做 GLiNER2 从页面文本回抽品牌/型号/规格的对照真值和网页采集上游。 | https://github.com/seth-risenow/lowes |
+| GLiNER2 官方 API 教程直接用 `extract_json` 将 iPhone 15 Pro Max 文本解析为 name、price、storage、color，并支持置信度和字符位置；适合参考把品牌/型号/规格 Schema 封装成线上 API、做结果置信度门禁和可追溯 span。 | https://github.com/fastino-ai/GLiNER2/blob/main/tutorial/7-api.md |
+| ANE 的 Qwen3.5 2B 商品抽取模型从德国二手/电商 Listing 直接输出 productName、brand、model、condition、category 和 attributes JSON，且面向低成本规模化推理；可作为 GLiNER2 品牌/型号/属性结构化抽取的轻量生成式对照基线。 | https://huggingface.co/Ekwav/ane-extraction-qwen3.5-2b |
+| 该 Qwen3 4B Product Extractor 专门从商品目录文本生成结构化 JSON，并提供 CPU 优化的 GGUF 量化版本；适合与 GLiNER2 做本地部署、CPU 推理、结构化输出稳定性和资源成本的横向对照。 | https://huggingface.co/pragnesh002/Qwen3-4B-Product-Extractor-GGUF-Q4-K-M |
+| DoorDash 的生产实践把商品名中的 Brand、Size、UOM 等字段做实体抽取，并构建“分类器低置信度→LLM 品牌抽取→知识图谱去重→回流训练”的品牌入库链路，还用 RAG+LLM 批量生成通用属性标注；非常适合参考 GLiNER2 的品牌发现、去重、弱标注和持续训练闭环。 | https://careersatdoordash.com/blog/building-doordashs-product-knowledge-graph-with-large-language-models/ |
+| ai-fashion-assistant-v2 在 44,417 个商品上抽取 30 万级视觉属性，覆盖 pattern、fit、material、style 等 10 类，并将属性用于多模态检索；适合把 GLiNER2 的文本品牌/型号/属性作为主链路，再用视觉属性补充文本缺失字段并验证抽取结果对搜索的实际增益。 | https://github.com/haticebaydemir/ai-fashion-assistant-v2 |
