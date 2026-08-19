@@ -172,3 +172,9 @@ https://aclanthology.org/2022.ecnlp-1.4/
 https://www.amazon.science/publications/attribute-similarity-and-relevance-based-product-schema-matching-for-targeted-catalog-enrichment
 https://www.amazon.science/publications/autoknow-self-driving-knowledge-collection-for-products-of-thousands-of-types
 https://aclanthology.org/2020.ecnlp-1.1/
+https://speakerdeck.com/lycorptech_jp/ai-frontiers-revealed-transforming-line-shopping-tw-with-llm-driven-product-attribute-extraction
+https://cs229.stanford.edu/proj2018/report/190.pdf
+https://github.com/green-leo/NER.ProductAttributeExtraction
+https://github.com/nirvan840/Product-Image-Attribute-and-Entity-Extraction
+https://productlasso.com/en/blog/fix-inconsistent-product-titles
+https://datahunk.in/product-data-extraction
