@@ -315,3 +315,9 @@
 | 该 Alibaba 实时商品抓取项目会把商品完整规格、变体、MOQ 与供应商信息整理成结构化 JSON，变体中明确包含 model number；适合把复杂 B2B 商品页作为 GLiNER2 的型号/规格抽取输入，并用结构化结果做回归校验。 | https://github.com/omkarcloud/alibaba-scraper |
 | WANDS 提供 Wayfair 商品标题、描述、类目以及大规模 product_features 键值属性（材质、颜色、尺寸、承重等）；适合把这些键值属性反向当作弱监督/评测真值，测试 GLiNER2 在家具长描述中的多属性抽取和字段归一化。 | https://huggingface.co/datasets/shuttie/wands |
 | IKEA US CommerceTXT 将 3 万多商品统一为 Name、SKU、Brand、Category、Materials、Dimensions 等清晰字段；很适合构造“商品文本→GLiNER2 Schema 输出”的标准样本，验证品牌、SKU/型号类标识和材质/尺寸等属性的结构化抽取稳定性。 | https://huggingface.co/datasets/tsazan/ikea-us-commercetxt |
+| ArgusFlow 是开源商品数据抽取套件，既能从商品 HTML 提取 brand 与技术规格，也能把脏商品标题转成结构化 JSON，并带商品匹配能力；适合参考 GLiNER2 的“页面/标题→品牌/型号/规格→目录匹配”端到端工程链路。 | https://github.com/getargusflow/argus |
+| ScrapeGraphAI Extract 支持对 URL、HTML、Markdown 按 JSON Schema/Pydantic 做结构化抽取，官方直接给出商品 Schema 示例；适合参考 GLiNER2 前置网页正文获取、动态字段 Schema 契约以及抽取结果类型校验。 | https://docs.scrapegraphai.com/services/extract |
+| product-harvest 可无模型地从商品页 JSON-LD、OpenGraph、meta 直接解析 brand、SKU、GTIN、类目等结构化字段；适合与 GLiNER2 组合成“已有结构化数据优先、缺失品牌/型号/规格再语义抽取”的低成本混合链路，并作为对照真值。 | https://pypi.org/project/extract-product/ |
+| NuExtract3 是开源本地结构化抽取模型，输入文本/图片与 JSON 模板即可输出结构化 JSON，并支持多语言、多模态和 vLLM 部署；可把 brand、model、规格定义成同一模板，与 GLiNER2 做本地吞吐、结构约束和多模态兜底对照。 | https://github.com/numindai/nuextract |
+| SKU Launch 的商品抽取流程覆盖标题、URL、PDF、图片和联网补证，并把 Brand、Voltage、Weight 等结果统一映射到自定义 Schema，附逐字段置信度、来源和人工复核；很适合借鉴 GLiNER2 的多来源输入、规范化与低置信度质量门禁。 | https://skulaunch.com/platform/product-data-extraction |
+| Upsonic 的电商 Agent 示例会自动发现官网、导航到商品页，再将 product_name、product_brand、price、availability 等写入 Pydantic 模型；适合参考给 GLiNER2 增加“站点发现/页面路由→字段抽取→类型验证”的自动化采集外壳。 | https://docs.upsonic.ai/examples/business-sales/find-example-product |

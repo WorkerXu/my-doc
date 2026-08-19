@@ -161,3 +161,9 @@ https://github.com/omkarcloud/alibaba-scraper
 https://huggingface.co/datasets/shuttie/wands
 https://huggingface.co/datasets/tsazan/ikea-us-commercetxt
 https://github.com/omkarcloud/walmart-scraper
+https://github.com/getargusflow/argus
+https://docs.scrapegraphai.com/services/extract
+https://pypi.org/project/extract-product/
+https://github.com/numindai/nuextract
+https://skulaunch.com/platform/product-data-extraction
+https://docs.upsonic.ai/examples/business-sales/find-example-product
