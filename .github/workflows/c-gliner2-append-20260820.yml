@@ -12,7 +12,6 @@ permissions:
 
 jobs:
   append:
-    if: github.event.head_commit.message == 'c: trigger GLiNER2 append 20260820'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -52,13 +51,11 @@ jobs:
           add_item 'https://docs.zyte.com/zyte-api/usage/reference.html' '| Zyte API 的商品抽取 Schema 明确区分 brand、SKU、MPN、GTIN 等标识字段，并支持单商品页自动抽取；适合用作 GLiNER2 网页商品抽取的标准字段契约与对照真值，验证型号/MPN 与卖家 SKU 的边界。 | https://docs.zyte.com/zyte-api/usage/reference.html |'
 
           rm -f "$WORKFLOW"
-          git config user.name 'WorkerXu'
-          git config user.email '819972341@qq.com'
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add "$ARTICLE" "$HISTORY" "$WORKFLOW"
           if git diff --cached --quiet; then
             exit 0
           fi
           git commit -m 'c: 追加 GLiNER2 商品字段提取调研'
           git push origin HEAD:main
-
-# trigger
