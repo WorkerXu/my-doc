@@ -395,3 +395,4 @@
 | X5 Tech 的零售搜索 NER 实战直接从短且噪声较大的商品查询中抽取 TYPE、BRAND、VOLUME、PERCENT，并围绕线上速度与准确率设计流水线；很适合作为 GLiNER2 品牌、商品类型、容量/百分比等字段在真实搜索词噪声下的生产基线与回归参考。 | https://habr.com/ru/companies/X5Tech/articles/941634/ |
 | Naratix 的电商目录富化案例从原始商品 Feed/非结构化输入按类目抽取 size、color、material、weight、dimensions、technical specs 等字段，再做 canonical Schema 归一化、同义值映射和验证回流；适合参考 GLiNER2 的“类目 Schema→多属性抽取→标准化→质检/反馈”完整落地闭环。 | https://agixtech.com/case-studies/naratix/ |
 | Agility AI 的生产案例用 NER 从多语言、格式混乱的商品/运输描述中抽取 Brand、Type、Processing、Grade、Form、Origin，并采用离线 ONNX INT8 部署与字段覆盖率评估；适合参考 GLiNER2 品牌/类型等字段的本地化部署、噪声文本鲁棒性和逐字段覆盖率门禁。 | https://agilitytech.ai/case-studies/hsn-classification |
+| gliner-fahrzeugschein-onnx 直接基于 GLiNER2 训练并导出 ONNX，Schema 明确抽取 brand、model、VIN、功率、排量、重量、颜色等字段；虽然场景是车辆证件，但与商品“品牌+型号+结构化属性”抽取高度同构，适合参考 GLiNER2 字段定义、领域微调、ONNX 部署及字母数字型号识别。 | https://huggingface.co/morilinger/gliner-fahrzeugschein-onnx |

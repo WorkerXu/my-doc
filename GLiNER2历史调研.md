@@ -241,3 +241,4 @@ https://github.com/facebook/facebook-python-business-sdk/blob/main/facebook_busi
 https://habr.com/ru/companies/X5Tech/articles/941634/
 https://agixtech.com/case-studies/naratix/
 https://agilitytech.ai/case-studies/hsn-classification
+https://huggingface.co/morilinger/gliner-fahrzeugschein-onnx
