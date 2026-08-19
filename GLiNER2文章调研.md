@@ -129,3 +129,9 @@
 | 该研究在 3000 个真实网店食品页上用 Schema 约束抽取配料、营养表等商品字段，并比较直接抽取与“生成函数后批量解析”两种方案；适合参考 GLiNER2 从商品页批量抽品牌/型号/规格时的结构约束、成本与吞吐权衡。 | https://arxiv.org/abs/2506.21585 |
 | IndustryBench-MIPU 提供 4481 个工业商品、4554 个属性名和多图结构化属性基准，输入就是“商品图片 + 单品属性 Schema”，示例字段直接包含品牌、型号；非常适合给 GLiNER2 的动态 Schema、品牌/型号/规格抽取做多图补证和回归评测。 | https://github.com/alibaba-multimodal-industrial-ai/IndustryBench-MIPU |
 | Enthusiast 是开源电商 Agent 框架，内置 Product Catalog Enrichment 场景，可从非结构化 product sheets 抽取商品描述和属性，并带验证/评估组件；适合参考把 GLiNER2 接进商品资料批处理、字段校验和目录富化工作流。 | https://github.com/upsidelab/enthusiast |
+| 该研究在真实电商数据上公平比较 BERT-NER 与 QA 式多属性抽取，发现 NER 在准确率上可与 QA 相当且推理更快；这对 GLiNER2 很关键，可作为“单次 span 抽取多个 brand/model/规格字段”相对逐属性问答方案的性能与架构依据。 | https://aclanthology.org/2023.emnlp-industry.16/ |
+| ASTRA 专门解决多卖家/制造商商品 Schema 到平台统一 Schema 的映射，并支持仅少量样本快速接入新属性；适合接在 GLiNER2 抽取之后，把 supplier 的 manufacturer/model no./capacity 等异构字段统一到 canonical brand/model/规格键。 | https://aclanthology.org/2024.emnlp-industry.92/ |
+| GSID 针对手工类目与属性体系覆盖不了长尾商品的问题，从非结构化商品元数据学习并生成结构化语义表示，且已在真实电商平台部署；适合评估 GLiNER2 固定 Schema 在长尾商品上的盲区，并指导后续动态字段发现与结构化表示设计。 | https://aclanthology.org/2025.emnlp-industry.78/ |
+| AWS 的 AI-Powered Product Catalog 示例把商品图片进入 Product Attribution Lambda，自动抽取产品 features/attributes 并持久化到 DynamoDB；适合直接参考 GLiNER2 商品字段抽取服务在异步工作流、存储和商品入库链路中的工程位置。 | https://github.com/aws-samples/sample-ai-powered-product-catalog |
+| Google Cloud AgentSmithy 内置 Catalog Enrichment Agent，目标就是处理原始供应商数据并补齐商品目录缺失信息；适合参考把 GLiNER2 作为确定性 brand/model/规格抽取器嵌入 Agent 工具链，再由 Agent 负责搜索、补全和写入目录。 | https://github.com/GoogleCloudPlatform/agentsmithy/blob/main/agent_bar_v2/subagents/retail/intelligent_inventory_manager/sub_agents/catalog_enrichment/agent.py |
+| Tandemn 的零售批量推理案例从脏商品目录出发，明确讨论 catalog enrichment、attribute extraction 与大批量推理基础设施；适合参考 GLiNER2 在百万级商品离线批处理时的任务切分、吞吐、重试和成本治理。 | https://www.tandemn.com/blog/1 |
