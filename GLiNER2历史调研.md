@@ -214,3 +214,8 @@ https://huggingface.co/LiquidAI/LFM2-350M-Extract
 https://huggingface.co/gabrielgts/qwen3.5-4b-ec-magento
 https://huggingface.co/datasets/commotion/Ecommerce-AVE-Dataset
 https://github.com/seth-risenow/lowes
+https://github.com/fastino-ai/GLiNER2/blob/main/tutorial/7-api.md
+https://huggingface.co/Ekwav/ane-extraction-qwen3.5-2b
+https://huggingface.co/pragnesh002/Qwen3-4B-Product-Extractor-GGUF-Q4-K-M
+https://careersatdoordash.com/blog/building-doordashs-product-knowledge-graph-with-large-language-models/
+https://github.com/haticebaydemir/ai-fashion-assistant-v2
