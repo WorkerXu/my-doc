@@ -160,3 +160,9 @@ https://arxiv.org/abs/2309.05920
 https://arxiv.org/abs/2508.01096
 https://www.sciencedirect.com/science/article/pii/S0950705126009391
 https://arxiv.org/abs/2308.16354
+https://aclanthology.org/2024.emnlp-industry.52/
+https://arxiv.org/abs/2407.01137
+https://doi.org/10.1007/978-3-031-68323-7_28
+https://doi.org/10.1145/3511808.3557161
+https://isir-ecom2022.github.io/papers/isir-ecom-2022_paper_7.pdf
+https://arxiv.org/abs/2409.13628
