@@ -211,3 +211,9 @@ https://elogic.co/projects/cromwell/
 https://experienceleague.adobe.com/en/docs/llm-optimizer/using/dashboards/opportunities/enrich-product-catalog
 https://productlasso.com/en/blog/product-title-templates-by-category
 https://arovon.com/ai-product-data-extraction-from-pdfs
+https://github.com/omkarcloud/amazon-scraper
+https://inference.net/content/product-data-extraction/
+https://www.datawebot.com/services/product-data-extraction
+https://mydatascraper.com/ecommerce-data-scraping-services/
+https://www.meesho.io/ai/data-challenge
+https://akeneo.helpjuice.com/2026/april-2026-serenity-updates
