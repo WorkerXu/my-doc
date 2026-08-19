@@ -23,3 +23,14 @@ https://aclanthology.org/2024.findings-emnlp.80/
 https://github.com/wbsg-uni-mannheim/SelfRefinement4ExtractGPT
 https://github.com/aws-samples/aws-smart-product-onboarding
 https://github.com/annis-souames/brand-ner
+https://aclanthology.org/2021.ecnlp-1.2/
+https://research.google/pubs/learning-to-extract-attribute-value-from-product-via-question-answering-a-multi-task-approach/
+https://aclanthology.org/2020.acl-main.751/
+https://aclanthology.org/2021.acl-long.362/
+https://aclanthology.org/2022.emnlp-industry.9/
+https://aclanthology.org/2022.ecnlp-1.16/
+https://aclanthology.org/2023.acl-industry.14/
+https://aclanthology.org/2023.icnlsp-1.11/
+https://aclanthology.org/2021.ecnlp-1.12/
+https://aclanthology.org/2023.findings-acl.413/
+https://aclanthology.org/2023.findings-acl.633/
