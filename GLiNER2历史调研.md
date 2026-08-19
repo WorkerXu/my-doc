@@ -83,3 +83,7 @@ https://arxiv.org/abs/2212.10770
 https://aclanthology.org/2023.acl-industry.9/
 https://aclanthology.org/2023.acl-industry.18/
 https://aclanthology.org/2023.findings-acl.127/
+https://www.getcatalog.ai/blog/product-data-extraction
+https://productphilosophy.com/articles/llm-powered-catalog-enrichment
+https://trueparse.ai/blog/ai-powered-product-data-extraction-ecommerce
+https://www.scitepress.org/PublishedPapers/2019/80694/pdf/index.html
