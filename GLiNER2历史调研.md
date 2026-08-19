@@ -122,3 +122,10 @@ https://granulargroup.com/case-study/using-ai-to-turn-40000-unstructured-product
 https://github.com/sherifmohamed3378-ui/aliexpress-actor-products
 https://github.com/luminati-io/mouser-electronics-price-tracker
 https://github.com/amzn/selling-partner-api-models/blob/main/models/catalog-items-api-model/catalogItems_2022-04-01.json
+https://docs.aws.amazon.com/solutions/product-catalog-enhancement-with-generative-ai-on-aws/
+https://cloud.google.com/blog/products/ai-machine-learning/generating-new-product-information-with-vertex
+https://cloud.google.com/blog/products/data-analytics/how-tamr-data-products-leverage-generative-ai/
+https://github.com/fastino-ai/GLiNER2/blob/main/tutorial/5-validator.md
+https://github.com/fastino-ai/GLiNER2/blob/main/tutorial/9-training.md
+https://docs.aws.amazon.com/solutions/product-attribution-and-personalization-using-amazon-bedrock/
+https://docs.aws.amazon.com/solutions/generating-product-descriptions-with-amazon-bedrock/index.html
