@@ -85,3 +85,8 @@
 | HyperPAVE 利用异构超图做零样本未见属性值识别，适合把 GLiNER2 与商品目录、关系数据结合，为长尾品牌、型号和规格提供候选增强，重点处理训练数据未覆盖的新值。 | https://arxiv.org/abs/2402.08802 |
 | 该 PAVI 研究显示“先识别属性、再抽属性值”的两阶段零样本方案优于一步式；适合在商品类目 Schema 不完整时先发现候选字段，再交给 GLiNER2 做 brand/model/规格等 span 抽取。 | https://arxiv.org/abs/2409.12695 |
 | 该多模态方案先判断当前商品适用的属性集合，再在缩小后的字段范围内抽值；直接对应 GLiNER2 按类目/商品动态裁剪 Schema 的做法，可降低无关字段误抽和大 Schema 干扰。 | https://arxiv.org/abs/2207.07278 |
+| Catalog Attribute Normalizer 把多源商品标题、描述和已有属性统一到受控字段词表，并区分 extracted/canonicalized 来源；适合接在 GLiNER2 的 brand/model/size/color 等抽取后做值归一化、字段约束和 taxonomy 校验，避免脏值直接入库。 | https://github.com/ACJLabs/catalog-normalizer |
+| JPAVE 同时预测商品包含哪些属性并生成或分类对应值，不依赖字符级 span 位置标注，且面向开放世界未见值与跨平台描述差异；适合参考 GLiNER2 的“字段存在性判断+值抽取”联合评测和弱标注数据利用。 | https://arxiv.org/abs/2311.04196 |
+| KEAF 针对新商品、新属性只有少量样本的场景，利用属性描述和类目信息做多标签 few-shot 属性值抽取；适合用于 GLiNER2 新类目、新品牌/型号字段的低资源基线，并启发更有效的 Schema 字段描述。 | https://arxiv.org/abs/2308.08413 |
+| AE-smnsMLC 只需要商品级属性值弱标注、不要求值在文本中的位置，并通过语义匹配与困难负标签采样区分相似属性值；适合为 GLiNER2 的型号、容量、尺寸等易混淆字段构造 hard negatives，降低人工 span 标注成本。 | https://arxiv.org/abs/2310.07137 |
+| 该跨类目多任务属性抽取研究会自动学习不同商品类目间的属性相似度，并提升低资源字段效果；适合参考 GLiNER2 多类目 Schema 的共享/隔离策略，把相似品牌、材质、规格字段经验迁移到长尾类目。 | https://aclanthology.org/2021.ecnlp-1.10/ |
