@@ -73,3 +73,10 @@
 | FeedGen 以商品 feed 为输入，通过生成式 AI 补充和优化结构化商品属性，示例明确使用 Brand、Color、Size、Material 等字段；适合参考 GLiNER2 抽取结果进入 Merchant Feed 后的字段补全、命名规范和质量控制。 | https://github.com/google-marketing-solutions/feedgen |
 | lightfeed/extractor 提供基于显式 Schema 的网页结构化抽取示例，电商场景直接定义 name、brand、price 等字段；适合参考把 GLiNER2 包装成可配置 Schema 的商品详情页抽取服务，并与网页采集链路衔接。 | https://github.com/lightfeed/extractor |
 | esci-s 在 Amazon ESCI 商品数据上补充了更丰富的商品元数据，原始字段包含 product_title、product_description、product_brand、product_color 等；适合构造 GLiNER2 的品牌/颜色等字段回归集，并为后续型号、规格扩充提供真实商品语料。 | https://github.com/shuttie/esci-s |
+| 该 EACL 工业论文专门研究电商场景 VLM 的大规模适配，并把 dynamic attribute extraction 纳入评测；适合用来设计 GLiNER2 在商品多图、噪声描述和动态字段场景下的多模态补充与评测体系。 | https://aclanthology.org/2026.eacl-industry.38/ |
+| 该研究用 18 个商品属性把“字段是否适用/可见”和“字段值分类”拆开评估，并要求结构化 JSON 输出；适合借鉴 GLiNER2 对缺失/不适用属性的判定、避免硬抽不存在字段，以及逐字段诊断评测。 | https://arxiv.org/abs/2601.15711 |
+| 该论文直接解决电商搜索中的品牌实体链接：先用 NER 识别品牌，再做别名/多语言表述匹配和实体消歧，并经过线上 A/B 验证；很适合接在 GLiNER2 品牌抽取后做品牌标准化、母子品牌和别名归一。 | https://arxiv.org/abs/2502.01555 |
+| INSPIRE 会从商品标题和描述生成包含 brand、flavor 等显式/隐式结构化属性，并用 LLM 教师弱监督蒸馏到轻量模型；适合参考 GLiNER2 批量生成伪标注、低成本扩充品牌/规格字段训练数据及线上轻量化部署。 | https://arxiv.org/abs/2606.23889 |
+| WebFormer 面向网页结构化信息抽取，电商示例目标字段就包含 product title、description、brand、price，并显式利用 DOM/布局信息；适合在 GLiNER2 之前先从复杂商品详情页定位候选文本，再做品牌、型号和属性细粒度抽取。 | https://arxiv.org/abs/2202.00217 |
+| eCeLLM 的 ECInstruct 提供 11 万级真实电商指令数据，任务明确包含 Attribute Value Extraction 和 Product Matching，并覆盖未见商品/未见指令 OOD 测试；适合用于 GLiNER2 动态 Schema 的微调数据设计和跨商品泛化评测。 | https://github.com/ninglab/eCeLLM |
+| EshopInstruct 含 63,972 条电商指令数据，其中 NER 类直接提供 4,000 条 Attribute Extraction 和 2,120 条 Attribute Value Extraction；适合补充 GLiNER2 商品属性抽取的训练/回归样本，并和商品匹配等下游任务联合评估。 | https://github.com/suyan-liang/EshopInstruct |
