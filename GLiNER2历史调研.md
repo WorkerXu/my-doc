@@ -226,3 +226,7 @@ https://deepmist.ai/case-studies/catalog-intelligence
 https://extralt.com/use-cases/product-data
 https://gigacommerce.co/insights/catalog-for-ai/catalog-enrichment-for-ai-playbook
 https://www.adyogi.com/catalog-ai
+https://link.springer.com/article/10.1186/s40691-025-00435-w
+https://link.springer.com/article/10.1007/s44163-026-01221-3
+https://unidata.pro/cases/product-grouping-for-e-commerce/
+https://github.com/Sahori2003/product-matching
