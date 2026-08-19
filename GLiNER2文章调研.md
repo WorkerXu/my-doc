@@ -321,3 +321,7 @@
 | NuExtract3 是开源本地结构化抽取模型，输入文本/图片与 JSON 模板即可输出结构化 JSON，并支持多语言、多模态和 vLLM 部署；可把 brand、model、规格定义成同一模板，与 GLiNER2 做本地吞吐、结构约束和多模态兜底对照。 | https://github.com/numindai/nuextract |
 | SKU Launch 的商品抽取流程覆盖标题、URL、PDF、图片和联网补证，并把 Brand、Voltage、Weight 等结果统一映射到自定义 Schema，附逐字段置信度、来源和人工复核；很适合借鉴 GLiNER2 的多来源输入、规范化与低置信度质量门禁。 | https://skulaunch.com/platform/product-data-extraction |
 | Upsonic 的电商 Agent 示例会自动发现官网、导航到商品页，再将 product_name、product_brand、price、availability 等写入 Pydantic 模型；适合参考给 GLiNER2 增加“站点发现/页面路由→字段抽取→类型验证”的自动化采集外壳。 | https://docs.upsonic.ai/examples/business-sales/find-example-product |
+| 该 ECIR 研究专门识别论坛噪声文本里的商品型号（用户常直接以 model number 指代商品），并用自训练 CRF 利用无标注目标域数据显著提升召回；适合为 GLiNER2 的 MODEL/MODEL_NUMBER 字段构造弱监督、拼写变体和长尾型号难例。 | https://doi.org/10.1007/978-3-319-16354-3_27 |
+| Scrapfly 的 Product Extraction Schema 直接从非结构化商品页定义并抽取 brand、SKU、MPN、specifications、color、size、variants 等字段；适合参考 GLiNER2 的动态商品 Schema、网页抽取字段契约以及与结构化页面结果的交叉校验。 | https://scrapfly.io/docs/extraction-api/automatic-ai/models/product |
+| Shopedia 可从普通商品文本自动拆出 Manufacturer、Family、Model Code、Model Suffix、Model Version、Model Generation、Model Year 与 MPN；适合直接校准 GLiNER2 中 brand/family/model/model_number 等相近字段的边界和归一化规则。 | https://shopedia.com/platform/product-categorization-enrichment-platform/product-attributes-specifications-24 |
+| BlackFalconData 的 eBay Scraper 深度模式对真实 Listing 固定输出 brand、model、MPN、EAN 和完整 itemSpecifics；适合持续采集 GLiNER2 品牌/型号/属性回归样本，并用商城结构化字段做伪标签或抽取结果一致性校验。 | https://github.com/BlackFalconData-org/ebay-scraper |
