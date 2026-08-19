@@ -65,3 +65,9 @@ https://arxiv.org/abs/2606.04909
 https://arxiv.org/abs/2403.02130
 https://arxiv.org/abs/2601.04200
 https://aclanthology.org/2025.emnlp-industry.63/
+https://github.com/SuYindu/TACLR
+https://aclanthology.org/2025.acl-industry.80/
+https://arxiv.org/abs/2405.17533
+https://github.com/google-marketing-solutions/feedgen
+https://github.com/lightfeed/extractor
+https://github.com/shuttie/esci-s
