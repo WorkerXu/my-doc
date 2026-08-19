@@ -152,3 +152,6 @@ https://doi.org/10.1145/1147234.1147241
 https://aclanthology.org/2024.emnlp-industry.106/
 https://tech.walmart.com/content/walmart-global-tech/en_us/blog/post/using-llms-to-manage-product-catalogs.html
 https://huggingface.co/haninebou/algerian-ner-ultimate
+https://github.com/browser-act/skills/blob/main/solutions/ecommerce/amazon-product-detail/SKILL.md
+https://huggingface.co/Dinesh-Kumar/gemma3-1b-finetuned-v3
+https://huggingface.co/jinchenliuljc/ecom_ner_model
