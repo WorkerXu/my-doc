@@ -451,3 +451,6 @@
 | Ficstar 的商品匹配实践明确把 brand/manufacturer、model number/MPN、GTIN、pack count、容量/重量、颜色/存储等变体和技术规格作为结构化信号，并强调按类目配置验证规则；适合直接定义 GLiNER2 的商品字段 Schema 以及后续同款匹配/一致性校验。 | https://ficstar.medium.com/why-product-matching-is-the-hardest-part-of-competitive-pricing-programs-30a41393afb6 |
 | Hello Retail 的 Product Intelligence 会从商品标题、描述和图片中派生并补充商品属性，公开示例可把 “Blue Nike Air Max 90…” 拆成 color、brand、model、gender、category；适合用作 GLiNER2 品牌/型号/属性 Schema 的业务化样例，并验证抽取结果如何进入搜索/推荐数据层。 | https://helloretail.com/en/product-intelligence/ |
 | ApplianceAPI 已把型号查询、品牌/型号规范化、品牌别名归一做成可调用能力，并规划从客服记录等脏自由文本直接抽取 brand + model number；适合借鉴 GLiNER2 的“自由文本抽取→品牌/型号归一→型号校验→规格补全”端到端业务链路。 | https://www.applianceapi.com/features |
+| GLiNER2 官方 Demo 的商品 Schema 直接抽取 name、brand、SKU、price、available_colors、available_sizes、stock_quantity、rating 等字段；可直接复用为品牌/SKU/规格落地样例，用于字段边界、结构化输出和回归测试。 | https://huggingface.co/spaces/fastino/gliner2-official-demo |
+| Diffbot Product API 对商品页统一输出 brand、SKU、MPN、GTIN、specs 等字段；可作为 GLiNER2 brand/model/MPN/规格 Schema 与网页抽取结果的外部对照，尤其适合定义 SKU/MPN 边界和字段归一化。 | https://www.diffbot.com/docs/extract/product |
+| Zyte API 的商品抽取 Schema 明确区分 brand、SKU、MPN、GTIN 等标识字段，并支持单商品页自动抽取；适合用作 GLiNER2 网页商品抽取的标准字段契约与对照真值，验证型号/MPN 与卖家 SKU 的边界。 | https://docs.zyte.com/zyte-api/usage/reference.html |
