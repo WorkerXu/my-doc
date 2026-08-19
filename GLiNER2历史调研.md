@@ -247,3 +247,9 @@ https://www.datawebot.com/solutions/nlp-product-categorization
 https://www.octoparse.com/template/amazon-details-scraper
 https://hiflylabs.com/blog/2025/9/23/validating-ecommerce-products-bigquery-multimodal-ai
 https://sigir-ecom.github.io/ecom2019/ecom19Papers/paper36.pdf
+https://docs.knowledgator.com/docs/cookbooks/enterprise-search-parsing/index.html
+https://dimitarmitkov.com/blog/ner-rest-api/
+https://huggingface.co/datasets/siavashsaki/wdc-pave-ave
+https://huggingface.co/datasets/smartcat/Amazon_Clothing_Shoes_and_Jewelry_2023
+https://scrapegraphai.com/blog/prompt-engineering-guide
+https://www.width.ai/post/product-matching-in-ecommerce
