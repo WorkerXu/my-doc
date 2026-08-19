@@ -380,3 +380,7 @@
 | Extralt 将不同商城商品统一成 taxonomy、attributes、identifiers 与精确 variant 记录，并在有标识符时用 GTIN 或 brand+MPN 做跨卖家同款归一；适合把 GLiNER2 抽出的 brand/model/MPN/颜色/尺码接到 canonical product/variant 层，做跨站实体消歧与变体对齐。 | https://extralt.com/use-cases/product-data |
 | GigaCommerce 的 2026 目录富化 Playbook 把“描述中埋藏的规格→独立结构化字段”、类目级必填属性 Schema 和兼容性关系作为核心治理项；适合用来定义 GLiNER2 各类目的 brand/model/规格必抽字段、缺失字段检测及抽取覆盖率指标。 | https://gigacommerce.co/insights/catalog-for-ai/catalog-enrichment-for-ai-playbook |
 | AdYogi Catalog.ai 从网站、表格、Feed 和图片中识别类目相关属性并输出结构化字段，再映射到 Amazon/Flipkart/Myntra 等平台 taxonomy 与合法取值；适合参考 GLiNER2 的“多来源输入→动态类目 Schema 抽取→字段标准化→渠道/PIM 映射”落地方式。 | https://www.adyogi.com/catalog-ai |
+| 该研究围绕时尚电商构建商品属性体系，覆盖品牌、颜色、材质、版型等字段，并使用 LLM 做零样本属性抽取；适合参考 GLiNER2 的类目级 Schema 设计、多字段抽取和长尾描述归一化。 | https://link.springer.com/article/10.1186/s40691-025-00435-w |
+| 该零售数字孪生框架会从单商品图像中识别 brand、product name、variant、volume/size 等信息；适合作为 GLiNER2 文本抽取的多模态兜底，并用于验证包装图上品牌、型号/变体和规格字段的证据一致性。 | https://link.springer.com/article/10.1007/s44163-026-01221-3 |
+| Unidata 的电商商品归组案例明确把“从商品描述提取 model name”作为关键步骤，并要排除材质、颜色、袖长等非型号属性；适合设计 GLiNER2 的 model 与普通属性边界规则，并把抽取结果直接接到同款归组/去重。 | https://unidata.pro/cases/product-grouping-for-e-commerce/ |
+| 该商品匹配项目用 spaCy NER 从商品别名中抽取 BRAND、FORM、DOSAGE、QUANTITY 等关键属性，再结合向量检索映射到标准 SKU；适合参考 GLiNER2 的“字段抽取→属性加权→SKU 匹配”下游链路，并验证抽取字段对同款召回的业务价值。 | https://github.com/Sahori2003/product-matching |
