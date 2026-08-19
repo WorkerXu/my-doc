@@ -52,3 +52,10 @@ https://github.com/ai-luizalabs/AI-PAVE-Br
 https://blog.tensorflow.org/2020/10/how-netease-yanxuan-uses-tensorflow-for-chatbots.html
 https://aclanthology.org/2024.naacl-industry.40/
 https://aclanthology.org/2025.acl-long.85/
+https://aclanthology.org/2022.acl-short.25/
+https://aclanthology.org/2023.acl-long.683/
+https://aclanthology.org/2025.knowledgenlp-1.6/
+https://aclanthology.org/2025.naacl-industry.38/
+https://arxiv.org/abs/2306.14921
+https://github.com/AmineElAtrache/Smart-Shopper
+https://github.com/NVIDIA-AI-Blueprints/Retail-Catalog-Enrichment
