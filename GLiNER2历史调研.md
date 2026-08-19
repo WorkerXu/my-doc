@@ -130,3 +130,9 @@ https://aclanthology.org/2026.acl-industry.41/
 https://arxiv.org/abs/2506.21585
 https://github.com/alibaba-multimodal-industrial-ai/IndustryBench-MIPU
 https://github.com/upsidelab/enthusiast
+https://aclanthology.org/2023.emnlp-industry.16/
+https://aclanthology.org/2024.emnlp-industry.92/
+https://aclanthology.org/2025.emnlp-industry.78/
+https://github.com/aws-samples/sample-ai-powered-product-catalog
+https://github.com/GoogleCloudPlatform/agentsmithy/blob/main/agent_bar_v2/subagents/retail/intelligent_inventory_manager/sub_agents/catalog_enrichment/agent.py
+https://www.tandemn.com/blog/1
