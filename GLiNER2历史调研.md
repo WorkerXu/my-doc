@@ -188,3 +188,4 @@ https://www.kaggle.com/datasets/dataturks/best-buy-ecommerce-ner-dataset/data
 https://huggingface.co/datasets/Shopify/product-catalogue
 https://github.com/luminati-io/Home-Depot-dataset-sample
 https://github.com/Shopify/product-taxonomy
+https://arxiv.org/abs/2607.26780
