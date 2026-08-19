@@ -1,0 +1,69 @@
+name: a append gliner2 research 20260819 2246
+
+on:
+  push:
+    paths:
+      - '.github/workflows/a-append-gliner2-research-20260819-2246.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Append a GLiNER2 research rows
+        shell: bash
+        run: |
+          set -e
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+          for attempt in 1 2 3; do
+            git fetch origin main
+            git reset --hard origin/main
+
+            python - <<'PY'
+          from pathlib import Path
+
+          main = Path('GLiNER2文章调研.md')
+          history = Path('GLiNER2历史调研.md')
+          entries = [
+              ('PRAISE 会从商品评论与卖家描述中抽取并对比结构化属性信息，显式标记缺失、冲突和部分匹配并保留证据；适合把 GLiNER2 对标题/描述的 brand/model/规格抽取扩展到评论证据源，用于缺失属性补证和冲突字段复核。', 'https://arxiv.org/abs/2506.17314'),
+              ('Velou Commerce-1 是面向零售专门训练的商品模型，架构显式跟踪 color、material、fit、seasonality，并支持结构化属性生成与变体聚类；可作为 GLiNER2 在商品属性抽取、同款/变体归并和实时目录服务上的领域模型对照基线。', 'https://www.velou.com/commerce1'),
+              ('该 Ministral 3B Magento 适配器用 5.6 万级电商指令训练，直接把商品文本或 Magento custom_attributes 按目标字段抽成 JSON，并提供本地 LoRA/GGUF 形态；适合与 GLiNER2 做 3B 级本地部署、结构化属性输出以及同一电商数据上的跨模型吞吐/精度对照。', 'https://huggingface.co/gabrielgts/ministral3-3b-ec-magento'),
+          ]
+
+          main_text = main.read_text(encoding='utf-8')
+          hist_text = history.read_text(encoding='utf-8')
+          rows = [(reason, url) for reason, url in entries if url not in main_text and url not in hist_text]
+
+          if rows:
+              with main.open('a', encoding='utf-8') as f:
+                  if main_text and not main_text.endswith('\n'):
+                      f.write('\n')
+                  for reason, url in rows:
+                      f.write(f'| {reason} | {url} |\n')
+              with history.open('a', encoding='utf-8') as f:
+                  if hist_text and not hist_text.endswith('\n'):
+                      f.write('\n')
+                  for _, url in rows:
+                      f.write(f'{url}\n')
+          PY
+
+            if git diff --quiet -- 'GLiNER2文章调研.md' 'GLiNER2历史调研.md'; then
+              exit 0
+            fi
+
+            git add 'GLiNER2文章调研.md' 'GLiNER2历史调研.md'
+            git commit -m 'a 追加本轮 GLiNER2 文章调研 2246'
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            sleep 2
+          done
+
+          exit 1
