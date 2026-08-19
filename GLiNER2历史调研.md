@@ -81,3 +81,8 @@ https://github.com/suyan-liang/EshopInstruct
 https://huggingface.co/thepian/product-query-ner-int8
 https://github.com/iethes/product-taxonomy-extraction
 https://github.com/fzp0424/EC-Guide-KDDUP-2024
+https://github.com/HenryPengZou/ImplicitAVE
+https://aclanthology.org/2026.findings-eacl.159/
+https://arxiv.org/abs/2402.08802
+https://arxiv.org/abs/2409.12695
+https://arxiv.org/abs/2207.07278
