@@ -108,3 +108,9 @@
 | YODA 是面向 Google Feed 商品优化的生产 NER，直接覆盖 brand、color、size、energy label 等字段，并在大规模商品数据上训练与部署；很适合作为 GLiNER2 商品字段抽取的生产级精度/吞吐基线和字段体系参考。 | https://huggingface.co/lighthousefeed/yoda-ner |
 | ecombert-ner-v1 是商品标题/查询专用 span NER，标签直接包含 BRAND、MODEL、MATERIAL、COLOR、MEASUREMENT、ATTRIBUTE、COMPATIBILITY 等 23 类；与 GLiNER2 的品牌、型号、规格 Schema 几乎一一对应，适合做重叠 span 与细粒度字段回归基线。 | https://huggingface.co/xinyacs/ecombert-ner-v1 |
 | 该 B2B 电商 NER 项目抽取 PRODUCT、QUANTITY、SIZE、UNIT，并把结果接入品牌模糊匹配、变体识别、置信度和 SKU 映射；适合参考 GLiNER2 从“文本字段抽取”到“目录/SKU 标准化与业务入库”的完整后处理链路。 | https://huggingface.co/Purva17/b2b-ecomm-ner |
+| Amazon 的 PAM 把商品文本、图片 OCR 文字和视觉对象统一进序列到序列模型，并用商品类目条件化属性值预测；适合给 GLiNER2 增加“文本主抽取 + 包装 OCR 补证 + 类目约束”链路，尤其补齐型号、容量、规格只出现在图片上的场景。 | https://www.amazon.science/publications/pam-understanding-product-images-in-cross-product-category-attribute-extraction |
+| Rakuten-Ichiba 的多模态属性抽取方案从文本与图片联合补全 color、material 等缺失属性，并专门处理多模态融合中的 modality collapse，且已实际部署；适合借鉴 GLiNER2 文本抽取与视觉兜底的融合、训练和线上评估方式。 | https://arxiv.org/abs/2203.03441 |
+| MetaBridge 专门校验电商目录中 brand、product name 等短文本属性是否可信，并面向少标注、多类目场景做跨类目泛化；适合放在 GLiNER2 抽取后做品牌、型号、规格字段的二次一致性校验和低置信度拦截。 | https://arxiv.org/abs/2006.08779 |
+| 该 AI Agent 框架能从非结构化商品描述自动完成“属性本体创建/扩展→本体精炼→知识图谱填充”，不依赖预定义 Schema；适合补充 GLiNER2 固定字段之外的新属性发现，并形成可持续扩展的类目属性体系。 | https://arxiv.org/abs/2511.11017 |
+| VARM 同时识别同款商品的变体关系，并从变体组中抽取“共同属性”和“变化属性”；适合把 GLiNER2 的 brand/model/color/size/容量等结果接到 SKU 变体归并与型号差异校验，减少把系列名、型号和变体规格混淆。 | https://arxiv.org/abs/2410.02779 |
+| 该研究在 QA 式商品属性值抽取中显式融合“属性类型”特征，解决只给属性名时语义不足的问题；适合指导 GLiNER2 为 brand、model、capacity、material 等字段加入更清晰的类型/定义描述，提升相似字段和短标题场景的区分度。 | https://doi.org/10.1145/3578741.3578778 |
