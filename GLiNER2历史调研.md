@@ -227,3 +227,10 @@ https://medium.com/@conyeneke1/from-flyer-text-to-catalogue-id-building-a-retail
 https://github.com/priyam-hub/Trend-Setters
 https://logic.inc/workflows/extract-brand-size-colour-from-product-text
 https://github.com/sanket98a/MetaData-Extraction
+https://huggingface.co/datasets/trec-product-search/product-recommendation-2025
+https://huggingface.co/datasets/trychannel3/channel3-universal-product-graph-sample
+https://huggingface.co/datasets/otdnnc/japan-fashion-items
+https://huggingface.co/datasets/crawlfeeds/asos-fashion-products-dataset
+https://huggingface.co/datasets/rebrowser/shopee-dataset
+https://huggingface.co/datasets/Doshiba/pcpartpicker-parts-dataset
+https://huggingface.co/datasets/crawlfeeds/tesco-grocery-uk

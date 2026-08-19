@@ -226,3 +226,10 @@
 | Trend-Setters 在实际检索应用中用 LLaMA 从用户查询抽取 brand、color、size、category、gender 等商品属性，再进入 Qdrant 检索；可作为 GLiNER2 动态 Schema 抽取结果驱动商品搜索/推荐的轻量端到端实现参考。 | https://github.com/priyam-hub/Trend-Setters |
 | Logic 的 Catalog Attribute Extraction 工作流从商品名称、描述和可选规格文档中直接抽取 brand、size、colour 等字段并结构化输出；适合对照 GLiNER2 的多来源文本输入、字段 Schema 和目录富化批处理形态。 | https://logic.inc/workflows/extract-brand-size-colour-from-product-text |
 | MetaData-Extraction 是服饰商品的视觉元数据抽取项目，用 GPT-4 Vision 从商品图片补充品牌、颜色、风格等目录属性；适合作为 GLiNER2 文本品牌/型号/属性抽取的图片兜底，在标题缺字段时用视觉证据补充或交叉校验。 | https://github.com/sanket98a/MetaData-Extraction |
+| TREC Product Search 2025 商品语料同时提供标题/描述与 brand、model、color、size、material 等结构化字段，适合直接把目录字段当弱标签构建 GLiNER2 品牌/型号/规格回归集，并专项测试型号与多属性 span 边界。 | https://huggingface.co/datasets/trec-product-search/product-recommendation-2025 |
+| Channel3 Universal Product Graph 把跨商家商品统一成 brands、materials、structured_attributes、variants 等规范字段，并处理同款与变体归并；适合参考 GLiNER2 抽取后的品牌/属性标准化、变体对齐和目录实体消歧。 | https://huggingface.co/datasets/trychannel3/channel3-universal-product-graph-sample |
+| Japan Fashion Items 含 446 万级日语时尚商品，提供品牌、商品名/描述、属性关键词及颜色/尺码变体；适合验证 GLiNER2 在日语商品短文本中的品牌、材质、颜色、尺码和货号等多字段抽取与跨语言泛化。 | https://huggingface.co/datasets/otdnnc/japan-fashion-items |
+| ASOS Fashion Products 数据把商品名/描述与 brand、sku、color、sizes、多个 material 字段以及 closure/toe shape 等细粒度属性放在同一记录；非常适合按服饰类目动态生成 GLiNER2 Schema，并逐字段做品牌/货号/规格回归评测。 | https://huggingface.co/datasets/crawlfeeds/asos-fashion-products-dataset |
+| Shopee Product Listings 提供真实 marketplace 标题/描述、brand/brandId 以及 models 变体/SKU JSON，且包含中文与东南亚电商噪声文本；适合测试 GLiNER2 的长尾品牌、字母数字型号、变体规格抽取以及结果到目录 ID 的映射。 | https://huggingface.co/datasets/rebrowser/shopee-dataset |
+| PCPartPicker Parts 将商品名与 brand、category 和 category-specific specs JSON 对齐，标题中大量包含 Ryzen 9800X3D、MAG A750GL 等型号；很适合构建 GLiNER2 电子硬件品牌/型号/功率/容量等规格字段的高难度回归集。 | https://huggingface.co/datasets/Doshiba/pcpartpicker-parts-dataset |
+| Tesco Grocery UK 数据把商品名与 brand、category、unit、price_per_unit 等目录字段对齐，并明确支持 NER 用途；适合用 GLiNER2 抽取品牌、包装规格、计量单位等快消字段，并验证数值+单位的 span 与标准化。 | https://huggingface.co/datasets/crawlfeeds/tesco-grocery-uk |
