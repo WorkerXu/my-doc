@@ -333,3 +333,7 @@
 | Meesho 的生产实践针对卖家属性缺失、错误 taxonomy 和数千商品类目自动补全商品属性，并将模型结果直接接入上架流程；适合参考 GLiNER2 的“类目路由→属性 Schema→自动抽取→质量检查”规模化工程设计，并用视觉模型补文本不可见字段。 | https://medium.com/meesho-tech/we-automated-attribute-tagging-using-deep-learning-models-part-1-b5bc455d2305 |
 | Shopify 2026 商品数据富化指南明确以供应商 SKU、model number、尺寸等原始数据为起点，再经过清洗、单位/类目标准化与技术属性补全形成可消费目录；适合定义 GLiNER2 抽取后的 brand/model/规格标准化、缺失字段治理和 PIM/商城入库边界。 | https://www.shopify.com/enterprise/blog/product-data-enrichment-ecommerce |
 | CaptionQA 的电商子集包含真实商品页面/图片上的品牌、型号/型号编号、颜色、尺码、材质与规格问答，可直接构造 GLiNER2 + OCR/VLM 组合链路的多模态回归集，重点验证文本缺失时的品牌/型号补证与属性一致性。 | https://huggingface.co/datasets/Borise/CaptionQA |
+| Kaufland 的大规模商品属性抽取系统把卖家已有结构化属性转成 QA/span 训练信号，从标题与描述中抽取目标字段，并用负样本学习“无答案”；非常适合迁移到 GLiNER2 的类目动态 Schema、缺失字段 abstain 与海量商品批处理评测。 | https://kaufland-ecommerce.com/blog/developing-a-large-scale-attribute-extractor-for-e-commerce/ |
+| Zalando 的 Content Creation Copilot 已把 AI 属性抽取接入商品上新流程，并通过内部属性代码映射与人工确认控制质量；适合参考 GLiNER2 的“动态 Schema 抽取→平台字段映射→人工审核→目录写回”生产闭环。 | https://engineering.zalando.com/posts/2024/09/content-creation-copilot-ai-assited-product-onboarding.html |
+| eBay 官方目录匹配规范明确把 Brand、MPN、Model、Color、Storage Capacity 等作为类目商品 aspects，并支持用 Brand+MPN 等标识匹配标准目录商品；适合把 GLiNER2 抽取结果直接用于目录实体匹配、字段校验和标准化入库。 | https://developer.ebay.com/api-docs/sell/static/inventory/matching-products.html |
+| Aito 的开源电商 Demo 在 Product Filling 场景中利用已有商品名称、品牌等字段并行预测缺失类目属性，同时返回置信度和候选值；适合把 GLiNER2 的 brand/model 等确定性抽取作为上游，再做缺失属性补全与低置信度复核。 | https://github.com/AitoDotAI/aito-ecommerce-demo |
