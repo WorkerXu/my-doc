@@ -154,3 +154,8 @@
 | browser-act 的 Amazon Product Detail Skill 可直接从商品页抽取 brand、model、颜色、重量、技术规格、变体属性等 100+ 字段；适合参考 GLiNER2 与网页采集层衔接后的字段 Schema、证据来源和结构化入库形式。 | https://github.com/browser-act/skills/blob/main/solutions/ecommerce/amazon-product-detail/SKILL.md |
 | 该 Gemma 1B 商品信息抽取模型专门把噪声商品描述转成严格 JSON，直接输出 brand、product、keywords、quantity，并做单位归一化；适合作为 GLiNER2 轻量化商品字段抽取、结构化输出约束和归一化后处理的对照基线。 | https://huggingface.co/Dinesh-Kumar/gemma3-1b-finetuned-v3 |
 | 这个中文电商 BERT Token Classification 模型面向 Chinese e-commerce NER，可直接作为 GLiNER2 中文商品标题/描述字段抽取的监督基线，并用于比较动态 Schema 与固定标签体系在品牌、型号和属性字段上的差异。 | https://huggingface.co/jinchenliuljc/ecom_ner_model |
+| CatalogAgent 围绕商品目录结构化属性补全构建“生成器→校验器→Supervisor→记忆/提示优化”闭环，并直接处理 model name、model number、material 等字段的误判；很适合给 GLiNER2 品牌/型号/规格抽取增加低置信度复核、难例沉淀和 Schema 描述持续优化。 | https://arxiv.org/abs/2607.14396 |
+| SAGE 面向十亿级商品目录，把不同语言、商品类型和目标属性统一做结构化属性值生成，并显式支持未见值、隐式值、不可适用与不可获得判定；适合对照 GLiNER2 在大规模动态 Schema 下的长尾品牌/型号、缺失字段 abstain 和多语言泛化。 | https://arxiv.org/abs/2309.05920 |
+| Pinterest 的生产级网页信息抽取系统把 DOM 结构、视觉布局和文本压缩成统一网页表示，并以超高吞吐抽取电商结构化属性；适合放在 GLiNER2 前面做商品页候选字段定位，减少无关文本后再抽 brand/model/规格。 | https://arxiv.org/abs/2508.01096 |
+| 该 2026 电商查询 NER 研究构建 17 类细粒度标签，覆盖 brand、color、size、fabric、feature、product_code 等，并系统比较 Transformer 与零样本 LLM；适合用来验证 GLiNER2 多语言短查询中的品牌/规格/货号抽取鲁棒性和噪声表现。 | https://www.sciencedirect.com/science/article/pii/S0950705126009391 |
+| Catalog Phrase Grounding 将商品 title/brand 与图片中的商品区域、品牌 Logo 区域做对齐，并在生产品牌匹配任务上提升召回；适合把 GLiNER2 抽出的品牌字段与视觉 Logo 证据交叉校验，降低品牌误抽和包装文字干扰。 | https://arxiv.org/abs/2308.16354 |
