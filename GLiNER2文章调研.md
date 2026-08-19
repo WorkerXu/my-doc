@@ -459,3 +459,7 @@
 | Elovate 的商品属性抽取指南把目标属性、缺失值、禁止猜测、值归一化和类目专属字段写成明确抽取规则；很适合迁移到 GLiNER2 的 Schema/字段描述设计，尤其用于降低品牌、型号和规格的幻觉并统一目录值。 | https://support.elovate.io/en/articles/15188908-writing-better-extraction-prompts |
 | 这份 iOS 26 FoundationModels 工程参考给出了端侧 E-Commerce Product Attribute Extraction 示例，用声明式结构从自由商品描述抽 colour、size、material、style；可作为 GLiNER2 本地/端侧商品属性抽取在隐私、结构化输出和轻量部署上的对照实现。 | https://www.conorluddy.com/writing/foundation-models-reference |
 | 这篇 2026 电商 Product Understanding 架构文章把 attribute extraction、spec normalization、category classification、SKU organization 和 material understanding 放进同一生产系统讨论；适合参考 GLiNER2 抽取后的字段规范化、Schema 演进、质量控制以及与商品 Agent/目录系统的衔接。 | https://medium.com/jin-system-architect/from-e-commerce-product-understanding-to-product-agent-how-to-actually-build-enterprise-grade-ai-2f159f105650 |
+| GLiNER2 官方多语言模型 gliner2-multi-v1 直接展示 iPhone 15 Pro Max 的 name、storage、processor、price 结构化抽取，并覆盖英、法、西、德、意、葡等语言；适合直接验证多语言商品 brand/model/规格 Schema、CPU 本地部署与跨语言回归。 | https://huggingface.co/fastino/gliner2-multi-v1 |
+| Catalog Mind 可从商品图片或 CSV 自动生成结构化 attributes 与 metadata，并直接面向 Shopify、Amazon、Google Merchant Center 批量导出；适合对照 GLiNER2 的“文本字段主抽取 + 图片补证 + 目录批处理/渠道入库”落地形态。 | https://www.catalogmind.com/ |
+| CatalogEnrich 用多模型流水线从 CSV/PDF/PIM 等来源做商品属性富化，并配套人工复核、审计和回写电商系统；适合参考 GLiNER2 的批量字段抽取、低置信度 HITL、变更追踪与 PIM/ERP 回写治理。 | https://catalogenrich.com/ |
+| Wizzy Catalog Enrichment 同时读取商品标题与图片来生成 discovery-ready attributes，并覆盖材质、fit、pattern、occasion 等细粒度字段；适合把 GLiNER2 作为文本 brand/model/规格主抽取器，再以视觉链路补齐文本缺失属性并评估对搜索发现的增益。 | https://wizzy.ai/agents/catalog-enrichment |
