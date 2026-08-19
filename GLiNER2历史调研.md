@@ -282,3 +282,9 @@ https://github.com/DevanshBCA25/Product-Attribute-Extraction
 https://github.com/sanjaysam410/Amazon-ML-Hackathon
 https://github.com/adilet0212/shelfsense
 https://github.com/Aayush20art/Product-Attribute-Extraction-API
+https://eureka.patsnap.com/patent/CN122389861A
+https://patents.google.com/patent/WO2022153092A1/fr
+https://github.com/ruchbagwe/Product-description-classification-NER
+https://getclaro.ai/customers/structuring-product-specifications-for-a-construction-tech-platform
+https://skulookup.io/docs/api-documentation
+https://dealophant.com/how-it-works
