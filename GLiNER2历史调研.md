@@ -91,3 +91,8 @@ https://arxiv.org/abs/2311.04196
 https://arxiv.org/abs/2308.08413
 https://arxiv.org/abs/2310.07137
 https://aclanthology.org/2021.ecnlp-1.10/
+https://arxiv.org/abs/2607.07469
+https://aclanthology.org/2026.findings-acl.1832/
+https://company.instacart.com/tech-innovation/scaling-catalog-attribute-extraction-with-multi-modal-llms
+https://sigir-ecom.github.io/eCom26Papers/paper_785.pdf
+https://sigir-ecom.github.io/eCom26Papers/paper_773.pdf
