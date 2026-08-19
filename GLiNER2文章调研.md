@@ -218,3 +218,11 @@
 | 该 Qwen3 4B Product Extractor 专门从商品目录文本生成结构化 JSON，并提供 CPU 优化的 GGUF 量化版本；适合与 GLiNER2 做本地部署、CPU 推理、结构化输出稳定性和资源成本的横向对照。 | https://huggingface.co/pragnesh002/Qwen3-4B-Product-Extractor-GGUF-Q4-K-M |
 | DoorDash 的生产实践把商品名中的 Brand、Size、UOM 等字段做实体抽取，并构建“分类器低置信度→LLM 品牌抽取→知识图谱去重→回流训练”的品牌入库链路，还用 RAG+LLM 批量生成通用属性标注；非常适合参考 GLiNER2 的品牌发现、去重、弱标注和持续训练闭环。 | https://careersatdoordash.com/blog/building-doordashs-product-knowledge-graph-with-large-language-models/ |
 | ai-fashion-assistant-v2 在 44,417 个商品上抽取 30 万级视觉属性，覆盖 pattern、fit、material、style 等 10 类，并将属性用于多模态检索；适合把 GLiNER2 的文本品牌/型号/属性作为主链路，再用视觉属性补充文本缺失字段并验证抽取结果对搜索的实际增益。 | https://github.com/haticebaydemir/ai-fashion-assistant-v2 |
+| 该 2025 研究系统分析真实电商商品标题的句法、内容、词序和属性分布，并验证这些特征对商品任务建模的影响；适合用来设计 GLiNER2 的短标题 Schema、字段边界和顺序鲁棒性测试，尤其处理品牌、型号、规格被压缩拼接的场景。 | https://www.sciencedirect.com/science/article/pii/S0957417425013247 |
+| 这项已部署的商品标题浅层语义解析工作会先把 offering title 切成具有业务语义的片段，并提供可跨电商品类复用的标注结构；适合放在 GLiNER2 前做标题分段/候选片段定位，减少品牌、型号、商品类型和修饰属性互相串位。 | https://doi.org/10.1145/2623330.2623343 |
+| Constructor 的电商搜索意图方案明确从查询中识别 Brand、Color、Size/Dimensions 等属性，并建议组合规则模式与机器学习抽取器；适合参考 GLiNER2 与正则/单位词典混合，对品牌等语义字段和尺寸规格等规则字段分别优化。 | https://constructor.com/blog/extracting-ecommerce-search-intent-from-head-to-tail |
+| BatchGPT 的商品名批量解析流程直接要求逐条找 brand、model、color、size，并显式保留缺失值；和 GLiNER2 的 Schema 驱动 JSON 抽取非常接近，可参考批处理字段契约、缺失字段表示和结果落表方式。 | https://aifficientools.com/blog/extract-key-attributes-product-names-batch/ |
+| 该 2026 零售目录匹配案例先从宣传页文本抽出 brand、product name、pack size，再做单位归一、精确/候选匹配并拒绝字段不全的样本；适合把 GLiNER2 输出直接接到商品目录 ID 对齐，并用“品牌+品名+规格”做强校验。 | https://medium.com/@conyeneke1/from-flyer-text-to-catalogue-id-building-a-retail-product-matching-pipeline-34738294aff0 |
+| Trend-Setters 在实际检索应用中用 LLaMA 从用户查询抽取 brand、color、size、category、gender 等商品属性，再进入 Qdrant 检索；可作为 GLiNER2 动态 Schema 抽取结果驱动商品搜索/推荐的轻量端到端实现参考。 | https://github.com/priyam-hub/Trend-Setters |
+| Logic 的 Catalog Attribute Extraction 工作流从商品名称、描述和可选规格文档中直接抽取 brand、size、colour 等字段并结构化输出；适合对照 GLiNER2 的多来源文本输入、字段 Schema 和目录富化批处理形态。 | https://logic.inc/workflows/extract-brand-size-colour-from-product-text |
+| MetaData-Extraction 是服饰商品的视觉元数据抽取项目，用 GPT-4 Vision 从商品图片补充品牌、颜色、风格等目录属性；适合作为 GLiNER2 文本品牌/型号/属性抽取的图片兜底，在标题缺字段时用视觉证据补充或交叉校验。 | https://github.com/sanket98a/MetaData-Extraction |

@@ -219,3 +219,11 @@ https://huggingface.co/Ekwav/ane-extraction-qwen3.5-2b
 https://huggingface.co/pragnesh002/Qwen3-4B-Product-Extractor-GGUF-Q4-K-M
 https://careersatdoordash.com/blog/building-doordashs-product-knowledge-graph-with-large-language-models/
 https://github.com/haticebaydemir/ai-fashion-assistant-v2
+https://www.sciencedirect.com/science/article/pii/S0957417425013247
+https://doi.org/10.1145/2623330.2623343
+https://constructor.com/blog/extracting-ecommerce-search-intent-from-head-to-tail
+https://aifficientools.com/blog/extract-key-attributes-product-names-batch/
+https://medium.com/@conyeneke1/from-flyer-text-to-catalogue-id-building-a-retail-product-matching-pipeline-34738294aff0
+https://github.com/priyam-hub/Trend-Setters
+https://logic.inc/workflows/extract-brand-size-colour-from-product-text
+https://github.com/sanket98a/MetaData-Extraction
