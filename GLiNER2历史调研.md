@@ -242,3 +242,8 @@ https://habr.com/ru/companies/X5Tech/articles/941634/
 https://agixtech.com/case-studies/naratix/
 https://agilitytech.ai/case-studies/hsn-classification
 https://huggingface.co/morilinger/gliner-fahrzeugschein-onnx
+https://carlfung.dev/blog/building-ai-product-identifier
+https://www.datawebot.com/solutions/nlp-product-categorization
+https://www.octoparse.com/template/amazon-details-scraper
+https://hiflylabs.com/blog/2025/9/23/validating-ecommerce-products-bigquery-multimodal-ai
+https://sigir-ecom.github.io/ecom2019/ecom19Papers/paper36.pdf
