@@ -230,3 +230,6 @@ https://link.springer.com/article/10.1186/s40691-025-00435-w
 https://link.springer.com/article/10.1007/s44163-026-01221-3
 https://unidata.pro/cases/product-grouping-for-e-commerce/
 https://github.com/Sahori2003/product-matching
+https://pypi.org/project/product-tagger/
+https://github.com/haitaomao/amazon-m2
+https://github.com/ChocoData-com/amazon-product-scraper

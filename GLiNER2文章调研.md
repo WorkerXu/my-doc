@@ -384,3 +384,6 @@
 | 该零售数字孪生框架会从单商品图像中识别 brand、product name、variant、volume/size 等信息；适合作为 GLiNER2 文本抽取的多模态兜底，并用于验证包装图上品牌、型号/变体和规格字段的证据一致性。 | https://link.springer.com/article/10.1007/s44163-026-01221-3 |
 | Unidata 的电商商品归组案例明确把“从商品描述提取 model name”作为关键步骤，并要排除材质、颜色、袖长等非型号属性；适合设计 GLiNER2 的 model 与普通属性边界规则，并把抽取结果直接接到同款归组/去重。 | https://unidata.pro/cases/product-grouping-for-e-commerce/ |
 | 该商品匹配项目用 spaCy NER 从商品别名中抽取 BRAND、FORM、DOSAGE、QUANTITY 等关键属性，再结合向量检索映射到标准 SKU；适合参考 GLiNER2 的“字段抽取→属性加权→SKU 匹配”下游链路，并验证抽取字段对同款召回的业务价值。 | https://github.com/Sahori2003/product-matching |
+| product_tagger 专门把电商商品标题拆成核心商品词、brand 和描述性修饰词，可作为 GLiNER2 的轻量标题解析基线，尤其适合对照品牌、商品类型与颜色/性别/材质等修饰属性的边界切分。 | https://pypi.org/project/product-tagger/ |
+| Amazon-M2 的多语言商品记录同时提供 title、brand、colour、description 等结构化字段，覆盖英语、德语、日语及法语、意大利语、西班牙语；可将目录字段转成弱标签，构建 GLiNER2 多语言品牌/颜色抽取与跨语言泛化回归集。 | https://github.com/haitaomao/amazon-m2 |
+| ChocoData 的 Amazon 商品抓取项目提供当前可复现的真实 PDP 结构化样本，输出 title、brand、product_details/technical_details 等字段并保留原始响应；适合持续构造 GLiNER2 品牌与规格抽取回归集，并用页面结构化字段定位品牌槽位和规格解析误差。 | https://github.com/ChocoData-com/amazon-product-scraper |
