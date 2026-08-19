@@ -124,3 +124,8 @@
 | Home Depot 的 TripleLearn 生产 NER 直接识别 brand、product type 等电商实体，并通过多数据集迭代训练获得线上收益；适合用作 GLiNER2 品牌/商品类型抽取的生产级基线，并参考持续难例回流训练机制。 | https://ojs.aaai.org/index.php/AAAI/article/view/17773 |
 | PAVE 通过聚合相似商品邻居来提升开放词表属性抽取召回，同时保持精度；适合把 GLiNER2 的低置信度或缺失 brand/model/规格交给相似商品候选层做补全与交叉校验。 | https://www.amazon.science/publications/pave-lazy-mdp-based-ensemble-to-improve-recall-of-product-attribute-extraction-models |
 | KSelF 针对稀有和未见商品属性，利用大规模“商品档案-属性-值”预训练语料和查询扩展增强抽取，并提供 EC-AVE 基准；适合用于 GLiNER2 新类目、新字段和长尾型号的低资源训练与泛化评测。 | https://aclanthology.org/2023.findings-emnlp.542/ |
+| AFMRL 把商品细粒度理解直接建模为属性生成，先由多模态模型从商品图片和文本抽取关键属性，再用这些属性增强同款/相似商品表征；适合验证 GLiNER2 抽出的品牌、型号、规格能否作为商品匹配与检索的结构化特征。 | https://aclanthology.org/2026.findings-acl.704/ |
+| 该 ACL 2026 工业论文把商品重量这类隐式/缺失属性做成“类目内样例检索 + 多模态推断”，并已在百万级商品线上运行；适合补充 GLiNER2 对文本中未直接出现的重量、尺寸等数值属性的兜底思路和类目条件化评测。 | https://aclanthology.org/2026.acl-industry.41/ |
+| 该研究在 3000 个真实网店食品页上用 Schema 约束抽取配料、营养表等商品字段，并比较直接抽取与“生成函数后批量解析”两种方案；适合参考 GLiNER2 从商品页批量抽品牌/型号/规格时的结构约束、成本与吞吐权衡。 | https://arxiv.org/abs/2506.21585 |
+| IndustryBench-MIPU 提供 4481 个工业商品、4554 个属性名和多图结构化属性基准，输入就是“商品图片 + 单品属性 Schema”，示例字段直接包含品牌、型号；非常适合给 GLiNER2 的动态 Schema、品牌/型号/规格抽取做多图补证和回归评测。 | https://github.com/alibaba-multimodal-industrial-ai/IndustryBench-MIPU |
+| Enthusiast 是开源电商 Agent 框架，内置 Product Catalog Enrichment 场景，可从非结构化 product sheets 抽取商品描述和属性，并带验证/评估组件；适合参考把 GLiNER2 接进商品资料批处理、字段校验和目录富化工作流。 | https://github.com/upsidelab/enthusiast |
