@@ -136,3 +136,9 @@ https://pmc.ncbi.nlm.nih.gov/articles/PMC9168158/
 https://github.com/benchen4395/onesearch-family
 https://github.com/xuxinzhang/oneretrieval
 https://github.com/benchen4395/KuaiSearch
+https://aclanthology.org/2026.acl-industry.78/
+https://github.com/gururaser/magibu-uygulamali-yz-egitim/tree/main/les4/unsloth_ecommerce_ner_benchmark
+https://github.com/talmago/fast_gliner
+https://github.com/scrapinghub/product-extraction-benchmark
+https://aclanthology.org/2026.acl-demo.69/
+https://github.com/MacPaw/Gliner2Swift
