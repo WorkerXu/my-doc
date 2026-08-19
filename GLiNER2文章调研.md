@@ -100,3 +100,11 @@
 | eBay 的经典方案把商品属性抽取建模为 NER，并通过 bootstrapping 扩展训练数据；适合参考 GLiNER2 对长尾品牌、新型号、拼写变体等低资源实体的弱监督扩充与字段回归评测。 | https://aclanthology.org/D11-1144/ |
 | 该 NLPCC 工作直接研究时尚商品属性值抽取并引入视觉 Prompt；适合补足 GLiNER2 纯文本抽取在颜色、材质、款式等视觉属性上的盲区，形成“文本 Schema 主抽取 + 图片证据补充/校验”的方案。 | https://doi.org/10.1007/978-981-95-3343-5_9 |
 | 该 NLPCC 工作针对直播电商商品属性识别采用弱监督生成框架；适合参考从直播文本/口语描述构造低成本训练信号，再迁移到 GLiNER2 的品牌、型号、规格字段抽取，覆盖噪声大、标注稀缺的商品内容。 | https://doi.org/10.1007/978-981-95-3343-5_17 |
+| 该研究系统比较文本填空与答案生成两类生成式商品属性值抽取框架，覆盖联合多属性抽取和未见值泛化；适合与 GLiNER2 的动态 Schema 多字段抽取做基准对照，判断 span 抽取与生成式补全各自边界。 | https://www.sciencedirect.com/science/article/pii/S0957417423033523 |
+| 该项目/论文专门从复杂商品详情页中识别规格块，不局限于 table/list 标签，并进一步抽取属性-值对；适合作为 GLiNER2 的网页上游，把 DOM 中真正含型号、尺寸、材质等规格的文本块先筛出来再做字段抽取。 | https://arxiv.org/abs/2201.02896 |
+| 该研究从商品规格表/列表中自动识别属性列和值列，并处理多列结构和重复模板，还做跨站 Schema 匹配；适合参考 GLiNER2 前置网页结构解析以及抽取后的字段名对齐与统一。 | https://doi.org/10.1145/3106426.3106449 |
+| DEXTER 面向大规模 Web 商品规格发现与抽取，覆盖站点发现、商品页识别、规格区域定位和 wrapper 抽取；适合把 GLiNER2 嵌入批量商品采集链路，在结构化规则覆盖不足时负责品牌、型号和长尾属性语义抽取。 | https://doi.org/10.14778/2831360.2831372 |
+| Web Data Commons 的商品语料与 Gold Standard 覆盖跨电商站点的商品数据抽取、属性值与 Schema 对齐，可作为 GLiNER2 从真实网页做品牌/型号/规格字段抽取时的外部评测与跨站泛化数据来源。 | https://webdatacommons.org/productcorpus/index.html |
+| YODA 是面向 Google Feed 商品优化的生产 NER，直接覆盖 brand、color、size、energy label 等字段，并在大规模商品数据上训练与部署；很适合作为 GLiNER2 商品字段抽取的生产级精度/吞吐基线和字段体系参考。 | https://huggingface.co/lighthousefeed/yoda-ner |
+| ecombert-ner-v1 是商品标题/查询专用 span NER，标签直接包含 BRAND、MODEL、MATERIAL、COLOR、MEASUREMENT、ATTRIBUTE、COMPATIBILITY 等 23 类；与 GLiNER2 的品牌、型号、规格 Schema 几乎一一对应，适合做重叠 span 与细粒度字段回归基线。 | https://huggingface.co/xinyacs/ecombert-ner-v1 |
+| 该 B2B 电商 NER 项目抽取 PRODUCT、QUANTITY、SIZE、UNIT，并把结果接入品牌模糊匹配、变体识别、置信度和 SKU 映射；适合参考 GLiNER2 从“文本字段抽取”到“目录/SKU 标准化与业务入库”的完整后处理链路。 | https://huggingface.co/Purva17/b2b-ecomm-ner |
