@@ -327,3 +327,6 @@ https://getclaro.ai/resources/guides/why-ai-enriched-product-data-needs-evidence
 https://arxiv.org/abs/2510.20632
 https://pypi.org/project/polite-retail-scrapers/
 https://support.google.com/merchants/answer/160161?hl=en
+https://huggingface.co/mohsin416/autocatalogai-clip-multitask-v2
+https://huggingface.co/datasets/wynnwatson/furniture-model-extraction
+https://www.amazon.science/publications/mmt4-multi-modality-to-text-transfer-transformer
