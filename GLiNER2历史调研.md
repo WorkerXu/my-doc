@@ -319,3 +319,7 @@ https://www.spiceworx.com/en/rfq-assistant-explainer-technical.html
 https://aisoftwaredev.io/case-studies/ecommerce-catalog-enrichment-agent
 https://github.com/echoholla/framesdirect-data-extractor
 https://docsbot.ai/prompts/productivity/complete-product-data-extraction
+https://help.trustana.com/en/articles/11113957-how-to-enrich-products-in-trustana
+https://tech.intershop.com/kb/index.php/Display/4829G4
+https://www.socialcrawl.dev/platforms/home_depot/product
+https://www.feedoptimise.com/integrations/sources/shopify

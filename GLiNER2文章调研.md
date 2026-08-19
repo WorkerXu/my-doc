@@ -471,3 +471,7 @@
 | AISD 目录富化案例从供应商 PDF/图片按内部商品 Schema 抽取结构化属性，逐字段给出置信度并把低置信结果送人工复核；适合参考 GLiNER2 的多源输入、Schema 对齐、置信度/HITL 和批量商品入库闭环。 | https://aisoftwaredev.io/case-studies/ecommerce-catalog-enrichment-agent |
 | FramesDirect 抓取项目从眼镜商品目录提取 brand/model，做价格标准化、去重并输出 CSV/JSON；适合持续生成真实品牌/型号弱标签和对照样本，用于 GLiNER2 短标题型号边界、去重前字段质量回归。 | https://github.com/echoholla/framesdirect-data-extractor |
 | DocsBot 的商品抽取 Schema 明确要求 title/SKU/brand/model/specifications 与变体属性，并强调仅从页面显式证据抽取、禁止推断；适合迁移为 GLiNER2 字段定义与证据约束，降低型号/属性幻觉并统一缺失值处理。 | https://docsbot.ai/prompts/productivity/complete-product-data-extraction |
+| Trustana 的产品数据富化流程明确以 Product name、Brand、Product Model/类目作为识别上下文，并可从图片、网页和 PDF/规格书补齐类目属性；适合参考 GLiNER2 的“品牌/型号主键→动态 Schema→多来源属性抽取→目录回填”链路。 | https://help.trustana.com/en/articles/11113957-how-to-enrich-products-in-trustana |
+| Intershop Product Content Agent 会以 SKU、brand 等商品身份字段为入口，结合可信外部来源补齐结构化规格，并将结果映射回 PIM 商品数据模型；适合把 GLiNER2 作为确定性 brand/model/规格抽取器嵌入“抽取→缺失/冲突补证→PIM 回写”流程。 | https://tech.intershop.com/kb/index.php/Display/4829G4 |
+| SocialCrawl 的 Home Depot Product API 将真实商品页统一输出 title、brand、model number、UPC、描述和分组 specifications，且页面在 2026 年 8 月仍维护；适合持续构造 GLiNER2 品牌/型号/规格回归样本，并用商城结构化字段做字段级对照真值。 | https://www.socialcrawl.dev/platforms/home_depot/product |
+| Feedoptimise 的 Shopify 富化方案可直接从商品及变体图片抽取 brand、color、pattern、style 等属性，并对整店 Feed 做 AI 批量补全；适合在 GLiNER2 文本品牌/型号/属性主抽取之外增加图片侧证据，补齐视觉属性并做跨模态一致性校验。 | https://www.feedoptimise.com/integrations/sources/shopify |
