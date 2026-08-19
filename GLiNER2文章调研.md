@@ -177,3 +177,8 @@
 | Amazon ML Challenge 项目从商品图片中用 PaddleOCR、规则和线段检测抽取高度、宽度、重量、功率、电压、容量等实体值；适合在 GLiNER2 文本抽取之外增加图片 OCR 兜底，补齐包装或图片里才出现的规格字段。 | https://github.com/nirvan840/Product-Image-Attribute-and-Entity-Extraction |
 | Lasso 的供应商商品标题治理指南把 brand/model extraction 与标准化模板、归一化规则结合，专门处理不同供应商命名不一致；适合用作 GLiNER2 前后的标题清洗、品牌/型号规范化和目录一致性设计参考。 | https://productlasso.com/en/blog/fix-inconsistent-product-titles |
 | DataHunk 的生产商品数据抽取方案明确输出 title、brand、model number、variant、technical specs，并提供统一 Schema 与置信度评分；适合参考 GLiNER2 落地到 PIM/ERP 时的字段契约、置信度门禁和批量目录富化形态。 | https://datahunk.in/product-data-extraction |
+| LATEX-Numeric 专门从商品描述中抽取尺寸、容量、功率等数值属性，利用远程监督、缺失标注鲁棒训练和自动单位别名生成实现可扩展抽取；适合给 GLiNER2 的数值规格字段补充单位词典、弱标注训练和归一化策略，尤其处理“数值+单位”边界。 | https://aclanthology.org/2021.naacl-industry.34/ |
+| VideoAVE 提供公开的商品视频到属性值抽取数据集，覆盖 14 个领域和 172 个属性，并同时评测指定属性取值与开放属性-值对抽取；适合把 GLiNER2 的文本主抽取扩展到商品视频字幕、OCR 或帧描述证据，并评估视频中才出现的型号、规格和功能属性。 | https://arxiv.org/abs/2508.11801 |
+| 该 2026 中文电商研究使用细粒度电商 NER 从商品标题识别 category、brand、origin 等实体并回灌领域词表与本体；适合参考 GLiNER2 中文品牌与类目字段的 Schema 设计、领域词典增强和标题预处理，提升中文长尾品牌及领域术语覆盖。 | https://www.nature.com/articles/s41598-026-38214-2 |
+| D-Extract 从商品图片中的 OCR 文字抽取长宽高等尺寸属性，并结合商品类目统计先验提升识别效果；适合作为 GLiNER2 文本抽取的视觉兜底，补齐包装图或规格图中才出现的数值规格，并用于多证据一致性校验。 | https://openaccess.thecvf.com/content/WACV2023/html/Ghosh_D-Extract_Extracting_Dimensional_Attributes_From_Product_Images_WACV_2023_paper.html |
+| 该 SIGIR 工业工作将电商查询中的 brand、color、product type 等区分为显式属性与隐式属性，并结合商品知识图谱和用户行为补足隐含值；适合明确 GLiNER2 可证据化抽取的边界，把隐式属性推断放到独立二阶段，避免推断值与原文抽取值混淆。 | https://www.amazon.science/publications/implicit-query-parsing-for-product-search |
