@@ -145,3 +145,10 @@ https://arxiv.org/abs/2104.05504
 https://www.amazon.science/publications/semi-supervised-learning-and-visual-transformers-for-product-attribute-extraction-from-e-commerce-images
 https://medium.com/mercadolibre-tech/genai-meets-crisp-dm-advancing-data-science-for-e-commerce-a9d6d98a9142
 https://medium.com/mercadolibre-tech/boosting-store-integration-mcp-and-agentic-ides-for-mercado-libre-listings-6bf616a914f2
+https://aclanthology.org/W15-1522/
+https://aclanthology.org/P12-1085/
+https://aclanthology.org/I11-1163/
+https://doi.org/10.1145/1147234.1147241
+https://aclanthology.org/2024.emnlp-industry.106/
+https://tech.walmart.com/content/walmart-global-tech/en_us/blog/post/using-llms-to-manage-product-catalogs.html
+https://huggingface.co/haninebou/algerian-ner-ultimate
