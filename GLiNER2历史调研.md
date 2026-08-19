@@ -288,3 +288,9 @@ https://github.com/ruchbagwe/Product-description-classification-NER
 https://getclaro.ai/customers/structuring-product-specifications-for-a-construction-tech-platform
 https://skulookup.io/docs/api-documentation
 https://dealophant.com/how-it-works
+https://www.sciencedirect.com/science/article/abs/pii/S0950705126009391
+https://github.com/upsidelab/enthusiast
+https://github.com/DevAnimecx/dropwise
+https://github.com/browser-act/skills/blob/main/solutions/ecommerce/amazon-product-detail/SKILL.md
+https://github.com/pkp666/product-ai-listing-studio
+https://github.com/AlidaSoble/tecdoc-car-parts

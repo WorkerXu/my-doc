@@ -442,3 +442,7 @@
 | Claro 2026 实际客户流程从制造商/供应商 PDF、表格和弱标准数据中先对齐到正确 product/model，再按类目 Schema 抽取、单位归一、证据与置信度校验规格；适合参考 GLiNER2 在产品说明书/供应商数据中的“型号对齐→动态 Schema→规格抽取→可信入库”链路。 | https://getclaro.ai/customers/structuring-product-specifications-for-a-construction-tech-platform |
 | SKU LookUp API 用 product_schema 显式定义 brand、model、RAM 等字段及逐字段 extraction prompt，并支持 SKU/MPN/EAN 作为商品标识批量富化；和 GLiNER2 动态 Schema 很接近，可参考字段契约、类目/品牌约束和批量处理接口。 | https://skulookup.io/docs/api-documentation |
 | Dealophant 的线上 Amazon 标题解析把正则数量抽取、LLM unit family 分类和平台 pricePerUnit 校验组合起来，处理 pack count、重量、容量、servings；适合 GLiNER2 对容量/包装数/单位等强规则规格采用“模型抽取+确定性校验/归一化”的混合方案。 | https://dealophant.com/how-it-works |
+| 这篇 2026 Knowledge-Based Systems 研究面向电商短查询构建细粒度 NER 数据集，并系统比较微调 Transformer、CRF 与零样本 LLM 在噪声和土耳其语形态变化下的表现；适合用于 GLiNER2 品牌、型号、属性等短文本字段的多语言鲁棒性评测和噪声难例设计。 | https://www.sciencedirect.com/science/article/abs/pii/S0950705126009391 |
+| DropWise 在 35+ 电商平台上采用 JSON-LD、Meta、站点选择器、DOM 启发式和视觉兜底的五层抽取，统一输出 title、brand、SKU、seller、价格等字段；适合与 GLiNER2 组成“确定性结构化字段优先、语义字段补抽”的混合商品信息抽取链路。 | https://github.com/DevAnimecx/dropwise |
+| product-ai-listing-studio 将结构化商品数据、SKU helper、平台字段映射与 AI 商品 Listing 工作流放在同一项目中；适合把 GLiNER2 抽出的 brand/model/属性作为统一中间 Schema，再映射到不同电商平台字段并检查缺失或格式不一致。 | https://github.com/pkp666/product-ai-listing-studio |
+| tecdoc-car-parts 以 brand→model→engine→vehicle→category→article 的层级组织汽配数据，并暴露料号、兼容性和技术规格等细粒度属性；适合为 GLiNER2 设计汽配垂直类目的品牌/车型型号/零件号/规格 Schema 与层级约束校验。 | https://github.com/AlidaSoble/tecdoc-car-parts |
