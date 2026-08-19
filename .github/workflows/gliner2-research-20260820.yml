@@ -1,0 +1,78 @@
+name: GLiNER2 research append once
+
+on:
+  push:
+    paths:
+      - '.github/workflows/gliner2-research-20260820.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    if: ${{ github.event.head_commit.message == 'chore: run GLiNER2 append research' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Append researched links
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          article = Path("GLiNER2文章调研.md")
+          history = Path("GLiNER2历史调研.md")
+
+          rows = [
+              (
+                  "Superlinked SIE 的电商搜索示例把 GLiNER 系列抽取器直接放进在线检索链路：先从商品描述抽结构化 attributes.brand，再做向量编码、检索和 rerank，并支持品牌过滤；适合参考 GLiNER2 的“商品文本→品牌/属性→结构化元数据→搜索过滤”服务接口与工程拆分。",
+                  "https://github.com/superlinked/sie/blob/main/examples/ecommerce-product-search/typescript/README.md",
+              ),
+              (
+                  "OpenWeb 的 Costco 适配器从真实商城 JSON 中提取商品 title、brand、category 和 attributes，并明确用 attributes.Brand 规避脏 manufacturer 字段；适合给 GLiNER2 品牌/型号/规格抽取增加“结构化来源优先、语义模型补抽”的字段优先级与真值校验策略。",
+                  "https://github.com/imoonkey/openweb/blob/main/src/sites/costco/DOC.md",
+              ),
+              (
+                  "Elovate 的商品属性抽取指南把目标属性、缺失值、禁止猜测、值归一化和类目专属字段写成明确抽取规则；很适合迁移到 GLiNER2 的 Schema/字段描述设计，尤其用于降低品牌、型号和规格的幻觉并统一目录值。",
+                  "https://support.elovate.io/en/articles/15188908-writing-better-extraction-prompts",
+              ),
+              (
+                  "这份 iOS 26 FoundationModels 工程参考给出了端侧 E-Commerce Product Attribute Extraction 示例，用声明式结构从自由商品描述抽 colour、size、material、style；可作为 GLiNER2 本地/端侧商品属性抽取在隐私、结构化输出和轻量部署上的对照实现。",
+                  "https://www.conorluddy.com/writing/foundation-models-reference",
+              ),
+              (
+                  "这篇 2026 电商 Product Understanding 架构文章把 attribute extraction、spec normalization、category classification、SKU organization 和 material understanding 放进同一生产系统讨论；适合参考 GLiNER2 抽取后的字段规范化、Schema 演进、质量控制以及与商品 Agent/目录系统的衔接。",
+                  "https://medium.com/jin-system-architect/from-e-commerce-product-understanding-to-product-agent-how-to-actually-build-enterprise-grade-ai-2f159f105650",
+              ),
+          ]
+
+          article_text = article.read_text(encoding="utf-8")
+          history_text = history.read_text(encoding="utf-8")
+          new_rows = [(reason, url) for reason, url in rows if url not in article_text and url not in history_text]
+
+          if new_rows:
+              with article.open("a", encoding="utf-8") as f:
+                  if article_text and not article_text.endswith("\n"):
+                      f.write("\n")
+                  for reason, url in new_rows:
+                      f.write(f"| {reason} | {url} |\n")
+
+              with history.open("a", encoding="utf-8") as f:
+                  if history_text and not history_text.endswith("\n"):
+                      f.write("\n")
+                  for _, url in new_rows:
+                      if url not in history_text:
+                          f.write(url + "\n")
+          PY
+
+      - name: Commit appended research
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add GLiNER2文章调研.md GLiNER2历史调研.md
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "docs: append GLiNER2 product extraction research"
+          git push
