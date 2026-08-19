@@ -165,3 +165,9 @@
 | CAVE 专门解决商品目录中错误属性值的纠正与补全，联合商品标题和现有属性表通过 QA 校正错误值，并能从标题补出新值；适合作为 GLiNER2 抽取后的品牌、型号、规格冲突校验和纠错层。 | https://doi.org/10.1145/3511808.3557161 |
 | Home Depot 的该工作针对供应商入驻时手工录入属性值带来的噪声与不一致，研究可扩展的 Transformer 属性值验证与纠错；适合给 GLiNER2 结果增加“抽取→目录值验证→自动纠错/拦截”的质量门禁。 | https://isir-ecom2022.github.io/papers/isir-ecom-2022_paper_7.pdf |
 | Beauty Beyond Words 在真实护肤商品目录中根据成分信息抽取垂直类目的专属属性，并强调可解释、鲁棒和可持续增加新属性；适合验证 GLiNER2 按类目维护专属 Schema，提取成分、功效、适用类型等长尾属性的能力。 | https://arxiv.org/abs/2409.13628 |
+| Amazon 的 TARS 少样本方案直接从非结构化商品描述推断结构化属性值，仅用约 40 条/属性的标注即可获得接近大样本基线的效果，并可利用搜索查询生成合成训练数据；适合 GLiNER2 在新增 brand/model/规格字段时做低标注快速适配与跨字段迁移。 | https://www.amazon.science/publications/enhancement-and-analysis-of-tars-few-shot-learning-model-for-product-attribute-extraction-from-unstructured-texts |
+| 该弱监督信息抽取方案用原型表示自动过滤噪声标注，并在电商属性值抽取上提升下游精度；适合用于清洗词典、规则或商品目录自动生成的 GLiNER2 品牌/型号/属性伪标注，降低脏标签对微调效果的影响。 | https://www.amazon.science/publications/prototype-representations-for-training-data-filtering-in-weakly-supervised-information-extraction |
+| 该数据质量框架通过 QA 式属性值抽取识别商品描述缺失的关键信息，并产出类目级缺失字段报告；可参考在 GLiNER2 抽取之后增加“字段是否缺失/描述是否完整”的质量检查，避免必填品牌、型号或规格缺失时直接入库。 | https://aclanthology.org/2022.ecnlp-1.4/ |
+| Amazon 的大规模商品 Schema 匹配方案面向海量制造商/供应商异构字段，用属性语义相似度和业务相关性自动对齐统一目录字段；适合衔接 GLiNER2，将 manufacturer、model no.、capacity 等来源字段归并到 canonical brand/model/规格 Schema，减少重复字段与人工映射。 | https://www.amazon.science/publications/attribute-similarity-and-relevance-based-product-schema-matching-for-targeted-catalog-enrichment |
+| AutoKnow 是已覆盖 11K+ 商品类型的自动商品知识采集系统，包含商品属性识别、知识抽取、异常检测和同义词发现；适合参考 GLiNER2 的“类目/属性体系→字段抽取→别名归并→异常校验→商品知识库”端到端生产架构。 | https://www.amazon.science/publications/autoknow-self-driving-knowledge-collection-for-products-of-thousands-of-types |
+| 该电商 NER 工作用正-未标注学习、种子词典和迭代扩展在低资源商品描述上训练实体识别；适合为 GLiNER2 的长尾品牌、新型号、货号等字段构造低成本训练数据，并利用未标注商品语料持续扩充实体覆盖。 | https://aclanthology.org/2020.ecnlp-1.1/ |
