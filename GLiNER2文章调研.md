@@ -485,3 +485,6 @@
 | 这个 2026 eBay 德语商品标题 NER 项目把 BMW、320d、Ölfilter、Mann 分别抽成 CAR_BRAND、CAR_MODEL、PART_NAME、MANUFACTURER，并提供 spaCy 训练/测试流程；适合直接做 GLiNER2 品牌/型号/零件名字段的短标题回归基线，尤其验证字母数字型号边界。 | https://github.com/vaishnaviagrawal26/ner-german-ecommerce |
 | tensor-house 的 Notebook 把商品数据治理拆成“新商品类型/Schema 发现→按已知 Schema 抽 brand、material、features 等值→单位与分类体系 harmonization”，并输出严格 JSON；和 GLiNER2 动态 Schema→结构化字段→归一化的生产链路高度一致。 | https://github.com/ikatsov/tensor-house/blob/master/search/product-attribute-extraction-llm.ipynb |
 | spacy-nlp-ecommerce-pipeline 提供面向电商的可运行 NER Notebook，直接从非结构化文本识别 products、brands、prices，并说明结果可进入知识图谱与推荐链路；适合与 GLiNER2 做固定标签 spaCy 基线、字段精度对照和服务化前处理。 | https://github.com/stkisengese/spacy-nlp-ecommerce-pipeline |
+| Image-entity-extractor 针对商品图片用 CRAFT+OCR 提取 width、weight、voltage 等指定实体和值，并做单位标准化；适合作为 GLiNER2 文本字段抽取的视觉/OCR 兜底，补齐包装图或规格图中才出现的尺寸、重量、电压等属性。 | https://github.com/eshan1347/Image-entity-extractor |
+| OpenAI 的 GABRIEL 能按用户定义的结构从文本、图片或音频批量抽取属性，官方示例直接包含从 catalog page 提取 product name、price、description、color；适合对照 GLiNER2 的动态 Schema、多模态输入和批量结构化抽取工作流。 | https://github.com/openai/GABRIEL |
+| TESSERACT 面向汽配电商把 CSV 商品接入 TecDoc 自动补齐技术规格、OEM 号与 Year/Make/Model 适配关系，再同步到 Shopify；适合参考 GLiNER2 抽出品牌/型号/零件号后接标准目录反查、规格富化和类目约束校验。 | https://github.com/aghyy/TESSERACT |
