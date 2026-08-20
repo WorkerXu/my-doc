@@ -333,3 +333,6 @@ https://www.amazon.science/publications/mmt4-multi-modality-to-text-transfer-tra
 https://github.com/vaishnaviagrawal26/ner-german-ecommerce
 https://github.com/ikatsov/tensor-house/blob/master/search/product-attribute-extraction-llm.ipynb
 https://github.com/stkisengese/spacy-nlp-ecommerce-pipeline
+https://github.com/eshan1347/Image-entity-extractor
+https://github.com/openai/GABRIEL
+https://github.com/aghyy/TESSERACT
