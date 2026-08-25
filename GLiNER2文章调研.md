@@ -504,3 +504,6 @@
 | OLX/Prosus 的无监督商品属性抽取实践直接面向在线 Listing，从商品文本中发现 RAM、品牌等属性和值，并重点降低人工 Schema 与标注依赖；适合参考 GLiNER2 新类目冷启动、开放属性发现和长尾字段候选生成。 | https://medium.com/prosus-ai-tech-blog/unsupervised-attribute-extraction-for-online-listings-41baa5d2270e |
 | 阿里巴巴这项中文商品短标题研究使用电商专用 NER，覆盖 Brand、Color、Size 等 36 类实体；适合用于 GLiNER2 中文商品标题的字段体系设计、品牌/属性 span 回归以及短文本压缩场景下的实体边界对照。 | https://ojs.aaai.org/index.php/AAAI/article/view/4999 |
 | ChocoData 的 Walmart 商品抓取项目可从当前真实 PDP 结构化得到 brand、model、GTIN/SKU 以及完整 specifications，示例直接给出 Lenovo 品牌和字母数字型号；适合持续构造 GLiNER2 品牌/型号/规格回归样本，并将商城结构化字段作为自动对照真值。 | https://github.com/ChocoData-com/walmart-product-scraper |
+| 这篇中文综述系统梳理电商属性值提取从规则、序列标注、问答、Transformer 到多模态和大语言模型的路线与挑战；适合快速校准 GLiNER2 品牌/型号/属性抽取的基线、数据集选择及何时需要多模态或生成式兜底。 | https://www.arocmag.cn/abs/2025.02.0031 |
+| HirInfotech 的 2026 实践把电商属性抽取目标明确为 Brand、SKU/Model Number、尺寸、颜色/尺码、材质和技术特征，并将品牌名、单位、颜色等归一化作为抽取后的必要步骤；适合用来定义 GLiNER2 的核心商品 Schema 与“抽取→标准化→目录入库”边界。 | https://hirinfotech.com/duplicate-post-example-post-copy-32/ |
+| 这篇 2026 B2B 商品目录实战审计覆盖 77.5 万 SKU，明确要求型号/料号保持原样、从描述中恢复 manufacturer part number，并同时抽 size/material/connection 等结构化属性；还给出品牌值去占位符与归一化方法，适合校准 GLiNER2 的 brand/model/MPN 边界和抽取后质量门禁。 | https://subramanya.ai/2026/08/06/fixing-b2b-commerce-search-in-the-age-of-ai/ |
