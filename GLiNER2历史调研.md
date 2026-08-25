@@ -355,3 +355,8 @@ https://github.com/ChocoData-com/walmart-product-scraper
 https://www.arocmag.cn/abs/2025.02.0031
 https://hirinfotech.com/duplicate-post-example-post-copy-32/
 https://subramanya.ai/2026/08/06/fixing-b2b-commerce-search-in-the-age-of-ai/
+https://www.fronttribe.com/insights/catalog-enrichment-on-medusa-with-claude-the-import-time-pipeline-we-ship-for-2000-sku-brands
+https://www.aigenapps.com/papers/operations/catalog-enrichment
+https://marketplace.creatio.com/app/product-catalog-agent-creatio
+https://reader.dev/solutions/ecommerce
+https://www.amazon.science/publications/catalograg-retrieval-guided-llm-prediction-for-multilingual-e-commerce-product-attributes
