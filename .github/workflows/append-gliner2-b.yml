@@ -1,0 +1,66 @@
+name: Append GLiNER2 research batch b
+
+on:
+  push:
+    paths:
+      - '.github/workflows/append-gliner2-b.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Append new research rows
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          items = [
+              (
+                  "ViEcomNER 提供 2,993 条越南语真实电商商品标题和字符级 span，标签直接包含 BRAND、MODEL、ATTRIBUTE、SPEC、SIZE、MATERIAL、CAPACITY 等 24 类；可直接映射到 GLiNER2 动态 Schema，做多语言品牌/型号/规格的回归评测和少样本微调。",
+                  "https://huggingface.co/datasets/tnhyen/vietnamese-ecommerce-ner",
+              ),
+              (
+                  "Shoptera MCP 已把商品目录富化拆成可调用工具，直接提供 extract_product_model 从商品标题提取 model/MPN，并配套类目属性模板、商品来源检索和 GTIN 校验；适合参考 GLiNER2 的“字段抽取→目录校验→实体确认”工程化后处理链路。",
+                  "https://github.com/shoptera-ai/shoptera-mcp",
+              ),
+              (
+                  "该 GenAI-Ecommerce 论文从电商网站结构中学习商品变体关系和变体属性，结构化字段明确包含 brand、part number、model number、size、color、package quantity；适合把 GLiNER2 的品牌/型号/属性结果用于 SKU 变体归组和跨变体一致性校验。",
+                  "https://genai-ecommerce.github.io/assets/papers/GenAIECommerce2024/Genaiecom24_paper_9.pdf",
+              ),
+              (
+                  "Ionio 的 0.8B 电商结构化抽取模型以运行时 JSON Schema 驱动字段抽取，示例直接抽 product_type、brand、color、price，并评测 Schema valid、Leaf F1 与 null accuracy；很适合与 GLiNER2 动态 Schema 做轻量本地抽取、缺失字段和严格结构化输出对照。",
+                  "https://huggingface.co/Ionio-ai/Qwen3.5-0.8B-Ecommerce-Extraction-GGUF",
+              ),
+          ]
+
+          article_path = Path("GLiNER2文章调研.md")
+          history_path = Path("GLiNER2历史调研.md")
+          article = article_path.read_text(encoding="utf-8")
+          history = history_path.read_text(encoding="utf-8")
+
+          for reason, url in items:
+              if url not in article:
+                  if article and not article.endswith("\n"):
+                      article += "\n"
+                  article += f"| {reason} | {url} |\n"
+              if url not in history:
+                  if history and not history.endswith("\n"):
+                      history += "\n"
+                  history += url + "\n"
+
+          article_path.write_text(article, encoding="utf-8")
+          history_path.write_text(history, encoding="utf-8")
+          PY
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add 'GLiNER2文章调研.md' 'GLiNER2历史调研.md'
+          if ! git diff --cached --quiet; then
+            git commit -m 'docs: append new GLiNER2 product extraction research'
+            git push
+          fi
