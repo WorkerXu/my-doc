@@ -363,3 +363,6 @@ https://www.amazon.science/publications/catalograg-retrieval-guided-llm-predicti
 https://github.com/ludongfang/ProductAttrExtractionPromptEngineering
 https://www.alpha-quantum.com/solutions/ecommerce.php
 https://mcp.agentutility.ai/retail/sku-normalize/
+https://claude3p.com/articles/pattern-catalog-enrichment
+https://hootcore.io/blog/ecommerce-product-data-enrichment-services-guide-2026
+https://syncrefine.com/blog/product-data-enrichment

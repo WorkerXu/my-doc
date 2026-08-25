@@ -512,3 +512,6 @@
 | Creatio 的 Product Catalog Agent 会从商品目录记录中提取关键规格并形成结构化视图，同时处理自然语言检索；适合参考把 GLiNER2 封装成 Agent 的商品字段工具，对 brand/model/技术规格统一抽取后直接供目录检索与比较消费。 | https://marketplace.creatio.com/app/product-catalog-agent-creatio |
 | Reader 可把不同站点商品页统一转成干净 Markdown/结构化 JSON，并支持按 Schema 抽取商品字段；适合放在 GLiNER2 上游做跨站页面降噪与正文统一，让同一 brand/model/属性 Schema 在不同商城复用。 | https://reader.dev/solutions/ecommerce |
 | Amazon CatalogRAG 从同类商品目录中按商品类型、文本相似度和品牌关系检索已填充属性的相似商品，再引导 LLM 补全多语言结构化属性；适合接在 GLiNER2 的低置信或缺失 brand/model/规格之后做目录内候选增强、交叉校验和缺失值补全。 | https://www.amazon.science/publications/catalograg-retrieval-guided-llm-prediction-for-multilingual-e-commerce-product-attributes |
+| 该 2026 目录富化 Pipeline 把每个 SKU 的原始记录、属性 taxonomy 与少量示例一起用于结构化属性生成，并把质量校验作为批处理核心；适合参考 GLiNER2 按类目加载 brand/model/规格 Schema、few-shot 样例以及批量校验/重试的工程编排。 | https://claude3p.com/articles/pattern-catalog-enrichment |
+| 该 2026 指南把多供应商原始字段映射到统一目录结构，并在同一流程中做 color、size、material、weight、compatibility 等属性抽取和同义值归一；适合让 GLiNER2 负责 brand/model/规格抽取后接 canonical key/value 映射与供应商数据标准化。 | https://hootcore.io/blog/ecommerce-product-data-enrichment-services-guide-2026 |
+| 这篇 2026 实践将商品数据富化拆成属性补全、单位规范化、缺失规格治理和目录同步，并强调纯 AI 富化必须配合质量控制；适合用于定义 GLiNER2 抽取后的标准化、缺失值处理与审核边界。 | https://syncrefine.com/blog/product-data-enrichment |
