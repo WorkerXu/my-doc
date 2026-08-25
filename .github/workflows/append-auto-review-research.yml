@@ -1,0 +1,62 @@
+name: Append automatic review research
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/append-auto-review-research.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Append only new research rows
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          article = Path('自动审查文章调研.md')
+          history = Path('自动审查历史调研.md')
+
+          rows = [
+              ('该实践明确要求任务状态必须与实际工作在同一个 Git commit 中更新，并把 commit body 作为完成证据；适合借鉴为 Codex `PLAN.md` 与实现提交同提交演进的硬规则，避免事后补写计划造成追踪失真。', 'https://github.com/dantte-lp/powerdns-upstream-patches/blob/main/docs/plan.md'),
+              ('Codex Multi-Agent Orchestration 把实现、研究和多级独立 review 拆成隔离角色，使用 worktree、源文件指纹和持久 review artifacts；适合把 plan/commit 基线固定后交给不同 reviewer 复核并保留可追溯证据。', 'https://github.com/omid511/codex-agent-orchestration'),
+              ('Codex-Orchestration 原生区分 Planner、独立 Advisor、Designer 和 Executor，并要求 Planner/Advisor 走不同模型路由；适合在 Codex 内把计划审查、设计交接和实现拆成相互制衡的多 Agent 流程。', 'https://github.com/Cjbuilds/Codex-Orchestration'),
+              ('Figma MCP Server Guide 的 Fidelity Guard 草案专门检测设计上下文截断、稀疏或不一致，并在高保真实现前要求明确的 context-completeness 状态；虽仍是 draft PR，但很适合作为 design-reviewer 的“证据完整性”前置门禁。', 'https://github.com/figma/mcp-server-guide/pull/81'),
+              ('Codex Control Plane MCP 为 Plan Mode、code review、结构化 final report、thread goal 同步和持久任务状态提供统一 MCP 控制面；适合把外部多 Agent 聚合 findings 重新送入指定 Codex 线程/目标并继续修复。', 'https://github.com/aresyn/codex-control-plane-mcp'),
+              ('Project Home 直接给 Codex++ 项目增加按项目隔离的 Kanban，并通过 MCP 暴露创建、更新、评论和移动 issue 的工具；适合把审查结果直接沉淀为 Codex 项目卡片并保留后续处理状态。', 'https://github.com/b-nnett/codex-plusplus-project-home'),
+              ('ATC 用任务锁、Git worktree 隔离、冲突检测和实时看板协调 Codex、Claude Code、Gemini CLI、OpenCode；适合把 code/design reviewer 分派到独立工作区并把审查状态统一汇总到项目看板。', 'https://github.com/JSCOP/atc-kanban'),
+          ]
+
+          article_text = article.read_text(encoding='utf-8')
+          history_text = history.read_text(encoding='utf-8')
+
+          article_add = []
+          history_add = []
+          for reason, url in rows:
+              if url not in article_text and url not in history_text:
+                  article_add.append(f'| {reason} | {url} |')
+                  history_add.append(url)
+
+          if article_add:
+              article.write_text(article_text.rstrip('\n') + '\n' + '\n'.join(article_add) + '\n', encoding='utf-8')
+          if history_add:
+              history.write_text(history_text.rstrip('\n') + '\n' + '\n'.join(history_add) + '\n', encoding='utf-8')
+          PY
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- '自动审查文章调研.md' '自动审查历史调研.md'
+          if git diff --cached --quiet; then
+            echo 'No new rows to append.'
+            exit 0
+          fi
+          git commit -m 'docs: append new automatic review research'
+          git push origin HEAD:main
