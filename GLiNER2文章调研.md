@@ -491,3 +491,4 @@
 | DRAM 动态选择与当前商品相关的属性范围并融合文本/图片做属性值抽取，在 MEPAVE/MAE 上验证；很适合参考 GLiNER2 按商品或类目裁剪 brand/model/规格 Schema，减少无关字段误抽，并以图像补充文本缺失属性。 | https://www.mdpi.com/2079-9292/15/5/969 |
 | Google Cloud 的该零售论文用多模态 Gemini 从商品图片按开放/闭集属性词表做属性抽取，并测试自纠错 Prompt；适合作为 GLiNER2 文本 brand/model/规格抽取的视觉兜底与闭集属性校验参考。 | https://library.imaging.org/ei/articles/37/8/IMAGE-262 |
 | gemma4-e2b-ec-magento 是面向 Magento 商品目录训练的轻量 QLoRA 模型，直接把目标属性抽成严格 JSON，并显式用 None 处理缺失字段；适合拿来与 GLiNER2 对照动态字段抽取、缺失值处理和本地部署成本。 | https://huggingface.co/gabrielgts/gemma4-e2b-ec-magento |
+| TRACE 用多源证据检索 + Scout/Judge Agent 对商品目录缺失属性进行提议和逐字段验证，生产评测达到 98.2% 准确率并显著提升目录覆盖；适合把 GLiNER2 的 brand/model/规格抽取接入“多源补证→字段校验→低置信度人工复核”链路，降低脏值直接入库。 | https://arxiv.org/abs/2608.20844 |
