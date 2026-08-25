@@ -344,3 +344,8 @@ https://huggingface.co/datasets/tnhyen/vietnamese-ecommerce-ner
 https://github.com/shoptera-ai/shoptera-mcp
 https://genai-ecommerce.github.io/assets/papers/GenAIECommerce2024/Genaiecom24_paper_9.pdf
 https://huggingface.co/Ionio-ai/Qwen3.5-0.8B-Ecommerce-Extraction-GGUF
+https://aclanthology.org/P16-2018/
+https://huggingface.co/datasets/gururaser/turkish-ecommerce-ner-dataset
+https://huggingface.co/AnoushkaBaidya/qwen2vl-product-attribute-qlora
+https://github.com/amazon-science/esci-data
+https://doi.org/10.1145/2911451.2911495
