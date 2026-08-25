@@ -1,0 +1,52 @@
+name: Append auto review research
+
+on:
+  push:
+    paths:
+      - '.github/workflows/append-auto-review-research.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Append new research rows
+        shell: bash
+        run: |
+          set -euo pipefail
+          article='自动审查文章调研.md'
+          history='自动审查历史调研.md'
+
+          append() {
+            local reason="$1"
+            local url="$2"
+            if ! grep -Fqx "$url" "$history"; then
+              printf '| %s | %s |\n' "$reason" "$url" >> "$article"
+              printf '%s\n' "$url" >> "$history"
+            fi
+          }
+
+          append '用 5 个专门 reviewer 加 KISS reviewer 对 plan.md 分轮并行复核并迭代到全部通过，适合在 Codex 实施前把计划先过多 Agent gate，再把批准版本作为后续提交的审查基线。' 'https://gist.github.com/OmarElsebaey001/2c2bf1531c675404a8102b734012f22f'
+          append '只读对抗式 plan reviewer 会逐项把计划假设对照真实代码验证，并专找遗漏、边界条件和不可行步骤；适合作为实现 Agent 之外的独立计划验真层。' 'https://github.com/ctxr-dev/agent-plan-reviewer'
+          append '在计划进入批准或执行前即可调用 Codex 或 Claude 做外部复审，并把 reviewer/model 选择做成可重复工作流；适合固定“计划先审、通过再实现”的前置门禁。' 'https://github.com/dachev/plan-review'
+          append '把 Codex 规划、Opus 复审、Sonnet swarm 实现拆成独立角色，并持久化 plan review/gate 状态；适合把已审计划作为多 Agent 实施与后续 commit review 的共同基线。' 'https://github.com/neonplants/auto-codex'
+          append '把项目任务、验证 evidence、review findings 与人工 approval gate 持久化到同一开发 cockpit，且可用 Codex 自动化、Claude reviewer handoff；适合把聚合审查结果落成可继续处理的项目工件。' 'https://github.com/JoeSoep/ai-dev-team/blob/main/README.md'
+          append '用共享 Specs、Kanban 与 MCP/ACP/A2A 编排多 Agent，并让 Review 卡片产出正式 verdict/findings；适合把 code/design reviewer 的结果直接沉淀到项目看板并驱动下一阶段。' 'https://github.com/phodal/routa'
+          append 'CodeReview MCP 用结构化 issues_found、confidence、files_checked 等字段承载多步审查，并支持 images 作为视觉上下文；适合把代码 findings 与设计截图或视觉证据一起交给最终 judge 聚合。' 'https://github.com/BeehiveInnovations/zen-mcp-server/blob/main/docs/tools/codereview.md'
+          append '把 Figma 节点、布局、样式、图片和 SVG 转成面向 coding agent 的结构化设计数据，适合给独立 design-reviewer 提供真实设计文件证据，再与代码 reviewer 结果交叉核对。' 'https://github.com/felixAnhalt/figma-to-code-mcp'
+
+      - name: Commit research updates
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- '自动审查文章调研.md' '自动审查历史调研.md'; then
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- '自动审查文章调研.md' '自动审查历史调研.md'
+          git commit -m 'docs: append automatic review research'
+          git push
