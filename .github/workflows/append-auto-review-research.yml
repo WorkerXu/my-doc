@@ -1,0 +1,68 @@
+name: Append automatic review research
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/append-auto-review-research.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Append unique research
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          article = Path('自动审查文章调研.md')
+          history = Path('自动审查历史调研.md')
+          entries = [
+              ('GitHub Spec Kit 的 Git 扩展可在 `after_plan` 直接执行 `speckit.git.commit`，并继续对 tasks/implement 等阶段自动提交；适合把 Codex 计划工件与阶段性 Git commit 建立清晰、可机器追踪的边界。', 'https://github.com/github/spec-kit/blob/main/extensions/git/extension.yml'),
+              ('Playwright 官方 Test Agents 自带 planner、generator、healer 三角色并支持 `--loop=codex`；可把设计/代码审查后的关键用户流转成独立 Agent 测试与修复回路，为多 Agent review 增加真实浏览器验证证据。', 'https://playwright.dev/docs/test-agents'),
+              ('Penpot 官方 MCP 可让 Agent 直接读取和修改设计文件的组件、样式、token、页面与图层，并支持 design↔code 双向流程；可作为 Figma 之外的结构化设计源，让 design reviewer 按真实设计文件复核代码。', 'https://help.penpot.dev/mcp/'),
+              ('Zeplin 官方 MCP 向 Agent 暴露 screen/component specs、annotations 和 design tokens；适合让独立 design-reviewer 用交付规范、交互说明和 token 对照 Codex 实现，而不是只看截图。', 'https://support.zeplin.io/en/articles/11559086-zeplin-mcp-server'),
+              ('programmator 可从 `plan.md` 执行并用 `--auto-commit` 管理 Git，同时默认并行 9 个专门 reviewer、自动修复并复审；非常贴合“计划→提交→多 Agent 代码审查”的一体化自动化。', 'https://github.com/alexander-akhmetov/programmator'),
+              ('coordinated-agent-team 将 planner、coder、reviewer、QA、security、designer 等角色置于确定性 Orchestrator 工作流，并持久化任务与报告；适合把设计约束、代码审查和最终汇总拆成可追踪的多 Agent gate。', 'https://github.com/q3ok/coordinated-agent-team'),
+              ('ccsetup 的 Codex review 可同时读取指定 plan 文件与 Git changes，按 architecture/compliance/risk 循环复审，还能在 plan 或代码变化时由 hook 提醒触发；适合做 plan-adherence 的外部审查补充。', 'https://github.com/MrMarciaOng/ccsetup'),
+              ('Plane 官方 MCP 可让 Agent 读写 projects、work items 与 project/workspace pages；适合把聚合 findings 同时发布成看板任务或审查文档，再由 Codex 或其他 MCP 客户端继续处理。', 'https://developers.plane.so/dev-tools/mcp-server'),
+              ('monday.com Platform MCP 提供 60+ 读写工具，覆盖 boards/items、WorkDocs 与 Agent 管理；适合把多 Agent 审查结论程序化写成项目卡片和审查文章，并作为 Codex 外部的项目控制面。', 'https://developer.monday.com/api-reference/docs/platform-mcp-tools'),
+          ]
+
+          a = article.read_text(encoding='utf-8')
+          h = history.read_text(encoding='utf-8')
+          seen = {line.strip() for line in h.splitlines() if line.strip()}
+          changed = False
+
+          for reason, url in entries:
+              if url in seen or url in a:
+                  continue
+              if a and not a.endswith('\n'):
+                  a += '\n'
+              a += f'| {reason} | {url} |\n'
+              if h and not h.endswith('\n'):
+                  h += '\n'
+              h += url + '\n'
+              seen.add(url)
+              changed = True
+
+          if changed:
+              article.write_text(a, encoding='utf-8')
+              history.write_text(h, encoding='utf-8')
+          PY
+      - name: Commit appended research
+        shell: bash
+        run: |
+          rm -f .github/workflows/append-auto-review-research.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add 自动审查文章调研.md 自动审查历史调研.md .github/workflows/append-auto-review-research.yml
+          if ! git diff --cached --quiet; then
+            git commit -m 'docs: append new automatic review research'
+            git push
+          fi
