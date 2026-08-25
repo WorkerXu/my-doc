@@ -3,13 +3,14 @@ name: Append automatic review research
 on:
   push:
     branches: [main]
+    paths:
+      - '.github/workflows/append-automatic-review-research.yml'
 
 permissions:
   contents: write
 
 jobs:
   append:
-    if: github.event.head_commit.message == 'chore: run automatic review research append'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,13 +19,13 @@ jobs:
       - name: Append only new research rows
         shell: bash
         run: |
-          python - <<'PY'
+          python3 - <<'PY'
           from pathlib import Path
 
           article = Path('自动审查文章调研.md')
           history = Path('自动审查历史调研.md')
 
-          entries = [
+          rows = [
               ('GitHub 已把 Codex、Claude、Copilot 等 coding-agent session 直接显示到 Issues 与 Projects 表格/看板，并暴露 queued/working/waiting for review/completed 状态；适合把聚合审查 finding 变成项目项后直接观察 Codex 修复会话进度。', 'https://github.blog/changelog/2026-03-26-agent-activity-in-github-issues-and-projects/'),
               ('GitHub Projects 现可在项目看板侧边栏直接打开 agent session、查看日志并继续 steer；适合把多 Agent 审查结果发布成项目任务后，无需离开看板就继续驱动 Codex 修复和复审。', 'https://github.blog/changelog/2026-04-23-view-and-manage-agent-sessions-from-issues-and-projects/'),
               ('Mastra 已能把 Codex、Claude Code、Cursor 作为一等 subagent 编排，并保留各自文件/代码库推理、handoff 与权限能力；适合让 Codex 实现、独立 code reviewer、design reviewer 由同一外部 orchestrator 并行/串行协作。', 'https://mastra.ai/blog/introducing-sdk-subagents'),
@@ -39,33 +40,26 @@ jobs:
 
           article_text = article.read_text(encoding='utf-8')
           history_text = history.read_text(encoding='utf-8')
-          history_set = {line.strip() for line in history_text.splitlines() if line.strip()}
 
-          article_rows = []
-          history_urls = []
-          for reason, url in entries:
-              if url not in article_text:
-                  article_rows.append(f'| {reason} | {url} |')
-              if url not in history_set:
-                  history_urls.append(url)
+          article_add = []
+          history_add = []
+          for reason, url in rows:
+              if url not in article_text and url not in history_text:
+                  article_add.append(f'| {reason} | {url} |')
+                  history_add.append(url)
 
-          if article_rows:
-              with article.open('a', encoding='utf-8') as f:
-                  if article_text and not article_text.endswith('\n'):
-                      f.write('\n')
-                  f.write('\n'.join(article_rows) + '\n')
-
-          if history_urls:
-              with history.open('a', encoding='utf-8') as f:
-                  if history_text and not history_text.endswith('\n'):
-                      f.write('\n')
-                  f.write('\n'.join(history_urls) + '\n')
+          if article_add:
+              article.write_text(article_text.rstrip('\n') + '\n' + '\n'.join(article_add) + '\n', encoding='utf-8')
+          if history_add:
+              history.write_text(history_text.rstrip('\n') + '\n' + '\n'.join(history_add) + '\n', encoding='utf-8')
           PY
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -- '自动审查文章调研.md' '自动审查历史调研.md'
-          if ! git diff --cached --quiet; then
-            git commit -m 'docs: append new automatic review research'
-            git push
+          if git diff --cached --quiet; then
+            echo 'No new rows to append.'
+            exit 0
           fi
+          git commit -m 'docs: append new automatic review research'
+          git push origin HEAD:main
