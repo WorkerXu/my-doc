@@ -46,6 +46,13 @@ jobs:
           append '其 multi-ai 流程在 plan 阶段并行专家审查并加 Codex gate，代码阶段再走 Sonnet、Opus、Codex 级联复审；适合直接借鉴异构多 Agent plan/code review 编排。' 'https://github.com/aihip/android-claude-code-skills'
           append '把 Codex agent 嵌入 Figma 并通过本地 bridge 直接操作真实画布；适合让 design reviewer 与代码 Agent 共享同一设计文件上下文，并把审查发现回到设计侧复核。' 'https://github.com/AlbertoHugonin/codex-canvas-for-figma'
           append '给网页叠加 Figma 风格的 pin-and-comment 反馈层，并可把导出的结构化反馈直接交给 coding agent；适合把设计审查意见转成可追踪的修复输入。' 'https://github.com/brijeshp/pinflow'
+          append '把 PLAN.md 作为仓库内可版本化事实源，并用“小阶段实现→独立复审→阶段 commit”的节奏保存 checkpoint；很适合让 Codex plan 与后续 Git 提交形成可审计的阶段对应关系。' 'https://tylerburleigh.com/blog/2026/02/22/'
+          append '明确要求人工先写并持续更新 PLAN.md，再用小 diff、CI、测试与真实 review 做硬门；适合把 plan 文件随实现一起版本化，并把每次提交限制在可审查的计划切片内。' 'https://kicked.ro/blog/ai-driven-development-workflow'
+          append 'Planu 用 clarify→spec→DoR→PLAN.md→validate→drift detection 的 gated SDD 生命周期，并为 Codex 提供适配；适合作为 plan 版本、实现验证和偏离检测的自动化控制层。' 'https://planu.dev/en/guide/workflow'
+          append 'CodexSpec 把 requirements、spec、design、plan、tasks 和 code 拆成可复审 checkpoint；适合在提交前固定设计/计划工件，让独立 reviewer 按同一批准基线核对实现。' 'https://github.com/Zts0hg/codexspec'
+          append 'Get Shit Done for Codex 会按 phase 生成 PLAN.md、按 wave 执行，并为每个任务创建原子 commit 和验证记录；直接提供“计划任务 ↔ Git 提交”细粒度绑定范式。' 'https://github.com/Oisinwang/get-shit-done-codex'
+          append 'Agent Board 以 MCP 原生 Kanban、DAG 依赖、review/quality gate 和审计轨迹编排多 Agent；适合把代码/设计 reviewer 的聚合 findings 推成可继续处理的项目卡片。' 'https://github.com/quentintou/agent-board'
+          append 'PinFix 把运行中 React 页面上的 Figma 风格 pin/comment 转成仓库 Markdown 任务，能把视觉审查证据直接交给 coding agent；适合补齐“设计/运行界面 finding → Codex 修复任务”的回流链路。' 'https://github.com/VianneyBertrand/pinfix'
 
       - name: Commit research updates
         shell: bash
