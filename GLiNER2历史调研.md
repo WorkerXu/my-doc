@@ -360,3 +360,6 @@ https://www.aigenapps.com/papers/operations/catalog-enrichment
 https://marketplace.creatio.com/app/product-catalog-agent-creatio
 https://reader.dev/solutions/ecommerce
 https://www.amazon.science/publications/catalograg-retrieval-guided-llm-prediction-for-multilingual-e-commerce-product-attributes
+https://github.com/ludongfang/ProductAttrExtractionPromptEngineering
+https://www.alpha-quantum.com/solutions/ecommerce.php
+https://mcp.agentutility.ai/retail/sku-normalize/
