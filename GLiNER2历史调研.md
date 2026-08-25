@@ -352,3 +352,6 @@ https://doi.org/10.1145/2911451.2911495
 https://medium.com/prosus-ai-tech-blog/unsupervised-attribute-extraction-for-online-listings-41baa5d2270e
 https://ojs.aaai.org/index.php/AAAI/article/view/4999
 https://github.com/ChocoData-com/walmart-product-scraper
+https://www.arocmag.cn/abs/2025.02.0031
+https://hirinfotech.com/duplicate-post-example-post-copy-32/
+https://subramanya.ai/2026/08/06/fixing-b2b-commerce-search-in-the-age-of-ai/
