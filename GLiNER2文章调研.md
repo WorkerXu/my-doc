@@ -501,3 +501,6 @@
 | 该 Qwen2-VL QLoRA 项目面向商品目录结构化抽取，联合商品图片与 Listing 元数据输出 product_type、brand、color、material，并在 2,500 条留出样本上给出严格 JSON 与字段级评测；适合把 GLiNER2 作为文本品牌/型号主抽取器，与视觉属性兜底做可量化对照。 | https://huggingface.co/AnoushkaBaidya/qwen2vl-product-attribute-qlora |
 | Amazon 官方 ESCI 数据集同时提供真实商品 title、description、bullet_point 与 product_brand、product_color，覆盖英/日/西多语言和百万级商品-查询对；适合从目录真值反向构造 GLiNER2 品牌/颜色等字段弱标注与跨语言回归集，并扩展型号/规格 Schema 做真实噪声评测。 | https://github.com/amazon-science/esci-data |
 | Query to Knowledge 用无监督 Adaptor Grammar 从大规模购物查询中发现 brand 与 product 实体，并专门区分品牌、产品族等电商语义；适合在 GLiNER2 固定 Schema 抽取前后做长尾品牌词典/候选发现，降低新品牌和低频品牌只有少量标注时的冷启动成本。 | https://doi.org/10.1145/2911451.2911495 |
+| OLX/Prosus 的无监督商品属性抽取实践直接面向在线 Listing，从商品文本中发现 RAM、品牌等属性和值，并重点降低人工 Schema 与标注依赖；适合参考 GLiNER2 新类目冷启动、开放属性发现和长尾字段候选生成。 | https://medium.com/prosus-ai-tech-blog/unsupervised-attribute-extraction-for-online-listings-41baa5d2270e |
+| 阿里巴巴这项中文商品短标题研究使用电商专用 NER，覆盖 Brand、Color、Size 等 36 类实体；适合用于 GLiNER2 中文商品标题的字段体系设计、品牌/属性 span 回归以及短文本压缩场景下的实体边界对照。 | https://ojs.aaai.org/index.php/AAAI/article/view/4999 |
+| ChocoData 的 Walmart 商品抓取项目可从当前真实 PDP 结构化得到 brand、model、GTIN/SKU 以及完整 specifications，示例直接给出 Lenovo 品牌和字母数字型号；适合持续构造 GLiNER2 品牌/型号/规格回归样本，并将商城结构化字段作为自动对照真值。 | https://github.com/ChocoData-com/walmart-product-scraper |

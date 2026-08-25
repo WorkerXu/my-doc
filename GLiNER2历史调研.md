@@ -349,3 +349,6 @@ https://huggingface.co/datasets/gururaser/turkish-ecommerce-ner-dataset
 https://huggingface.co/AnoushkaBaidya/qwen2vl-product-attribute-qlora
 https://github.com/amazon-science/esci-data
 https://doi.org/10.1145/2911451.2911495
+https://medium.com/prosus-ai-tech-blog/unsupervised-attribute-extraction-for-online-listings-41baa5d2270e
+https://ojs.aaai.org/index.php/AAAI/article/view/4999
+https://github.com/ChocoData-com/walmart-product-scraper
