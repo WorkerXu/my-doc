@@ -507,3 +507,8 @@
 | 这篇中文综述系统梳理电商属性值提取从规则、序列标注、问答、Transformer 到多模态和大语言模型的路线与挑战；适合快速校准 GLiNER2 品牌/型号/属性抽取的基线、数据集选择及何时需要多模态或生成式兜底。 | https://www.arocmag.cn/abs/2025.02.0031 |
 | HirInfotech 的 2026 实践把电商属性抽取目标明确为 Brand、SKU/Model Number、尺寸、颜色/尺码、材质和技术特征，并将品牌名、单位、颜色等归一化作为抽取后的必要步骤；适合用来定义 GLiNER2 的核心商品 Schema 与“抽取→标准化→目录入库”边界。 | https://hirinfotech.com/duplicate-post-example-post-copy-32/ |
 | 这篇 2026 B2B 商品目录实战审计覆盖 77.5 万 SKU，明确要求型号/料号保持原样、从描述中恢复 manufacturer part number，并同时抽 size/material/connection 等结构化属性；还给出品牌值去占位符与归一化方法，适合校准 GLiNER2 的 brand/model/MPN 边界和抽取后质量门禁。 | https://subramanya.ai/2026/08/06/fixing-b2b-commerce-search-in-the-age-of-ai/ |
+| Front Tribe 的 2026 Medusa 目录富化实践把 AI 放在商品导入阶段，强调严格 JSON Schema、属性白名单、审批队列和回滚；适合把 GLiNER2 作为入库前的品牌/型号/规格抽取器，用字段契约、人工复核和回归测试避免脏字段进入线上目录。 | https://www.fronttribe.com/insights/catalog-enrichment-on-medusa-with-claude-the-import-time-pipeline-we-ship-for-2000-sku-brands |
+| AI Gen Apps 的目录富化流水线从稀疏商品素材生成分类属性，并用视觉语言模型反思循环给输出打分后再过自动质量门；适合让 GLiNER2 负责文本中的 brand/model/规格主抽取，图片侧补缺失属性，并用独立质量评分控制最终入库。 | https://www.aigenapps.com/papers/operations/catalog-enrichment |
+| Creatio 的 Product Catalog Agent 会从商品目录记录中提取关键规格并形成结构化视图，同时处理自然语言检索；适合参考把 GLiNER2 封装成 Agent 的商品字段工具，对 brand/model/技术规格统一抽取后直接供目录检索与比较消费。 | https://marketplace.creatio.com/app/product-catalog-agent-creatio |
+| Reader 可把不同站点商品页统一转成干净 Markdown/结构化 JSON，并支持按 Schema 抽取商品字段；适合放在 GLiNER2 上游做跨站页面降噪与正文统一，让同一 brand/model/属性 Schema 在不同商城复用。 | https://reader.dev/solutions/ecommerce |
+| Amazon CatalogRAG 从同类商品目录中按商品类型、文本相似度和品牌关系检索已填充属性的相似商品，再引导 LLM 补全多语言结构化属性；适合接在 GLiNER2 的低置信或缺失 brand/model/规格之后做目录内候选增强、交叉校验和缺失值补全。 | https://www.amazon.science/publications/catalograg-retrieval-guided-llm-prediction-for-multilingual-e-commerce-product-attributes |
