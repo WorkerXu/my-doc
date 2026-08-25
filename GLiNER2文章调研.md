@@ -492,3 +492,7 @@
 | Google Cloud 的该零售论文用多模态 Gemini 从商品图片按开放/闭集属性词表做属性抽取，并测试自纠错 Prompt；适合作为 GLiNER2 文本 brand/model/规格抽取的视觉兜底与闭集属性校验参考。 | https://library.imaging.org/ei/articles/37/8/IMAGE-262 |
 | gemma4-e2b-ec-magento 是面向 Magento 商品目录训练的轻量 QLoRA 模型，直接把目标属性抽成严格 JSON，并显式用 None 处理缺失字段；适合拿来与 GLiNER2 对照动态字段抽取、缺失值处理和本地部署成本。 | https://huggingface.co/gabrielgts/gemma4-e2b-ec-magento |
 | TRACE 用多源证据检索 + Scout/Judge Agent 对商品目录缺失属性进行提议和逐字段验证，生产评测达到 98.2% 准确率并显著提升目录覆盖；适合把 GLiNER2 的 brand/model/规格抽取接入“多源补证→字段校验→低置信度人工复核”链路，降低脏值直接入库。 | https://arxiv.org/abs/2608.20844 |
+| ViEcomNER 提供 2,993 条越南语真实电商商品标题和字符级 span，标签直接包含 BRAND、MODEL、ATTRIBUTE、SPEC、SIZE、MATERIAL、CAPACITY 等 24 类；可直接映射到 GLiNER2 动态 Schema，做多语言品牌/型号/规格的回归评测和少样本微调。 | https://huggingface.co/datasets/tnhyen/vietnamese-ecommerce-ner |
+| Shoptera MCP 已把商品目录富化拆成可调用工具，直接提供 extract_product_model 从商品标题提取 model/MPN，并配套类目属性模板、商品来源检索和 GTIN 校验；适合参考 GLiNER2 的“字段抽取→目录校验→实体确认”工程化后处理链路。 | https://github.com/shoptera-ai/shoptera-mcp |
+| 该 GenAI-Ecommerce 论文从电商网站结构中学习商品变体关系和变体属性，结构化字段明确包含 brand、part number、model number、size、color、package quantity；适合把 GLiNER2 的品牌/型号/属性结果用于 SKU 变体归组和跨变体一致性校验。 | https://genai-ecommerce.github.io/assets/papers/GenAIECommerce2024/Genaiecom24_paper_9.pdf |
+| Ionio 的 0.8B 电商结构化抽取模型以运行时 JSON Schema 驱动字段抽取，示例直接抽 product_type、brand、color、price，并评测 Schema valid、Leaf F1 与 null accuracy；很适合与 GLiNER2 动态 Schema 做轻量本地抽取、缺失字段和严格结构化输出对照。 | https://huggingface.co/Ionio-ai/Qwen3.5-0.8B-Ecommerce-Extraction-GGUF |

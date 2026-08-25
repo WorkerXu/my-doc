@@ -340,3 +340,7 @@ https://www.mdpi.com/2079-9292/15/5/969
 https://library.imaging.org/ei/articles/37/8/IMAGE-262
 https://huggingface.co/gabrielgts/gemma4-e2b-ec-magento
 https://arxiv.org/abs/2608.20844
+https://huggingface.co/datasets/tnhyen/vietnamese-ecommerce-ner
+https://github.com/shoptera-ai/shoptera-mcp
+https://genai-ecommerce.github.io/assets/papers/GenAIECommerce2024/Genaiecom24_paper_9.pdf
+https://huggingface.co/Ionio-ai/Qwen3.5-0.8B-Ecommerce-Extraction-GGUF
