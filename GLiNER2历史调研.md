@@ -336,3 +336,6 @@ https://github.com/stkisengese/spacy-nlp-ecommerce-pipeline
 https://github.com/eshan1347/Image-entity-extractor
 https://github.com/openai/GABRIEL
 https://github.com/aghyy/TESSERACT
+https://www.mdpi.com/2079-9292/15/5/969
+https://library.imaging.org/ei/articles/37/8/IMAGE-262
+https://huggingface.co/gabrielgts/gemma4-e2b-ec-magento
