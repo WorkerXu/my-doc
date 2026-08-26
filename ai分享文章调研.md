@@ -329,3 +329,7 @@
 | 直接比较 Claude Subagents 与 Agent Teams 的差异，适合在分享中说明何时使用轻量委派、何时需要真正的团队式协作，避免把所有多 Agent 机制混为一谈。 | https://www.youtube.com/watch?v=jT1rg3TBf-I |
 | 以“如何更好地构建 Claude Agent Teams”为主线，适合作为 Coding Agent 团队从基础用法走向更成熟协作方式的实操补充。 | https://www.youtube.com/watch?v=vDVSGVpB2vc |
 | Microsoft Developer 的 Armchair Architects 从架构视角讨论 Multi-agent Orchestration 与 Patterns，适合梳理编排模式、架构取舍以及企业落地前应考虑的协作边界。 | https://www.youtube.com/watch?v=Dwyx8GomVvQ |
+| Claude Code Agent Teams 从核心概念、底层架构一路做到真实项目实测，由 Team Lead 拆任务、多个 Teammate 并行执行并互相通信，适合分享原生 Coding Agent 团队如何解决长上下文、串行瓶颈和单一视角问题。 | https://www.bilibili.com/video/BV1gwcAzkEhw |
+| Multica 直接以多 Agent 编排工具做完整实战演示，适合补充“编排平台如何从概念落到实际操作”的视角，用来观察多 Agent 团队怎样被组织并进入可执行工作流。 | https://www.bilibili.com/video/BV1Vvj86UEW4 |
+| Hermes + DeepSeek Harness 实测让多个 Agent 在同一任务中讨论、分工、推进，再与真人共同收敛结果，覆盖需求拆解、代码修改和方案讨论，适合展示“Agent 团队 + Human-in-the-loop”的轻量协作落地。 | https://www.bilibili.com/video/BV1FahK6eEef |
+| oh-my-opencode 用编排器指挥 GPT、Claude、Gemini 分工协作，并结合 LSP 语义感知与 Ralph Loop 约束代码质量和任务收敛，适合分享跨模型 Coding Agent 怎样把编排、语义校验和完成度控制组合起来。 | https://www.bilibili.com/video/BV1ZBiRBrErU |
