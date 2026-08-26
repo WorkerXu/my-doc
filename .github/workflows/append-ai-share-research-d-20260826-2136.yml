@@ -21,7 +21,6 @@ jobs:
           set -euo pipefail
           article='ai分享文章调研.md'
           history='ai分享历史调研.md'
-          workflow='.github/workflows/append-ai-share-research-d-20260826-2136.yml'
 
           ensure_newline() {
             local file="$1"
@@ -77,9 +76,8 @@ jobs:
           git fetch origin main
           git reset --hard origin/main
           apply_rows
-          git rm -f -- "$workflow"
 
-          if git diff --quiet -- "$article" "$history" "$workflow"; then
+          if git diff --quiet -- "$article" "$history"; then
             exit 0
           fi
 
@@ -87,7 +85,7 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
 
           for attempt in 1 2 3; do
-            git add -- "$article" "$history" "$workflow"
+            git add -- "$article" "$history"
             git commit -m 'docs: append AI share research d 20260826'
             if git push origin HEAD:main; then
               exit 0
@@ -95,7 +93,9 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
             apply_rows
-            git rm -f -- "$workflow"
+            if git diff --quiet -- "$article" "$history"; then
+              exit 0
+            fi
           done
 
           exit 1
