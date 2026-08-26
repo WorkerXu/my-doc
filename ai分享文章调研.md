@@ -549,3 +549,8 @@
 | AIOps Orchestrator 的 A2A 实现包含能力注册与发现、同步/异步委派、JWT 鉴权、PostgreSQL/Redis 状态和 Prometheus 指标，适合作为“多 Agent 协作进入运维生产环境后需要哪些基础设施”的项目案例。 | https://github.com/Htunn/aiops-orchestrator |
 | metaswarm 把 Claude Code、Gemini CLI、Codex CLI 组织为自改进的多 Agent 研发团队，并引入 TDD、质量门禁、规格驱动开发和技能/命令体系，适合分享 AI Coding 团队如何从并行调用升级为受流程约束的工程协作。 | https://github.com/dsifry/metaswarm |
 | Scuba Stack 用 chief-of-staff、manager、worker 的层级结构并行派工，并在关键步骤加入独立对抗式 Review 和人工决策门，且整体以可移植 Markdown 规则实现，适合展示轻量但强约束的多 Agent 团队治理方式。 | https://github.com/danielchappell/scuba-stack |
+| Ferrus 把 Coding Agent 协作从“多开会话”改造成 Supervisor→Executor→Reviewer 的确定性状态机，用 SQLite 保存运行状态、独立任务产物、自动 Review/返修以及崩溃恢复来约束 Claude Code/Codex 等执行，适合分享“概率型 Agent + 可恢复控制面”怎样工程化。 | https://github.com/ferrus-dev/ferrus |
+| CAS（Coding Agent System）用 Supervisor 拆解 EPIC、多个 Worker 在独立 Git worktree 并行实现，再由人 Review PR，并提供跨会话共享记忆，适合展示“任务控制面 + 工作区隔离 + 人工验收”如何组成真实 Coding Agent 工厂流程。 | https://github.com/iflow-mcp/codingagentsystem-cas |
+| Olympus 把 Claude Code 扩展成 20+ 专业 Agent 的研发团队，用任务复杂度做模型路由，并以 AI-DLC 工作流、跨会话学习和持续执行机制约束交付，适合分享“角色分工、模型分层与研发流程”如何合成一套可复用团队 Harness。 | https://github.com/mikev10/olympus |
+| oh-my-pi 用 `/team` 把 Coding 任务按“拆解→启动隔离子 Agent→并行执行→聚合结果”跑成完整链路，并配套 planner/tester/verifier 等专业角色与持久重试机制，适合作为小而完整的多 Agent Coding 团队落地样例。 | https://github.com/Changhochien/oh-my-pi |
+| Sol 面向同时运行 10–30+ 个 Coding Agent 的场景，为每个任务创建独立 worktree，并用 SQLite/tmux 做持久状态、崩溃与卡死检测、自动重启以及经质量 Gate 的合并，适合分享“多 Agent 并发上规模后如何补齐监督、恢复与合并控制面”。 | https://github.com/nevinsm/sol |
