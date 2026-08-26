@@ -18,7 +18,7 @@
 | Hermes Kanban 用三个 Agent 跑通真实协作流程，重点记录任务依赖、工作区隔离、中断接续与失败恢复等容易踩坑的细节，适合作为小规模多 Agent 协作如何真正跑起来的实操案例。 | https://zhuanlan.zhihu.com/p/2037533360826930853 |
 | 文章从 Agent、Skills 到 Teams 梳理架构演进与技术选型，并结合多智能体和 Agent Teams 的落地经验讨论能力边界，适合在分享中建立“什么时候该从单 Agent 升级为团队协作”的选型框架。 | https://zhuanlan.zhihu.com/p/2022259323544281560 |
 | 新浪微博案例聚焦企业 AI 应用平台、知识复用和多 Agent 业务场景的真实落地，同时覆盖内部推广和规模化应用路径，适合补充大型互联网组织如何把多 Agent 能力嵌入现有业务体系。 | https://zhuanlan.zhihu.com/p/1991186674080837925 |
-| AgentOps 实践把单智能体、多智能体和智能体协同放进统一运维平台，并强调 Human-in-the-Loop、审计、工具治理和可量化 ROI，适合分享高风险生产场景下多 Agent 如何做到可控、可审计、可推广。 | https://zhuanlan.zhihu.com/p/2015796905158923426 |
+| AgentOps 实践把单智能体、多智能体和智能体协同放进统一运维平台，并强调 Human-in-the-Loop、审计、工具治理和可量化 ROI，适合分享高风险生产场景下多 Agent 如何做到可控、可审计、可推广。 | https://zhuanlan.zhihu.com/p/2015796905158926426 |
 | 从单体 Agent 推进到分布式协作，系统讲主从与对等模式、同步与异步通信、共享状态、超时重试、状态机、补偿机制、并发与 Token 成本优化，并给出完整工作流代码，适合分享“协作架构如何工程化”。 | https://juejin.cn/post/7610444188525592616 |
 | 用同一业务场景对比 AgentScope 与 LangGraph 的多智能体实现，重点展示 StateGraph、Checkpoint Memory、跨 Agent 状态传递以及 Network、Supervisor、分层等协作模式，适合做框架选型与状态管理案例。 | https://juejin.cn/post/7591697558377431082 |
 | 以 4 个 Agent 组成真实 AI 写作团队，完整记录跨 Agent 通信权限、会话可见性等配置导致的协作失败与修复过程，适合用来讲多 Agent 从“能跑”到“稳定跑”的常见工程坑。 | https://juejin.cn/post/7607255496454881280 |
@@ -566,3 +566,8 @@
 | 从 Coding Agent 的 LongTask 抽象说明如何把多个 Agent Run、确定性任务、等待节点和人工审批组织成可持久化、可 Checkpoint、可暂停恢复的长流程，适合分享多 Agent 长时任务如何实现可靠执行。 | https://juejin.cn/post/7677161347231088646 |
 | 基于 Spring AI Alibaba + Nacos 的分布式多 Agent Demo，用 Supervisor 调度多个独立进程 Agent，并通过 Nacos 注册发现与 A2A 通信实现水平扩展，同时串联 MCP、RAG、Memory 和可观测性，适合作为 Java/企业级落地案例。 | https://juejin.cn/post/7564307224267522063 |
 | DeepSeek Harness 教程把子 Agent 的并行派发、独立会话、消息/中断/状态管理与可脚本化 Workflow 串起来，并讨论任务拆分与结果验证，适合作为 Coding Agent 多 Agent 协作的上手与工程实践案例。 | https://juejin.cn/post/7673390412729614390 |
+| Google ADK 从零搭建多 Agent 系统的实操教程，适合在分享中做“从框架初始化到多角色协作跑通”的可复现实例，并与已有生产架构案例形成由浅入深的衔接。 | https://www.youtube.com/watch?v=wgOCzHXKw4c |
+| LangGraph + MCP + Supervisor + Guardrails + HITL 被放进同一个端到端多 Agent 构建过程，适合展示生产系统里编排、工具、安全护栏和人工介入如何组合，而不是只讲 Agent 间对话。 | https://www.youtube.com/watch?v=BM39OouLNsM |
+| 从企业多 Agent 系统角度对比 A2A 与 MCP，适合在分享中明确“Agent 间互操作”与“Agent 调工具”两类协议的职责边界，避免架构设计时混用概念。 | https://www.youtube.com/watch?v=oMjacYfwYyA |
+| Pi Coding Agent 的双向 Agent 编排演示聚焦 Agent-to-Agent 的互相调用与协作，适合补充中心 Supervisor 之外的双向/对等协作形态，并作为 Coding Agent 场景的轻量案例。 | https://www.youtube.com/watch?v=PIdETjcXNIk |
+| 以 Production Architecture & Design Patterns 为主线梳理多 Agent 系统，适合在分享中用于归纳生产级架构模式、系统边界和设计取舍，再连接更具体的框架实战。 | https://www.youtube.com/watch?v=g7aeVaUs9DU |
