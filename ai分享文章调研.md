@@ -482,3 +482,8 @@
 | AWS 从共享状态缺失导致重复工作、决策冲突和上下文耗尽出发，用 S3 Vectors 设计“工作记忆 + 个体长期记忆 + 团队共享记忆”三层体系，并给出强一致性、租户隔离、生命周期和可观测实践，适合补齐多 Agent 协作中常被忽视的持久记忆基础设施。 | https://aws.amazon.com/blogs/storage/building-persistent-memory-for-multi-agent-ai-systems-with-amazon-s3-vectors/ |
 | AAIF 说明 A2A 已进入中立基金会治理并被 150+ 组织采用，文章给出 HarmonyOS/微信、云平台、金融和供应链等生产互操作案例，适合说明多 Agent 从“同框架内部编排”走向跨厂商、跨组织协作后，为什么需要标准化发现、委派与身份契约。 | https://aaif.io/blog/a2a-joins-aaif |
 | 这篇生产架构笔记把多 Agent 的可靠性问题归结到编排控制面：明确协调/执行分离、Agent-to-Agent 与 Agent-to-Tool 两类边界、最小权限/HITL、全链路追踪和成本反馈，适合做框架无关的生产架构检查表。 | https://brittek.net/journal/multi-agent-systems-are-orchestration-systems |
+| Google 用 10 支自主 Agent 电影团队做真实长流程协作实验，验证共享文件比消息更适合作为持久协作状态，并通过角色分工、阶段校验 Gate 与崩溃恢复跑通复杂交付，适合分享“多 Agent 如何靠共享事实源和质量门禁稳定协作”。 | https://cloud.google.com/blog/topics/developers-practitioners/what-we-learned-about-agent-teamwork |
+| Amazon/ACL Industry 的 Agent-Ops 已在 3 个地区、7 类电商 SOP 和 1000+ Account Manager 中生产落地，端到端准确率达到 85–97%，并把单案处理时间从 30 分钟降到 5 分钟，适合作为有规模、有量化结果的业务多 Agent 案例。 | https://aclanthology.org/2026.acl-industry.29/ |
+| 这个 Claude Code Agent Teams 插件把并行代码审查、竞争假设调试、跨层功能开发、研究、安全审计和迁移做成可复用团队模板，适合现场展示“同一套共享任务与消息机制如何映射不同协作拓扑”。 | https://github.com/wshobson/agents/blob/main/plugins/agent-teams/README.md |
+| agmsg 用 Bash + SQLite 提供 Claude Code、Codex、Gemini、Copilot 等 CLI Agent 的跨厂商消息层，不引入完整框架或守护进程，适合分享“多 Agent 协作可以先从轻量通信互操作层落地”的基础设施思路。 | https://github.com/fujibee/agmsg |
+| 这项长周期任务研究把控制面与执行面分离，用目录服务、QoS 驱动的 Contract Net 动态选择 Agent，并按任务实例动态授予和回收权限，适合补充“多 Agent 协作如何同时处理服务变化、故障与最小权限”的系统设计。 | https://www.aemjournal.org/index.php/AEM/article/view/4269 |
