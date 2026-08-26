@@ -529,3 +529,11 @@
 | 在飞书里把文案、知识管理、盯盘、运维、天气等职责拆给独立 Agent，并分别配置人设、技能、群聊绑定和定时任务，适合展示多 Agent 如何嵌入现有协作工具并形成长期运行的专岗 AI 团队。 | https://www.bilibili.com/video/BV1CRPHzfEJZ |
 | Hermes + ChatClaw 直接演示多个智能体主动互相沟通、主动协作并与真人共同工作，适合补充多 Agent 从“被动派单”走向主动团队协同和 Human-in-the-Loop 共事的实践形态。 | https://www.bilibili.com/video/BV1eyNR6bE5N |
 | 内容围绕 Team 核心概念与四种协作模式展开，并强调按场景选择和构建多 Agent 团队，适合在分享中用作协作模式选型的简洁案例，帮助解释不同团队结构并非一种编排方式通吃。 | https://www.bilibili.com/video/BV1nnLx6UEBT |
+| AWS 用 Bedrock 与开源框架系统拆解多 Agent 推理编排，重点讨论 supervisor/worker 协作、任务分解与推理增强，并给出可复现实现，适合用来讲“协作结构如何直接影响复杂任务推理质量”的工程实践。 | https://aws.amazon.com/blogs/machine-learning/design-multi-agent-orchestration-with-reasoning-using-amazon-bedrock-and-open-source-frameworks/ |
+| AWS 用 Strands Agents + Llama 4 构建可运行多 Agent 方案，展示专业 Agent 的分工、协调与 Bedrock 部署路径，适合补充“模型、Agent 框架与云运行环境如何组合落地”的端到端案例。 | https://aws.amazon.com/blogs/machine-learning/using-strands-agents-to-create-a-multi-agent-solution-with-metas-llama-4-and-amazon-bedrock/ |
+| Google Cloud 用三个 hands-on lab 把 ADK、MCP、A2A 串起来，从工具连接到 Agent 间发现/通信逐步实现可互操作系统，适合现场分享跨服务多 Agent 的协议化落地路径。 | https://cloud.google.com/blog/topics/developers-practitioners/building-connected-agents-with-mcp-and-a2a |
+| Hyundai AutoEver 的生产案例在安全多租户 GenAI Sandbox 上落地两套多 Agent AIOps，细讲 LangGraph 状态、并行根因分析、自证伪、HITL 与治理，适合做“真实企业生产级多 Agent”深度案例。 | https://aws.amazon.com/blogs/industries/hyundai-autoever-building-a-multi-tenant-generative-ai-sandbox-and-production-aiops-on-amazon-bedrock/ |
+| LangGraph Swarm 提供去中心化 handoff 式多 Agent 实现，支持 Agent 动态交接控制权、共享/定制状态、checkpoint、记忆与 HITL，适合与中心 Supervisor 架构做代码级对照。 | https://github.com/langchain-ai/langgraph-swarm-py |
+| BeeAI Framework 同时覆盖 Python/TypeScript 多 Agent workflow、handoff、A2A/MCP、持久化与可观测能力，并提供直接可运行的多 Agent 示例，适合补充跨语言、生产导向的开源框架实践。 | https://github.com/i-am-bee/beeai-framework |
+| mcp-agent 用 MCP + 可组合工作流实现多 Agent 模式，并可接 Temporal 获得暂停、恢复和失败续跑等 durable execution，适合分享“Agent 协作如何借成熟工作流引擎补生产可靠性”。 | https://github.com/lastmile-ai/mcp-agent |
+| AgentScope 2.0 把 Message Hub、多 Agent workflow、Agent Team、A2A/MCP、HITL、评估与部署放进同一框架，适合从“协作逻辑”一路讲到可观测和服务化运行。 | https://github.com/agentscope-ai/agentscope |
