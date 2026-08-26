@@ -50,6 +50,11 @@ jobs:
             append 'Figma MCP Server Guide 的评测 scorecard 明确覆盖 Figma 定位、真实 token/组件 fidelity、工具选择与错误恢复，可直接转成 design-review Agent 的机器可比较 rubric，而不是只输出主观视觉意见。' 'https://github.com/figma/mcp-server-guide/pull/64'
             append 'codex-agent-orchestration-skill 的 coding-review workflow 把 Technical Engineer、Code Reviewer、QA Tester 设成独立角色，并要求统一状态回执和最终汇总 commits、验证命令、findings 与风险，适合作为轻量审查编排模板。' 'https://github.com/lixuvip/codex-agent-orchestration-skill'
             append 'raven-mcp 可把 Figma 评论历史归档为 JSON/Markdown，并提供设计原则、pattern、token 等 design intelligence；适合把设计评审意见固化成可版本化证据，供代码 reviewer 与 Codex 后续复核。' 'https://github.com/rhinocap/raven-mcp'
+            append 'Anthropic 最新 AI-Native SDLC playbook 明确建议把获批的 `plan.md` 一起提交进 Git，令计划进入审计链，并让 PR review 对照计划核验实现；若实现偏离计划应在同一提交更新 plan，最适合作为“plan 文件 ↔ commit”流程约束。' 'https://claude.com/blog/the-ai-native-sdlc-playbook'
+            append 'GitHub Copilot code review 已支持 Agent Skills 与 MCP，把外部工具和团队标准带入每次审查；可接 Figma MCP/设计规则作为 Codex 之外的独立审查层，再把 surviving findings 回贴 PR 或后续看板。' 'https://github.blog/changelog/2026-06-02-shape-copilot-code-review-around-your-team/'
+            append 'review-skills 的 debate-review 会让两个不同模型先对同一 PR 的 finding 进行“提出→反驳/降级→最终裁决”，babysit-pr 再验证、修复、回复并触发下一轮；可直接与 Codex/Claude 等组合成真正的交叉多 Agent review。' 'https://github.com/amElnagdy/review-skills'
+            append 'Codex Design Review Skill 以只读方式审查 Figma 链接、截图、PDF 和设计变体，按 S0–S3 分级并可生成标注图；适合作为多 Agent 代码审查中的独立 design-reviewer，把设计文件证据与代码 findings 分离。' 'https://github.com/vip999611-ai/Codex-design-review-skill'
+            append 'CodeXBoard 把 Codex 已固定的 thread 映射成可持续流转的 Kanban 卡片，并保留本地 notes、阶段与项目归属；适合作为聚合审查结果回流 Codex 后的长期“审查主题/项目”看板入口，让同一 thread 从 finding 跟踪到修复完成。' 'https://github.com/Moorvan/CodeXBoard'
           }
 
           git fetch origin main
