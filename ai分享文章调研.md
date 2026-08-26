@@ -414,7 +414,8 @@
 | OpenClaw 多智能体实战从任务分解和专业 Agent 协作入手构建完整工作流，适合作为轻量多 Agent 团队如何从角色划分走到可运行流程的入门案例。 | https://juejin.cn/post/7613796323045883947 |
 | 文章聚焦 Manus 团队的上下文工程经验，专门讨论多智能体协作中的记忆与上下文组织难题，适合补充“协作质量最终受上下文设计约束”的实践视角。 | https://juejin.cn/post/7532995195127676937 |
 | Multica 把 AI 编程 Agent 做成可管理的团队成员，结合 Kanban、技能复用、WebSocket 实时推送和统一运行时，适合展示多 Agent 从脚本编排进一步走向团队协作产品的形态。 | https://juejin.cn/post/7628251518199365686 |
-| 文章把多智能体协同归纳成五种核心架构，并围绕不同 Agent 如何通过代码协调展开，适合在分享中快速建立协作模式地图，再连接具体工程案例。 | https://juejin.cn/post/7627870163742162994 || 从 Workflows、Multi-Agent 一直讲到 Production 的框架化视角，适合在分享中先建立单 Agent、工作流与多 Agent 的边界，再讨论为什么生产系统需要更明确的编排与工程约束。 | https://www.youtube.com/watch?v=ZVPlLaehjLk |
+| 文章把多智能体协同归纳成五种核心架构，并围绕不同 Agent 如何通过代码协调展开，适合在分享中快速建立协作模式地图，再连接具体工程案例。 | https://juejin.cn/post/7627870163742162994 |
+| 从 Workflows、Multi-Agent 一直讲到 Production 的框架化视角，适合在分享中先建立单 Agent、工作流与多 Agent 的边界，再讨论为什么生产系统需要更明确的编排与工程约束。 | https://www.youtube.com/watch?v=ZVPlLaehjLk |
 | Google Cloud Tech 从架构层讨论多 Agent 系统，适合用于梳理职责拆分、协作拓扑和系统边界，并作为后续 ADK/A2A 实践案例的架构背景。 | https://www.youtube.com/watch?v=j_l-9uNX2SA |
 | IBM Technology 重点讨论 Agent 系统构建与规模化挑战，适合补充多 Agent 从 Demo 扩展到真实系统后会遇到的复杂度、可靠性与工程治理问题。 | https://www.youtube.com/watch?v=fCHe_fOqlYA |
 | A2A Workshop 直接面向可互操作多 Agent 系统进行实操，适合分享 Agent 发现、跨服务通信与协议化协作如何从概念落到可运行实现。 | https://www.youtube.com/watch?v=EpATeUY30GI |
@@ -454,3 +455,11 @@
 | AgentRadio 用可复现实验把“分工→协商→后台被动感知”逐层消融：四 Agent 在 SWE-Atlas QnA 上显著高于单 Agent，并通过后台监听让消息在执行中及时纠偏而不占工作回合，特别适合分享 Agent 间通信语义如何直接影响长任务协作效果。 | https://github.com/Coral-Protocol/AgentRadio |
 | ContextHub 把多 Agent 的 Memory、Skill、文档和数据元信息统一成 ctx:// 上下文治理层，提供团队可见性、private→team→org 晋升、版本固定、依赖传播、审计与租户隔离，适合补充“共享状态、记忆版本和权限边界”这一多 Agent 生产落地常被忽略的基础设施。 | https://github.com/The-AI-Framework-and-Data-Tech-Lab-HK/ContextHub |
 | AWS 的 Bedrock 多 Agent Workshop 用 Supervisor 协调预测、光伏和峰值负载三个专业 Agent 跑通能源管理业务，并提供从单 Agent 配置到协作调用的完整练习，适合做分享现场可复现的“Supervisor + Specialists”业务型最小实战。 | https://github.com/aws-samples/bedrock-multi-agents-collaboration-workshop |
+| 从 Claude Code Harness 工程拆出 Sub-Agent 与 Agent Teams 两层协作，具体到共享任务表、私信/广播、空闲通知以及 TeammateIdle/TaskCompleted Hooks 质量门禁，适合讲“多 Agent 不是多开会话，而是要有可管理的协作控制面”。 | https://zhuanlan.zhihu.com/p/2022795894202925545 |
+| 从源码与统一 Task 抽象角度解释多 Agent：把后台任务、teammate、remote agent 统一成可观测、可取消、可恢复的执行体，适合讲状态、恢复和结果回流为何比单纯 Prompt 分工更决定工程可用性。 | https://zhuanlan.zhihu.com/p/2032396538165600546 |
+| 作者实际使用 Agent Team 后给出 3–5 个队友规模、模型分级、CLAUDE.md 精简、/loop 长任务以及并行审查/模块开发/竞争假设调试等经验，适合补充“团队规模与成本边界”的一线操作经验。 | https://zhuanlan.zhihu.com/p/2036214495467530078 |
+| 同时比较 Agent Teams 与 Dynamic Workflow，并用 fan-out、对抗验证、分类路由、黑板等模式建立编排选型，还复盘 Lead 抢活、Agent 撞车和 Token 乘数等限制，适合做协作模式与工程风险对照。 | https://zhuanlan.zhihu.com/p/2057216454588683953 |
+| 把 Subagents、Agent Teams、Git Worktree 与工作流编排放在同一实战里，明确上下文隔离与文件/分支隔离的不同职责，适合讲并行 Coding Agent 如何通过任务规划和工作区隔离减少冲突。 | https://zhuanlan.zhihu.com/p/2033183908523718494 |
+| 系统对比跨会话通信、Subagent、Agent Teams 与 Agent View，从创建者、通信能力、上下文和成本解释多会话协作机制，适合梳理“轻量委派—团队协作—可视化监督”的能力层级。 | https://zhuanlan.zhihu.com/p/2069370615308587674 |
+| 从系统提示词和 TeamCreate/Task/SendMessage/TaskCreate 等底层机制拆解 Agent Team，兼顾原理、实战与踩坑，适合分享 Lead/Teammate、共享任务和直接通信如何形成真正团队式协作。 | https://zhuanlan.zhihu.com/p/2004486603343671752 |
+| 给出 Agent Teams 的适用/不适用条件、Token 成本、任务粒度、文件边界和状态同步限制，适合做“什么时候值得并行、什么时候协调成本反而更高”的实操决策清单。 | https://zhuanlan.zhihu.com/p/2004878637753730888 |
