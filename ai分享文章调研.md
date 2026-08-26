@@ -438,3 +438,12 @@
 | CIRP Annals 论文在汽车供应商数据上用 Strategy、Analysis、Data、Simulation 四类 Agent 完成生产计划，并以 7 组实验验证结构化 handoff、上下文工程与仿真/优化协作，适合补充真实工业场景的多 Agent 实证案例。 | https://doi.org/10.1016/j.cirp.2026.04.027 |
 | 文章基于 27 组受控实验总结多 Agent 编程团队的五条实践规则，包括 3–5 个 Agent、共享目录但限制写入范围、集成测试与故障注入、专职 DevOps Agent、重复运行报告方差，适合作为可验证的工程经验。 | https://junjietang.dev/blog/2026/five-rules-multi-agent-coding-teams/ |
 | Meta-Agent Teams 用角色/关系定义团队，由 meta-agent 根据人类反馈持续改进，再用独立 auditor 审核，并通过 Git 记录每次演化，适合分享“多 Agent 团队如何形成可追踪的持续改进闭环”。 | https://github.com/jbrahy/meta-agent-teams |
+| 2026-08 的 Agent Toolkit ADR 把本地 Coding Agent Swarm 的协作边界落到可执行工程约束：独立 worktree、durable handoff、后端无关 runner，以及 Token、成本、并发与迭代预算，适合分享“多 Agent 并行研发怎样同时治理隔离、审计和成本”。 | https://github.com/ulises-jeremias/agent-toolkit/blob/main/docs/adrs/ADR-008-swarm-orchestration.md |
+| Temporal 社区用 Google ADK + LangGraph 做了可运行的跨框架多 Agent Demo，并让人工审批、长等待和 Agent 崩溃后的 handoff 都可持久恢复，适合讲“概率型 Agent + durable execution + HITL”如何组合成生产可靠性。 | https://github.com/temporal-community/durable-hitl-agents |
+| OpenAgents 把 A2A、MCP、WebSocket、gRPC 与 HTTP 汇入同一 Agent Network，支持中心化/去中心化拓扑与 Agent 发现通信，适合展示跨框架多 Agent 从进程内编排走向网络化协作的基础设施形态。 | https://github.com/openagents-org/openagents |
+| LinkedIn SQL Bot 是已被数百员工使用的生产级多 Agent 系统，采用意图路由、逐步 SQL 规划、Validator 与自修复 Agent，并把数据权限和交互反馈整合进产品，适合分享“多 Agent 如何真正嵌入企业数据工作流并获得稳定采用”。 | https://www.linkedin.com/blog/engineering/ai/practical-text-to-sql-for-data-analytics |
+| Temporal 2026-08 的 Micro-Agents 分享把“拆小 Agent”类比微服务化，重点讨论上下文、安全、爆炸半径与跨语言/跨框架可靠编排，适合解释为什么多 Agent 的核心难题最终会变成分布式系统协调。 | https://pages.temporal.io/webinar-monoliths-to-microagents.html |
+| Cursor 的生产实践从本地多 Agent 实验演进到“每个 Agent 独立 VM + Temporal Workflow”云架构，并复盘长任务、版本升级、部署稳定性和可观测性，适合分享 Coding Agent 上云后真正需要的运行时能力。 | https://replay.temporal.io/speakers/jeremy-stribling |
+| 这篇生产经验复盘从传统“中央 Orchestrator + 一组 Agent”的失效案例出发，聚焦上下文膨胀、指令冲突、漂移、长任务可靠性和 Token 爆炸，适合做“为什么 Demo 架构上线后会坏”的反模式材料。 | https://sdivye92.medium.com/rethinking-multi-agent-systems-c06d1a354aa6 |
+| 作者基于半年让多 Agent 向真实用户交付代码的经验，给出并行 worktree、独立安全/质量 Review、人类架构与产品审批、Git 流程等规则，适合分享“多 Agent 提速之后如何把快速变成可安全发布”。 | https://medium.com/%40benovedoz/designing-a-multi-agent-ai-workflow-that-doesnt-break-production-792b7ed0f4cd |
+| 这份 2026 生产编排指南按 Supervisor、Fan-out、Pipeline、Hierarchical、Debate 等模式拆解 handoff、状态、失败恢复和成本特征，并明确不同模式的适用边界，适合整理成架构选型与失效模式对照表。 | https://www.belsoftsolutions.com/blog/multi-agent-ai-orchestration-patterns-2026 |

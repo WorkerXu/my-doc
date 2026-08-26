@@ -543,3 +543,14 @@
 | https://doi.org/10.1016/j.cirp.2026.04.027 |
 | https://junjietang.dev/blog/2026/five-rules-multi-agent-coding-teams/ |
 | https://github.com/jbrahy/meta-agent-teams |
+| https://github.com/ulises-jeremias/agent-toolkit/blob/main/docs/adrs/ADR-008-swarm-orchestration.md |
+| https://github.com/temporal-community/durable-hitl-agents |
+| https://github.com/nwiizo/ccswarm |
+| https://github.com/openagents-org/openagents |
+| https://www.linkedin.com/blog/engineering/ai/practical-text-to-sql-for-data-analytics |
+| https://pages.temporal.io/webinar-monoliths-to-microagents.html |
+| https://replay.temporal.io/speakers/jeremy-stribling |
+| https://www.belsoftsolutions.com/blog/multi-agent-ai-orchestration-patterns-2026 |
+| https://sdivye92.medium.com/rethinking-multi-agent-systems-c06d1a354aa6 |
+| https://medium.com/%40benovedoz/designing-a-multi-agent-ai-workflow-that-doesnt-break-production-792b7ed0f4cd |
+| https://www.kunalganglani.com/blog/multi-agent-ai-systems-production |
