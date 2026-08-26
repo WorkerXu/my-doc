@@ -311,3 +311,7 @@
 | opencode-workspace 把 plan/build 编排器、researcher/coder/scribe/reviewer 专业 Agent、MCP、后台委派、通知与 Git worktree 打成一套 Harness，并对各角色设置细粒度读写/执行权限，适合说明生产协作除了分工还需要隔离、工具边界与最小权限。 | https://github.com/kdcokenny/opencode-workspace |
 | Claude Swarm 将复杂任务先拆成依赖图再分波并行执行，并内置文件锁冲突检测、预算硬限制、失败重试、统一质量 Gate、实时成本/进度看板和 Session Replay，适合用作“并行 Coding Agent 如何同时治理冲突、质量、成本与可观测性”的工程案例。 | https://github.com/affaan-m/claude-swarm |
 | π Multi-Agent 把 Goal→Plan→Execute→Evaluate→Replan→Output 做成完整生命周期，并提供顺序、并行、辩论、专家组、Critic-Reviewer、层级等协作模式，结合多模型路由、共享记忆、质量阈值重规划和沙箱/预算控制，适合用作多 Agent 平台架构与协作拓扑的系统化参考。 | https://github.com/jwangkun/Pi-Multi-Agent |
+| openJiuwen 的 Agent Team Engine 用 Leader 动态组队、Teammate 自主领取任务和共享工作区组织科研团队协作，前序产物可直接成为后续输入，适合展示“团队分工 + 共享状态”怎样落成可执行协作机制。 | https://zhuanlan.zhihu.com/p/2033665604016714386 |
+| AgentTeams 实践重点复盘权限拆分、用持久化对象替代大段摘要传递、Human-in-the-loop 与 Eval Release Gate，适合分享多 Agent 从 Demo 进入生产后如何控制信息损耗、责任边界与结果质量。 | https://zhuanlan.zhihu.com/p/2071003231002670310 |
+| AgentTeams 的组织建模实践把 Session/Team 扩容、同进程 Subagent、沙箱隔离、共享存储、深休眠成本控制和持续优化放到统一架构里，适合讲企业多 Agent 平台怎样同时处理协作、性能、安全和成本。 | https://zhuanlan.zhihu.com/p/2060356797349860370 |
+| 分布式 Agent Swarm 用 Leader 与不同机器上的 Teammate 配合注册发现和共享工作区完成跨节点代码接力，适合展示多 Agent 从单机编排走向跨机器协作时的发现、上下文共享与任务连续性。 | https://zhuanlan.zhihu.com/p/2041105589108003513 |

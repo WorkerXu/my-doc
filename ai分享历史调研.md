@@ -361,3 +361,7 @@
 | https://github.com/kdcokenny/opencode-workspace |
 | https://github.com/affaan-m/claude-swarm |
 | https://github.com/jwangkun/Pi-Multi-Agent |
+| https://zhuanlan.zhihu.com/p/2033665604016714386 |
+| https://zhuanlan.zhihu.com/p/2071003231002670310 |
+| https://zhuanlan.zhihu.com/p/2060356797349860370 |
+| https://zhuanlan.zhihu.com/p/2041105589108003513 |
