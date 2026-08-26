@@ -590,3 +590,11 @@
 | https://www.bilibili.com/video/BV1eFqVBnEQX |
 | https://www.bilibili.com/video/BV1kEqnBHEzi |
 | https://www.bilibili.com/video/BV1bEgY6iEah |
+| https://aws.amazon.com/blogs/machine-learning/how-lendingtree-built-a-multi-agent-mortgage-assistant-on-amazon-bedrock/ |
+| https://aws.amazon.com/blogs/storage/orchestrating-multi-agent-ai-architectures-with-amazon-s3-files/ |
+| https://aws.amazon.com/blogs/storage/building-persistent-memory-for-multi-agent-ai-systems-with-amazon-s3-vectors/ |
+| https://aaif.io/blog/a2a-joins-aaif |
+| https://aaif.io/blog/where-a2a-fits-in-the-open-agent-ecosystem |
+| https://brittek.net/journal/multi-agent-systems-are-orchestration-systems |
+| https://darlansandro.com/estudo-caso-viasul-rag-multiagentes-en |
+| https://blog.redlinesoft.net/posts/a2a-protocol-cross-organization-collaboration/ |
