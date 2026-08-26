@@ -268,3 +268,9 @@
 | Composio 的 Agent Orchestrator 已把“同时跑多个 Coding Agent”做成完整控制面：每个 Agent 独立 worktree/branch/PR，并自动接收 CI 失败和 Review 意见继续修复，还能通过插件混用 Claude Code、Codex、OpenCode 等，适合拆解并行研发 Agent 如何真正嵌入现有 GitHub 流程。 | https://github.com/ComposioHQ/agent-orchestrator |
 | Open Orchestrator 把 Claude Code、Pi、Droid、OpenCode 等异构 Coding Agent 放到多 worktree 控制台中，并用 Conflict Guard 提前侦测并行编辑冲突，适合分享“隔离并行 + 人类决策面 + 冲突治理”的轻量工程实践。 | https://github.com/gitpcl/openorchestrator |
 | Resonate 的可运行示例把 researcher→writer→reviewer 的每次 handoff 变成 durable checkpoint，故意让中间 Agent 崩溃也只重试失败步骤、不会重跑前序 Agent，并预留 HITL hook，适合用最小代码讲清“多 Agent 长流程为什么需要可恢复编排”。 | https://github.com/resonatehq-examples/example-multi-agent-orchestration-py |
+| InfoQ 以 5G Core 安全运营为生产场景，把 Planner、Executor、Reviewer 等 Agent 通过 A2A 协作，并用 MCP 接入环境工具，同时强调 reviewer-first、policy-as-code、人工升级与审计，适合分享高风险多 Agent 如何把协议互操作和安全门禁同时落地。 | https://www.infoq.com/articles/multi-agent-security-operations/ |
+| Google Cloud Next ’26 开源的 Race Condition 是可部署的多 Agent 参考架构，使用 ADK、Gemini 与 A2A 让规划、环境模拟和执行 Agent 协同，并提供确定性 runner 与录制回放，适合展示大规模协作系统如何兼顾真实运行、测试和演示可靠性。 | https://github.com/GoogleCloudPlatform/race-condition |
+| A2A 官方样例仓库提供多语言 Agent、Host 与协作 Demo，覆盖 Agent 发现、任务委派、流式/异步交互和跨框架互操作，适合作为分享中可直接运行的“协议化多 Agent 协作”基线项目。 | https://github.com/a2aproject/a2a-samples |
+| Google ADK 官方 A2A quickstart 展示如何把本地 Agent 暴露为远程 A2A 服务并由另一个 Agent 消费，包含 Agent Card、Task Store、请求处理与部署入口，适合用最小样例讲清跨进程 Agent 协作的工程组成。 | https://github.com/google/adk-docs/blob/main/docs/a2a/quickstart-exposing.md |
+| TunerLabs 基于生产经验整理 Planner/Executor/Critic、Fan-out/Fan-in、Scoped Pipeline、Specialist+Generalist 四种多 Agent 模式，并强调从最简单拓扑起步、控制爆炸半径和避免过度拆 Agent，适合做协作架构选型与反模式对照。 | https://www.tunerlabs.com/blog/multi-agent-orchestration-patterns |
+| Coverge 将多 Agent 编排视为分布式系统问题，系统讨论共享状态、partial failure、handoff、超时、可观测性与 human review，适合补充“从 Demo 到生产”阶段最常见的运行风险和工程约束。 | https://coverge.ai/blog/multi-agent-orchestration |
