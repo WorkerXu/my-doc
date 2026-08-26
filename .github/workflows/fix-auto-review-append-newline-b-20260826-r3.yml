@@ -1,0 +1,45 @@
+name: Fix auto review history newline b 20260826 r3
+
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-auto-review-append-newline-b-20260826-r3.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fix history URL separator
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path('自动审查历史调研.md')
+          s = p.read_text(encoding='utf-8')
+          bad = 'https://github.com/openai/codex/issues/38607https://github.com/EEstevanell/codex-planning-kit'
+          good = 'https://github.com/openai/codex/issues/38607\nhttps://github.com/EEstevanell/codex-planning-kit'
+          if bad in s:
+              s = s.replace(bad, good, 1)
+          if s and not s.endswith('\n'):
+              s += '\n'
+          p.write_text(s, encoding='utf-8')
+          PY
+
+      - name: Commit newline fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- '自动审查历史调研.md'; then
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- '自动审查历史调研.md'
+          git commit -m 'fix: separate auto review history urls b r3'
+          git push
