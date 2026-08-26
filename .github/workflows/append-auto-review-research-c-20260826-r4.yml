@@ -1,0 +1,55 @@
+name: Append auto review research c 20260826 r4
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/append-auto-review-research-c-20260826-r4.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Append new research rows
+        shell: bash
+        run: |
+          set -euo pipefail
+          article='自动审查文章调研.md'
+          history='自动审查历史调研.md'
+
+          append() {
+            local reason="$1"
+            local url="$2"
+            if ! grep -Fq "$url" "$article" && ! grep -Fqx "$url" "$history"; then
+              printf '| %s | %s |\n' "$reason" "$url" >> "$article"
+              printf '%s\n' "$url" >> "$history"
+            fi
+          }
+
+          append '该跨模型流水线由 Gemini 编排，Claude 负责需求/计划/实现，Sonnet→Opus→Codex 依次审计划与代码，并把每阶段 review JSON 持久化；适合作为 Codex 外部的多 Agent 串行质量门与可追踪审查链。' 'https://github.com/Z-M-Huang/claude-codex-gemini'
+          append 'Cerberus 可让 Claude、Codex、Gemini 对同一代码、commit、plan/spec 并行或辩论式评审，再按 majority/all/any 共识聚合并由后置 reviewer 验证去重；适合把计划审查与提交级代码审查统一为独立多模型 gate。' 'https://github.com/charlieyou/cerberus'
+          append 'work-with-design-systems 可在 Codex 中通过 Figma MCP 对 token、WCAG、组件状态、detached instances、命名及 Storybook parity 做结构化审计，并可导出 JSON/AI rules/tokens.css；适合作为 design-reviewer 的设计文件证据源。' 'https://github.com/natdexterra/work-with-design-systems'
+          append 'Claw Orchestrator 把 Claude、Codex、Gemini、Cursor 等统一成可编排运行时，其 codex_review 可明确按 commit SHA、base 或未提交 diff 审查；适合让 reviewer 精确绑定到“某版计划对应的某次提交”并把结果交回编排器。' 'https://github.com/Enderfga/claw-orchestrator/blob/main/skills/references/tools.md'
+          append 'ClosedLoop 的工作簿给出 evidence-first 的 Implementation Plan→Review→Approved→Executed→Done 工作流，并强调用 diff 对照计划、以阻断 finding 作为 CI gate；适合借鉴为 plan 文件与实际提交实现的一致性审查门。' 'https://github.com/closedloop-ai/claude-code-expert-training/blob/main/workbook/index.html'
+          append 'Agent Task Board 提供 MCP/API 驱动的 Queued→Running→Review→Done 看板和 dispatcher，Agent 执行结果会进入 Review lane；适合把多 Agent 聚合 findings、PR/任务结果推入统一审查看板，再由人或 Codex 继续处理。' 'https://github.com/davidcjw/agent-task-board'
+          append '该 Codex review 配置 skill 已预留 task_board 元数据与 sync_filter，可把仓库级分层 review policy 与任务板同步范围放在同一策略层管理；适合作为“审查结果选择性同步到看板”的轻量接缝。' 'https://github.com/hashgraph-online/awesome-codex-plugins/blob/main/plugins/mimfort/rag_for_git/plugin/skills/configure-review/SKILL.md'
+          append '这个公开 PLAN.md 明确声明为 Binding Program Plan，要求阶段 gate 的证据先 committed 才能推进，并用冻结哈希与 append-only 证据维持审计性；适合参考为“计划文件版本＋验证证据＋Git 提交”强绑定的工程纪律。' 'https://github.com/EricSpencer00/tla-prover/blob/main/PLAN.md'
+
+      - name: Commit research updates
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- '自动审查文章调研.md' '自动审查历史调研.md'; then
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- '自动审查文章调研.md' '自动审查历史调研.md'
+          git commit -m 'docs: append automatic review research c 20260826 r4'
+          git push
