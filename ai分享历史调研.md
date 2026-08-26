@@ -727,3 +727,13 @@
 | https://github.com/linke-ai/hermes-agent-team |
 | https://github.com/revfactory/harness |
 | https://github.com/StreetLamb/tribe |
+| https://zhuanlan.zhihu.com/p/2070653377697019479 |
+| https://zhuanlan.zhihu.com/p/2062613282502995976 |
+| https://zhuanlan.zhihu.com/p/2048870991703679579 |
+| https://zhuanlan.zhihu.com/p/2042265953921193702 |
+| https://zhuanlan.zhihu.com/p/1979574063652442277 |
+| https://zhuanlan.zhihu.com/p/1946888200774726735 |
+| https://zhuanlan.zhihu.com/p/2063012874562359834 |
+| https://zhuanlan.zhihu.com/p/2059918431927939887 |
+| https://zhuanlan.zhihu.com/p/2053854729394993086 |
+| https://zhuanlan.zhihu.com/p/2066474435603854781 |
