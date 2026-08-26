@@ -126,3 +126,9 @@
 | https://arxiv.org/abs/2603.21489 |
 | https://arxiv.org/abs/2512.08769 |
 | https://github.com/agntcy/coffeeAgntcy |
+| https://github.com/cft0808/edict |
+| https://github.com/cobusgreyling/claude-agent-teams |
+| https://github.com/ZhangHanDong/agent-teams-rs |
+| https://github.com/ajjucoder/codex-team-orchestrator |
+| https://github.com/societycomputer/society-protocol |
+| https://github.com/run-llama/multi-agent-concierge |
