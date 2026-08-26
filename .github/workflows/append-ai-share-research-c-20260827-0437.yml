@@ -1,0 +1,83 @@
+name: Append AI sharing research c 20260827 0437
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/append-ai-share-research-c-20260827-0437.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Append new Bilibili research rows safely
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+
+            python - <<'PY'
+          from pathlib import Path
+
+          article = Path('ai分享文章调研.md')
+          history = Path('ai分享历史调研.md')
+
+          rows = [
+              ('Codex Multi-agent V2 实测把代码探索、方案设计、功能开发、测试验证和代码审查拆给不同 subagent 并行执行，还支持每个 subagent 独立选模型与推理等级、控制并发、任务恢复和动态派生，适合用来讲 Graph Engineering 与多 Agent 编码团队的调度闭环。', 'https://www.bilibili.com/video/BV1STg46UEFd'),
+              ('作者自己做了一个多 Agent 协作 Demo，把路由、协作、交接、执行、追踪串成完整链路，并明确复盘协作稳定性、任务交接质量、状态共享、运行时工具和可视化等后续问题，适合作为“从能跑到可用”最小控制面的实践案例。', 'https://www.bilibili.com/video/BV11sdWBUE4Q'),
+              ('用强模型负责规划和 Review、便宜模型负责执行，并在同一会话复用上下文降低 Token 成本；同时演示 Codex 插件、tmux、Open Agent Teams 与 Orca 等跨工具编排方式，适合分享异构 Agent 分工、成本路由和跨 Runtime 协作。', 'https://www.bilibili.com/video/BV1ybKh6LEKJ'),
+              ('以 LangGraph + MCP + RAG 从零搭建企业级多智能体系统，把图编排、工具协议和知识检索放进同一工程实践，适合用于分享多 Agent 应用从角色协作到工具接入、知识增强和业务落地的一体化实现路径。', 'https://www.bilibili.com/video/BV1eFqVBnEQX'),
+              ('科研场景把文献分析、创新点生成、代码实现和论文写作拆成 4 个 Agent，并结合 CrewAI、RAG 知识库、长期记忆与反思机制，还复盘 Agent 循环、无效代码和幻觉等失败问题，适合作为多 Agent 垂直业务闭环与失败治理案例。', 'https://www.bilibili.com/video/BV1kEqnBHEzi'),
+              ('SpringAI 多 Agent 实战覆盖角色划分、消息通信、Skills 调度、RAG 融合和分布式协同，并提供任务完成率/协同效率评估以及消息乱序、任务死锁、调度异常等排障内容，适合补充多 Agent 真正工程化后需要面对的可靠性与评估问题。', 'https://www.bilibili.com/video/BV1bEgY6iEah'),
+          ]
+
+          article_text = article.read_text(encoding='utf-8')
+          history_text = history.read_text(encoding='utf-8')
+
+          added = []
+          for reason, url in rows:
+              if url in article_text or url in history_text:
+                  continue
+              if article_text and not article_text.endswith('\n'):
+                  article_text += '\n'
+              article_text += f'| {reason} | {url} |\n'
+              if history_text and not history_text.endswith('\n'):
+                  history_text += '\n'
+              history_text += f'| {url} |\n'
+              added.append(url)
+
+          if added:
+              article.write_text(article_text, encoding='utf-8')
+              history.write_text(history_text, encoding='utf-8')
+              print(f'added {len(added)} rows')
+          else:
+              print('no new rows')
+          PY
+
+            if git diff --quiet -- 'ai分享文章调研.md' 'ai分享历史调研.md'; then
+              echo 'no new rows to commit'
+              exit 0
+            fi
+
+            git add -- 'ai分享文章调研.md' 'ai分享历史调研.md'
+            git commit -m 'docs: append ai sharing research c 20260827'
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+
+            echo "push failed on attempt ${attempt}; retrying on latest main"
+          done
+
+          exit 1
