@@ -28,7 +28,7 @@
 | https://zhuanlan.zhihu.com/p/2022259323544281560 |
 | https://zhuanlan.zhihu.com/p/2015734693086131605 |
 | https://zhuanlan.zhihu.com/p/2036090725960504167 |
-| https://zhuan.zhihu.com/p/2001655301850539502 |
+| https://zhuanlan.zhihu.com/p/2001655301850539502 |
 | https://zhuanlan.zhihu.com/p/2059951663834781667 |
 | https://zhuanlan.zhihu.com/p/2015796905158923426 |
 | https://zhuanlan.zhihu.com/p/2063224649643832677 |
