@@ -1,0 +1,76 @@
+name: Append AI sharing research e 20260826
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/append-ai-share-research-e-20260826.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Append new research rows
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          article = Path('ai分享文章调研.md')
+          history = Path('ai分享历史调研.md')
+
+          rows = [
+              ('从“个人调用 Agent”进一步推进到人和 Agent 共享目标小队，提出 PM 调度者、任务图、依赖、进度和责任人共同状态，适合分享组织级多 Agent 协作如何从聊天走向可治理工作系统。', 'https://juejin.cn/post/7676421042796544040'),
+              ('基于源码对比 Claude Agent Teams 与 Codex multi-agent v2 的团队创建、任务分配、通信方式和工程取舍，适合做 AI Coding 多 Agent 机制与架构选型的对照材料。', 'https://juejin.cn/post/7653415873380876330'),
+              ('claude-studio 将 Claude Code Agent Teams 的工作流从散落配置变成可视化 DAG 编排，适合展示多 Agent 协作如何产品化为可观察、可复用的编排控制面。', 'https://juejin.cn/post/7629036295418806306'),
+              ('从企业 AI 需求评估出发比较工作流、单 Agent 与多 Agent 协作的适用边界，适合作为分享里“什么时候值得上多 Agent”的前置决策框架。', 'https://juejin.cn/post/7620718787835969536'),
+              ('用具体业务场景完整展开 AgentScope 多智能体协作实践，适合拆解角色分工、消息传递和任务协同，让分享不只停留在框架概念层。', 'https://juejin.cn/post/7591730714140540970'),
+              ('Dify 与 Nacos A2A 插件把 Agent Registry、注册发现和双向 Agent 协作接起来，适合补充多 Agent 从进程内编排走向跨服务互操作与治理的落地方式。', 'https://juejin.cn/post/7603219519666257939'),
+              ('以 4 个 AI Agent 重塑软件测试流程，并给出团队规模、用例设计和回归测试等真实业务背景，适合用垂直场景说明专业 Agent 分工如何进入研发流程。', 'https://juejin.cn/post/7533512134002409522'),
+              ('记录 16 个 AI Agent 在两周内协作完成约 10 万行 C 编译器并可编译 Linux 内核的案例，适合讨论大规模并行 Coding Agent 的任务拆分、协同收益与验证边界。', 'https://juejin.cn/post/7603376587653169202'),
+              ('从零搭建 CrewAI 多智能体协作系统，覆盖角色、任务和团队编排等核心实践，适合作为分享中可快速复现的框架级入门案例。', 'https://juejin.cn/post/7649256802330443827'),
+          ]
+
+          article_text = article.read_text(encoding='utf-8')
+          history_text = history.read_text(encoding='utf-8')
+
+          added = []
+          for reason, url in rows:
+              if url in article_text or url in history_text:
+                  continue
+              if article_text and not article_text.endswith('\n'):
+                  article_text += '\n'
+              article_text += f'| {reason} | {url} |\n'
+              if history_text and not history_text.endswith('\n'):
+                  history_text += '\n'
+              history_text += f'| {url} |\n'
+              added.append(url)
+
+          if added:
+              article.write_text(article_text, encoding='utf-8')
+              history.write_text(history_text, encoding='utf-8')
+              print(f'added {len(added)} rows')
+          else:
+              print('no new rows')
+          PY
+
+      - name: Commit research updates
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- 'ai分享文章调研.md' 'ai分享历史调研.md'; then
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- 'ai分享文章调研.md' 'ai分享历史调研.md'
+          git commit -m 'docs: append ai sharing research e 20260826'
+          git push
