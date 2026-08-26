@@ -251,3 +251,8 @@
 | 以 4 个 AI Agent 重塑软件测试流程，并给出团队规模、用例设计和回归测试等真实业务背景，适合用垂直场景说明专业 Agent 分工如何进入研发流程。 | https://juejin.cn/post/7533512134002409522 |
 | 记录 16 个 AI Agent 在两周内协作完成约 10 万行 C 编译器并可编译 Linux 内核的案例，适合讨论大规模并行 Coding Agent 的任务拆分、协同收益与验证边界。 | https://juejin.cn/post/7603376587653169202 |
 | 从零搭建 CrewAI 多智能体协作系统，覆盖角色、任务和团队编排等核心实践，适合作为分享中可快速复现的框架级入门案例。 | https://juejin.cn/post/7649256802330443827 |
+| Claude Code Agent Teams 实机演示多个独立 Agent 同时编码与协作，适合直观看角色分工、并行执行和人类监督如何进入真实 AI Coding 工作流。 | https://www.youtube.com/watch?v=-1K_ZWDKpU0 |
+| Google for Developers 官方把 ADK、MCP 与 A2A 放到同一 Google Cloud 实操中，适合讲清“Agent 构建、工具连接、Agent 间通信”三层能力怎样组合成可落地系统。 | https://www.youtube.com/watch?v=6mQwHqK1I5w |
+| Strands Agents 实战用 A2A + MCP 打通多 Agent 与工具生态，主题直接聚焦消除 Agent 信息孤岛，适合作为跨框架、跨服务互操作的工程案例。 | https://www.youtube.com/watch?v=TjTgHA5DjDM |
+| AWS re:Invent 的 Cosine AI 案例把 LLM 微调与 Multi-Agent Orchestration 放进真实生产讨论，适合补充“协作效果不仅取决于编排，也取决于模型如何为角色和调度行为做针对性优化”的视角。 | https://www.youtube.com/watch?v=GYaDjPwLDGo |
+| 该分享从常见多 Agent 编排模式一路延伸到生产落地，适合用于串联架构选型、协作边界与生产化注意点，作为分享中的模式地图与实践过渡材料。 | https://www.youtube.com/watch?v=EtSO9vU84ws |
