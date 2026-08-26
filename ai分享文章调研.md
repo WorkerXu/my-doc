@@ -315,3 +315,11 @@
 | AgentTeams 实践重点复盘权限拆分、用持久化对象替代大段摘要传递、Human-in-the-loop 与 Eval Release Gate，适合分享多 Agent 从 Demo 进入生产后如何控制信息损耗、责任边界与结果质量。 | https://zhuanlan.zhihu.com/p/2071003231002670310 |
 | AgentTeams 的组织建模实践把 Session/Team 扩容、同进程 Subagent、沙箱隔离、共享存储、深休眠成本控制和持续优化放到统一架构里，适合讲企业多 Agent 平台怎样同时处理协作、性能、安全和成本。 | https://zhuanlan.zhihu.com/p/2060356797349860370 |
 | 分布式 Agent Swarm 用 Leader 与不同机器上的 Teammate 配合注册发现和共享工作区完成跨节点代码接力，适合展示多 Agent 从单机编排走向跨机器协作时的发现、上下文共享与任务连续性。 | https://zhuanlan.zhihu.com/p/2041105589108003513 |
+| OpenClaw 多 Agent 小红书实战把热榜与竞品数据收集、内容分析、笔记创作、图文生成和自动发布串成端到端流水线，适合展示多 Agent 如何从角色分工进一步落到可直接运行的业务自动化闭环。 | https://juejin.cn/post/7614123089519018003 |
+| 以 4 个 AI Agent 重构软件测试流程，将测试任务拆给不同角色协同处理并围绕真实团队痛点展开，适合补充“多 Agent 不只用于编码，也能进入测试交付链路”的垂直实践案例。 | https://juejin.cn/post/7533512134002409522 |
+| 用 LangGraph.js 搭建 5 个专业 Agent 的协作系统，由 Coordinator 动态决定执行链，再通过 SSE 将每个 Agent 的运行轨迹实时推到前端，适合展示“多 Agent 编排 + 可交互产品界面”的完整落地形态。 | https://juejin.cn/post/7641168149850947584 |
+| 作者复盘多 Agent 团队的失败尝试，重点指出 context、memory、状态恢复和 Agent 间交接协议才是协作的真正难点，并给出何时应退回单 Agent 的判断边界，适合用作分享中的反例与选型原则。 | https://juejin.cn/post/7628784821854863369 |
+| Codex 多智能体并发实战直接用 spawn/wait/close 等协作机制并行审查 OpenClaw 代码，针对并发、超时、重试和状态同步寻找问题，适合展示 Coding Agent 团队如何用于真实代码库的并行诊断。 | https://juejin.cn/post/7611737838309244978 |
+| TiDB 联合创始人结合大规模 Token 消耗、Agent Infra 和实际 Agent Team 工作经验，复盘纯黑盒协作为什么会失控，以及 Spec、人类点拨、约束与软件工程纪律为何仍关键，特别适合作为生产实践与反思案例。 | https://juejin.cn/post/7630681198803566655 |
+| 游戏小团队案例把 GDD 从给人看的文档升级为图像、视频、编程等多个 Agent 共用的“执行合同”和单一事实源，适合讲跨模态、跨角色 Agent 协作怎样通过共享规格减少对不齐和返工。 | https://juejin.cn/post/7602512226999533618 |
+| 对比 Claude Code Agent Teams 与 Codex multi-agent v2 的协作机制，涵盖上下文隔离、任务委派、成员通信和并行执行方向差异，适合在分享中用同类工具对照说明不同多 Agent 架构为何会做出不同工程取舍。 | https://juejin.cn/post/7653415873380876330 |
