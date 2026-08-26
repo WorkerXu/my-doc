@@ -181,3 +181,13 @@
 | https://www.bilibili.com/video/BV1PT7C6gEs7 |
 | https://www.bilibili.com/video/BV1suuj6CEje |
 | https://www.bilibili.com/video/BV1TDbk6gEBU |
+| https://learn.microsoft.com/en-us/agents/architecture/multi-agent-patterns |
+| https://learn.microsoft.com/en-us/azure/architecture/ai-ml/guide/ai-agent-design-patterns |
+| https://cloud.google.com/customers/igot |
+| https://cloud.google.com/customers/eversana |
+| https://cloud.google.com/customers/orionstar |
+| https://www.sciencedirect.com/science/article/pii/S0007850626000478 |
+| https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6973623 |
+| https://github.com/gastownhall/gascity |
+| https://github.com/aws-solutions-library-samples/guidance-for-multi-agent-orchestration-on-aws |
+| https://github.com/HKUDS/DeepCode |
