@@ -463,3 +463,8 @@
 | 系统对比跨会话通信、Subagent、Agent Teams 与 Agent View，从创建者、通信能力、上下文和成本解释多会话协作机制，适合梳理“轻量委派—团队协作—可视化监督”的能力层级。 | https://zhuanlan.zhihu.com/p/2069370615308587674 |
 | 从系统提示词和 TeamCreate/Task/SendMessage/TaskCreate 等底层机制拆解 Agent Team，兼顾原理、实战与踩坑，适合分享 Lead/Teammate、共享任务和直接通信如何形成真正团队式协作。 | https://zhuanlan.zhihu.com/p/2004486603343671752 |
 | 给出 Agent Teams 的适用/不适用条件、Token 成本、任务粒度、文件边界和状态同步限制，适合做“什么时候值得并行、什么时候协调成本反而更高”的实操决策清单。 | https://zhuanlan.zhihu.com/p/2004878637753730888 |
+| 文章从单 Chat 演进到多 Agent 系统，给出 Supervisor + Coder/Reviewer/Documenter 的任务拆分、依赖顺序、并行/串行执行和 WebSocket 运行轨迹界面，适合分享“编排控制面 + 用户可见执行过程”如何一起落地。 | https://juejin.cn/post/7628895336027799552 |
+| 开源 Agent Teams 编排 Skill 把“建团队、分角色、派任务”从手工配置压成一句话自动组队，并专门区分 Agent Teams 与泛 Swarm 概念，适合展示多 Agent 协作怎样封装成可复用的工程能力。 | https://juejin.cn/post/7606128564415103003 |
+| 从 AgentTeams、AgentLoop 到 Claude 群聊讨论多智能体“群聊模式”真正困难的地方，并把协作与治理平台、Leader/Worker 组织关系等放在一起分析，适合补充企业级多 Agent 不是“拉群聊天”，而需要专门协作治理层。 | https://juejin.cn/post/7660312458697228322 |
+| 用竞品调研等可复现任务从零搭建 Claude Agent Teams，让不同 Agent 分别搜索、分析、汇总，适合作为现场演示“任务拆分—专业分工—结果汇总”的最小端到端多 Agent 实战。 | https://juejin.cn/post/7613960231039860777 |
+| 从单体到 Agent Teams 的架构演进出发，重点给出“什么任务才值得上多 Agent”的判断启发，并围绕独立上下文与协作需求解释拆分边界，适合分享中建立“先判断是否需要团队，再谈编排”的选型框架。 | https://juejin.cn/post/7613359984269148206 |
