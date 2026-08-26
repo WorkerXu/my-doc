@@ -85,3 +85,9 @@
 | RuFlo 以分布式“蜂群”方式编排大量专业 Agent，适合与 Supervisor/DAG 模式对比，讨论多 Agent 从小团队扩展到大规模并发协作时的组织方式。 | https://juejin.cn/post/7635275904798965814 |
 | 临床文献研究场景用 LangGraph 的 AgentState、Reducer 和 Send API 管理跨 Agent 数据流与动态并行，适合用垂直业务案例讲状态合并和并行调度如何落地。 | https://juejin.cn/post/7618764794954989631 |
 | myclaude 把 Claude、Gemini、Codex 组成分工明确的 AI 开发团队，是跨模型多 Agent 编排的直接开源案例，适合分享不同模型按职责协作而不是由单一 Agent 包办全部任务。 | https://juejin.cn/post/7610981820637347880 |
+| 用 Codex 与 Claude Code 搭建“Agentic Software Factory”，把 GitHub Issue 从细化、隔离 worktree、实现、测试、Review 到自动开 PR 串成无人值守流水线，适合分享多 Agent/Agentic Coding 如何从人工委派升级为可重复的软件交付系统。 | https://www.youtube.com/watch?v=AbpyqAfxZ8c |
+| Claude Code 多 Agent 编排实战同时启动多个专业 Agent，每个 Agent 拥有独立上下文、模型与任务，并结合 Tmux、E2B Sandbox 和全链路可观测性管理并行执行，适合讲清“并行团队 + 隔离环境 + 可观测”如何一起落地。 | https://www.youtube.com/watch?v=RpUTF_U4kiw |
+| 独立开发者展示同时运行约 6 个 Coding Agent 的真实工作流，包含 Plan Mode、跨项目/同项目并行、终端会话管理和人工 Review，适合用来讨论多 Agent 提效时的人机分工、注意力调度与安全边界。 | https://www.youtube.com/watch?v=dDeoblrGRGM |
+| VS Code 官方演示统一管理本地、后台、云端以及 Claude、Codex 等多种 Coding Agent，并支持并行子 Agent 与独立上下文，适合分享 IDE 如何演进成多 Agent 研发控制台。 | https://www.youtube.com/watch?v=BsAHunfVwNs |
+| 以 PR Review 为目标从零搭建生产导向的多 Agent 系统，覆盖安全/质量/测试/文档专业 Agent 的 fan-out/fan-in、结构化输出、RAG、置信度与 HITL、超时重试、幂等和可观测性，适合做“可靠性优先”的完整工程案例。 | https://www.youtube.com/watch?v=RiN02OXjeeQ |
+| Google Cloud ADK 的实操型多 Agent 编排分享围绕任务拆解、Agent 通信、工作流协同与治理展开，并强调可扩展的协作系统设计，适合作为 ADK 体系下从概念到实践的案例素材。 | https://www.youtube.com/watch?v=Y3IFeghhT9Y |
