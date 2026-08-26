@@ -383,3 +383,11 @@
 | https://www.bilibili.com/video/BV1Vvj86UEW4 |
 | https://www.bilibili.com/video/BV1FahK6eEef |
 | https://www.bilibili.com/video/BV1ZBiRBrErU |
+| https://github.com/veerapan-boo/agent-team |
+| https://github.com/90le/agent-team-engineering |
+| https://github.com/parkjui92/policy-research-kit |
+| https://www.innvolabs.co/en/blog/scaling-sub-second-streaming-multi-agent-orchestration |
+| https://foursignals.dev/blog/2026-07-31-agent-orchestration-adventures-to-build-a-production-grade-application/ |
+| https://agents-squads.com/engineering/ai-agent-orchestration-19-squads/ |
+| https://www.sciencedirect.com/science/article/pii/S2212827126009352 |
+| https://www.arcweb.com/blog/curing-copilot-tower-babel-orchestrating-multi-vendor-copilots-across-extended-industrial |
