@@ -661,3 +661,15 @@
 | https://github.com/i-am-bee/beeai-framework |
 | https://github.com/lastmile-ai/mcp-agent |
 | https://github.com/agentscope-ai/agentscope |
+| https://devblogs.microsoft.com/agent-framework/move-agent-orchestration-workflows-out-of-code-with-agent-framework-declarative-workflows-1-0/ |
+| https://devblogs.microsoft.com/agent-framework/agent-frameworks-orchestration-patterns-reach-1-0/ |
+| https://devblogs.microsoft.com/agent-framework/ag-ui-multi-agent-workflow-demo/ |
+| https://devblogs.microsoft.com/agent-framework/a2a-v1-is-here-cross-platform-agent-communication-in-microsoft-agent-framework-for-net/ |
+| https://blog.a2acloud.io/agent-studio-from-prompt-to-proof |
+| https://arxiv.org/abs/2608.11965 |
+| https://arxiv.org/abs/2602.01465 |
+| https://github.com/rachitpareek/multi-agent-orchestration-evals |
+| https://github.com/zfkarl/Orchestra-o1 |
+| https://github.com/Htunn/aiops-orchestrator |
+| https://github.com/dsifry/metaswarm |
+| https://github.com/danielchappell/scuba-stack |

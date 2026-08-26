@@ -537,3 +537,15 @@
 | BeeAI Framework 同时覆盖 Python/TypeScript 多 Agent workflow、handoff、A2A/MCP、持久化与可观测能力，并提供直接可运行的多 Agent 示例，适合补充跨语言、生产导向的开源框架实践。 | https://github.com/i-am-bee/beeai-framework |
 | mcp-agent 用 MCP + 可组合工作流实现多 Agent 模式，并可接 Temporal 获得暂停、恢复和失败续跑等 durable execution，适合分享“Agent 协作如何借成熟工作流引擎补生产可靠性”。 | https://github.com/lastmile-ai/mcp-agent |
 | AgentScope 2.0 把 Message Hub、多 Agent workflow、Agent Team、A2A/MCP、HITL、评估与部署放进同一框架，适合从“协作逻辑”一路讲到可观测和服务化运行。 | https://github.com/agentscope-ai/agentscope |
+| Microsoft Agent Framework 将多 Agent 的顺序、分支、handoff、状态变化与人工介入从应用代码抽成 YAML 声明式工作流，并已在 Python/.NET 达到 1.0，适合分享“协作编排如何做到可审查、可版本化、可治理”。 | https://devblogs.microsoft.com/agent-framework/move-agent-orchestration-workflows-out-of-code-with-agent-framework-declarative-workflows-1-0/ |
+| Microsoft 将 sequential、concurrent、group chat、handoff、Magentic 等编排模式统一稳定到 1.0，并解释不同抽象层和适用边界，适合作为多 Agent 协作模式选型与工程取舍的官方参考。 | https://devblogs.microsoft.com/agent-framework/agent-frameworks-orchestration-patterns-reach-1-0/ |
+| Microsoft 用 AG-UI + Agent Framework 构建真实多 Agent 前端，解决 handoff、审批、追问、执行状态流式展示等产品化问题，适合说明“多 Agent 后端能跑”之后怎样做成用户可理解、可干预的系统。 | https://devblogs.microsoft.com/agent-framework/ag-ui-multi-agent-workflow-demo/ |
+| Microsoft Agent Framework 对 A2A v1 的实现展示了远程 Agent 的发现、调用与对外暴露，重点解决跨平台、跨组织协作的稳定互操作问题，适合用于讲生产环境中的 Agent 服务边界与协议化协作。 | https://devblogs.microsoft.com/agent-framework/a2a-v1-is-here-cross-platform-agent-communication-in-microsoft-agent-framework-for-net/ |
+| a2a cloud 复盘 Agent Studio 从“生成代码/返回 200”升级到必须验证前端、后端、浏览器流程、制品与公开分发真正可用的生产改造，适合分享多 Agent/Agent 平台如何用可验证结果替代“看起来部署成功”。 | https://blog.a2acloud.io/agent-studio-from-prompt-to-proof |
+| 2026 年 8 月的软件工程多 Agent 实践报告对主流开源 MAS 框架做定量与统一用例实测，并总结角色、协调规则、框架选型和 telemetry 等真实开发痛点，适合用作分享中的框架比较与踩坑依据。 | https://arxiv.org/abs/2608.11965 |
+| Agyn 把软件研发明确建模成协调、研究、实现、评审等角色组成的自治团队，配合隔离沙箱、结构化通信与迭代 Review，并在 SWE-bench 500 上给出实测结果，适合展示“组织设计本身就是 Agent 能力”的工程案例。 | https://arxiv.org/abs/2602.01465 |
+| MAO-Bench 专门为多 Agent 编排提供评测与 benchmark 框架，把团队协作从“Demo 能跑”推进到可对比、可回归的工程指标，适合补充多 Agent 落地最容易缺失的评估体系。 | https://github.com/rachitpareek/multi-agent-orchestration-evals |
+| Orchestra-o1 采用 MainAgent 动态拆解复杂多模态任务并并行委派给带不同感知与行动工具的 SubAgent，项目同时提供模型与实现，适合展示“任务分解 + 专业 Agent + 并行执行”的完整协作架构。 | https://github.com/zfkarl/Orchestra-o1 |
+| AIOps Orchestrator 的 A2A 实现包含能力注册与发现、同步/异步委派、JWT 鉴权、PostgreSQL/Redis 状态和 Prometheus 指标，适合作为“多 Agent 协作进入运维生产环境后需要哪些基础设施”的项目案例。 | https://github.com/Htunn/aiops-orchestrator |
+| metaswarm 把 Claude Code、Gemini CLI、Codex CLI 组织为自改进的多 Agent 研发团队，并引入 TDD、质量门禁、规格驱动开发和技能/命令体系，适合分享 AI Coding 团队如何从并行调用升级为受流程约束的工程协作。 | https://github.com/dsifry/metaswarm |
+| Scuba Stack 用 chief-of-staff、manager、worker 的层级结构并行派工，并在关键步骤加入独立对抗式 Review 和人工决策门，且整体以可移植 Markdown 规则实现，适合展示轻量但强约束的多 Agent 团队治理方式。 | https://github.com/danielchappell/scuba-stack |
