@@ -53,6 +53,16 @@ jobs:
           append 'Get Shit Done for Codex 会按 phase 生成 PLAN.md、按 wave 执行，并为每个任务创建原子 commit 和验证记录；直接提供“计划任务 ↔ Git 提交”细粒度绑定范式。' 'https://github.com/Oisinwang/get-shit-done-codex'
           append 'Agent Board 以 MCP 原生 Kanban、DAG 依赖、review/quality gate 和审计轨迹编排多 Agent；适合把代码/设计 reviewer 的聚合 findings 推成可继续处理的项目卡片。' 'https://github.com/quentintou/agent-board'
           append 'PinFix 把运行中 React 页面上的 Figma 风格 pin/comment 转成仓库 Markdown 任务，能把视觉审查证据直接交给 coding agent；适合补齐“设计/运行界面 finding → Codex 修复任务”的回流链路。' 'https://github.com/VianneyBertrand/pinfix'
+          append '把已批准 plan 固化为不可变 planning PR 与 SHA-256 digest，并在执行 envelope 同时记录 plan base SHA、当前 SHA 和实际本地 commit SHA；适合建立可机器验证的“计划版本 ↔ Git 提交”绑定。' 'https://github.com/sine-io/issue-workflow-kit/blob/main/WORKFLOW.md'
+          append 'Review gate 可同时绑定 plan revision、candidate SHA、可选 Git commit 与完整 artifact hashes，任一证据变化都会使 gate 失效；很适合把设计/代码审查结论锁定到精确提交。' 'https://docs.cwcli.dev/en/latest/gates-and-reviews/'
+          append '基于真实 Agent plan 样本总结 Codex plan artifact 结构，并明确建议把非平凡计划提交进 Git、在后续 commit message 引用完成计划；可直接落地 plan 文件与实现提交的审计链。' 'https://codex.danielvaughan.com/2026/08/09/agent-plans-task-oriented-artifacts-codex-cli-plan-mode-implementation-steps-file-locations-validation/'
+          append 'Figma 原生 Agent 可直接基于真实 layers、components 与 design system 做反馈，并支持并行 critique 与共享线程；适合作为代码 reviewer 之外的设计文件审查 Agent。' 'https://www.figma.com/solutions/ai-design-feedback-agent/'
+          append '用三份真实 Figma 文件做 AI 设计到 React 交接并让开发者盲审，明确暴露 motion、responsive 与未文档化状态的失真风险；适合提炼 design-reviewer 的验收清单。' 'https://www.uxperiment.io/article/handoff-test-ai-figma-to-code'
+          append 'Figma 的同画布 design-to-code Agent 可读取实际层级、间距、组件和 design library，并保留共享线程；适合让设计源真值与代码审查上下文保持同一版本。' 'https://www.figma.com/solutions/figma-to-code-converter/'
+          append '只读 Codex review skill 专门提供跨模型第二意见，支持按 commit SHA/branch/uncommitted scope 审查，并要求与同模型 reviewers 并行后再合并 verdict；适合多 Agent review 的去相关层。' 'https://github.com/shimo4228/codex-review'
+          append 'Evidence-first 多 Agent debate 会让 Codex、Claude 等独立 review/red-team/judge，再以证据合并最终判断；适合把代码与设计 reviewer 的冲突 findings 交给独立裁决层。' 'https://github.com/zhjai/agent-arena'
+          append 'Codex Coordinator 的架构复盘主张让看板只保存 outcome、artifact/commit reference、blocker/decision 等冷收据而不镜像完整 transcript；很适合把审查结果精简推回 Codex 项目看板。' 'https://github.com/eyeinthesky6/codex-coordinator/blob/main/docs/codebase/2026-07-21_boundary-board-simplification_architectural_review.md'
+          append 'Relay 作为 MCP App 可在 Codex 内联渲染 diff、table、image 等 review board，并把用户提交的结构化结果回写模型上下文；适合把聚合审查结论直接呈现在 Codex 侧继续决策。' 'https://github.com/khanglvm/relay'
 
       - name: Commit research updates
         shell: bash
