@@ -1,0 +1,58 @@
+name: Fix auto review append newline c 20260826
+
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-auto-review-append-newline-c-20260826.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Repair append boundary and final newlines
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          article = Path('自动审查文章调研.md')
+          history = Path('自动审查历史调研.md')
+
+          a = article.read_text(encoding='utf-8')
+          a = a.replace(
+              'https://github.com/openai/codex/issues/38986 || 该工作流要求把持久化的计划 ID/路径与当前完整 head/base SHA 一起写入交接和验证状态',
+              'https://github.com/openai/codex/issues/38986 |\n| 该工作流要求把持久化的计划 ID/路径与当前完整 head/base SHA 一起写入交接和验证状态',
+              1,
+          )
+          if not a.endswith('\n'):
+              a += '\n'
+          article.write_text(a, encoding='utf-8')
+
+          h = history.read_text(encoding='utf-8')
+          h = h.replace(
+              'https://github.com/openai/codex/issues/38986https://github.com/shakacode/agent-workflows/blob/main/workflows/pr-processing.md',
+              'https://github.com/openai/codex/issues/38986\nhttps://github.com/shakacode/agent-workflows/blob/main/workflows/pr-processing.md',
+              1,
+          )
+          if not h.endswith('\n'):
+              h += '\n'
+          history.write_text(h, encoding='utf-8')
+          PY
+
+      - name: Commit repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- '自动审查文章调研.md' '自动审查历史调研.md'; then
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- '自动审查文章调研.md' '自动审查历史调研.md'
+          git commit -m 'docs: repair automatic review research append boundary'
+          git push
