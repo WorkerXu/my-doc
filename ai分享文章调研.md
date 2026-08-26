@@ -282,3 +282,7 @@
 | 这个 production-style 多 Agent 栈把 A2A 专家发现、MCP 能力、LangGraph、Qdrant、LiteLLM、Langfuse、Postgres checkpoint 与 ADR 设计决策一起开源，尤其适合分享“架构取舍为何如此做”而不只看代码结果。 | https://github.com/babebp/llm-agent-production-architecture |
 | 这份 Multi-Agent Production 化章节把协作模式与 Harness Engineering、eval、observability、cost/latency、部署放在同一工程分层中，并明确何时不该上多 Agent，适合用作分享的结构化主线与生产化检查表。 | https://github.com/WenyuChiou/awesome-agentic-ai-zh/blob/main/stages/07-multi-agent-production.zh-Hans.md |
 | 这篇生产编排实践从“更多自治并非目标”出发，聚焦任务拆分、handoff、验证、控制面、故障与吞吐等真实工程问题，适合在分享中补充框架无关的多 Agent 生产纪律与反模式。 | https://gist.github.com/prasad-kumkar/f9a71a839afe8ed03da5909bae9e84f3 |
+| Claude Code Agent Teams 实战把 Team Lead、独立 Teammates、带依赖共享任务表和直接消息通信落到并行代码审查/前后端开发，并总结上下文、任务粒度、文件冲突、Delegate 与 Token 成本，适合分享 Coding Agent 团队的真实操作边界。 | https://juejin.cn/post/7610141315292725288 |
+| OpenClaw 多 Agent 配置实战从独立 Workspace/SOUL/模型/Tool Policy 到 Telegram 多账号绑定、路由优先级、权限与 Gateway 排障，完整记录配置踩坑，适合补充多 Agent 协作落地前的隔离、路由与运行治理。 | https://juejin.cn/post/7605810996125548578 |
+| 以独立开发者同时推进前端、后端和测试为场景，基于 ChatDev 2.0 的多智能体编排、预制模板和模块化扩展展示一人多角色协同交付，适合作为低门槛多 Agent 平台化实践案例。 | https://juejin.cn/post/7596687697755111434 |
+| AutoGen 团队协作实战用 RoundRobinGroupChat 跑主 Agent/批评 Agent 迭代，覆盖 run/stream、终止条件、外部停止/恢复与 Human-in-the-Loop，并给出代码和执行结果，适合展示可控团队运行机制如何实现。 | https://juejin.cn/post/7469440141447643148 |
