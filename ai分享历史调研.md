@@ -213,3 +213,13 @@
 | https://github.com/shanraisshan/claude-code-best-practice/blob/main/implementation/claude-agent-teams-implementation.md |
 | https://github.com/edisonzerolam/agent-team-orchestration/blob/main/SKILL.md |
 | https://github.com/tmustier/pi-agent-teams/blob/main/skills/agent-teams/SKILL.md |
+| https://zhuanlan.zhihu.com/p/2069042095915000471 |
+| https://zhuanlan.zhihu.com/p/2075979843955594765 |
+| https://zhuanlan.zhihu.com/p/2069843019549955634 |
+| https://zhuanlan.zhihu.com/p/2072736473464452198 |
+| https://zhuanlan.zhihu.com/p/2062110218641732550 |
+| https://zhuanlan.zhihu.com/p/2060042247660474513 |
+| https://zhuanlan.zhihu.com/p/2068687030658273687 |
+| https://zhuanlan.zhihu.com/p/2063930333976847060 |
+| https://zhuanlan.zhihu.com/p/2040547723640842033 |
+| https://zhuanlan.zhihu.com/p/2054975440863998381 |
