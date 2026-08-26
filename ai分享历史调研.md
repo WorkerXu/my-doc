@@ -316,3 +316,9 @@
 | https://github.com/ComposioHQ/agent-orchestrator |
 | https://github.com/gitpcl/openorchestrator |
 | https://github.com/resonatehq-examples/example-multi-agent-orchestration-py |
+| https://www.infoq.com/articles/multi-agent-security-operations/ |
+| https://github.com/GoogleCloudPlatform/race-condition |
+| https://github.com/a2aproject/a2a-samples |
+| https://github.com/google/adk-docs/blob/main/docs/a2a/quickstart-exposing.md |
+| https://www.tunerlabs.com/blog/multi-agent-orchestration-patterns |
+| https://coverge.ai/blog/multi-agent-orchestration |
