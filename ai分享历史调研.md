@@ -191,3 +191,13 @@
 | https://github.com/gastownhall/gascity |
 | https://github.com/aws-solutions-library-samples/guidance-for-multi-agent-orchestration-on-aws |
 | https://github.com/HKUDS/DeepCode |
+| https://builder.aws.com/content/3AfCno58Bsm4AbKaFKYiaDgeOkK/from-prompt-spaghetti-to-structured-multi-agent-systems-lessons-from-refactoring-a-production-ai-agent-architecture |
+| https://www.salesforce.com/blog/multi-agent-orchestration/ |
+| https://www.salesforce.com/blog/agentforce-observability/ |
+| https://www.sciencedirect.com/science/article/pii/S2212827126008061 |
+| https://www.sciencedirect.com/science/article/pii/S0736584526000244 |
+| https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6795198 |
+| https://cloud.google.com/blog/topics/developers-practitioners/five-guides-to-building-and-scaling-production-ready-ai-agents |
+| https://devblogs.microsoft.com/foundry/agent-service-build2026/ |
+| https://github.com/SynBioExplorer/Claude_Code_agentic_coding |
+| https://github.com/metraton/gaia |
