@@ -289,3 +289,9 @@
 | “Introducing multi-agent orchestration”直接围绕多 Agent 编排展开，适合作为分享中建立 Orchestrator 如何组织多个 Agent、统一任务流与协作边界的入门案例。 | https://www.youtube.com/watch?v=RWT3sh68PWE |
 | AI Engineer 的“From Chaos to Choreography”聚焦真正可用的多 Agent 编排模式，适合提炼从无序自治转向明确协作拓扑、任务交接和控制策略的实践经验。 | https://www.youtube.com/watch?v=2czYyrTzILg |
 | AI Engineer 的 AgentCraft 演讲聚焦 Orchestration 本身，适合作为框架之外的工程案例，讨论如何把多个 Agent 的角色、执行顺序与协同机制组织成可落地系统。 | https://www.youtube.com/watch?v=kR64LOqBBCU |
+| 从零实现 Agent Team 的实操同时给出教学仓库和实战项目，适合展示团队创建、任务分工与协同执行如何落到可运行代码，而不是只停留在架构概念。 | https://www.bilibili.com/video/BV1Jx5h6oEzV |
+| 用短时实战快速梳理 Multi-Agent 架构，适合在分享中作为协作组件、角色关系与整体执行链路的入门总览，再衔接更深的生产案例。 | https://www.bilibili.com/video/BV11p6wB2EmX |
+| 强调多 Agent 应按“上下文边界”而不是拟人角色拆分，适合解释如何减少上下文污染、职责重叠与无效协作，是很实用的架构设计判断原则。 | https://www.bilibili.com/video/BV1QC6uBLEXC |
+| 企业级 Harness 项目把 Planning、异步子 Agent、Docker Sandbox、HITL、Skills 自进化和 Context Engineering 放进同一套商业级实现，特别适合拆解多 Agent 从委派到安全、恢复与人工治理的完整落地链路。 | https://www.bilibili.com/video/BV1Cs7h6MEsX |
+| OpenClaw 多 Agents 配置从单 Agent 的上下文拥堵、串行执行与权限风险出发，进一步实操权限隔离、模型差异化与团队协作，适合分享“为什么拆 Agent”以及配置层如何真正落地。 | https://www.bilibili.com/video/BV1PTPQz5Er4 |
+| 将 Multi-Agent、Harness、Tools、MCP、Deep Agent 与 Skills 放进同一个项目实战，适合展示多 Agent 协作如何和工具协议、技能体系及运行框架组合成端到端应用。 | https://www.bilibili.com/video/BV1GruR6KEVx |
