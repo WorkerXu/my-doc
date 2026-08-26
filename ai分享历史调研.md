@@ -475,3 +475,13 @@
 | https://github.com/InonB2/multi-agent-orchestration |
 | https://github.com/brenonaraujo/git-meta-harness |
 | https://github.com/orlojHQ/orloj |
+| https://orkes.io/blog/agents-on-conductor-architecture-for-production-ai |
+| https://github.com/Team-Commonly/commonly |
+| https://github.com/agentconnect-md/agentconnect |
+| https://www.simscale.com/blog/agentic-engineering-design-review-simulation-workflows/ |
+| https://accordagents.com/blog/coordinate-ai-coding-agents/ |
+| https://accordagents.com/blog/accord/ |
+| https://itecs.ai/insights/ai-agent-delegation-contracts-handoffs |
+| https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7243979 |
+| https://www.warp.dev/articles/multi-agent-orchestration-explained |
+| https://www.airtable.com/articles/how-multi-agent-systems-work |
