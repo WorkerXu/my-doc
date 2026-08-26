@@ -264,7 +264,8 @@
 | https://aws.amazon.com/blogs/industries/multi-agent-multimodal-data-analysis-on-aws-part-2-multi-agent-orchestration-and-predictive-analytics/ |
 | https://niteagent.com/blog/agent-to-agent-communication-protocols-2026/ |
 | https://github.com/mttzzz/claude-code-agent-teams |
-| https://github.com/daewoochen/agent-team-go || https://sociofitechnology.com/labs/blog/multi-agent-orchestration-patterns |
+| https://github.com/daewoochen/agent-team-go |
+| https://sociofitechnology.com/labs/blog/multi-agent-orchestration-patterns |
 | https://llmday.com/2026-san-francisco-q2/Sanghamitra_Deb_Adobe_Building_Production_MultiAgent_Systems_Memory__Orchestration__Evaluation_at_Sc |
 | https://www.conf42.com/Cloud_Native_2026_Sandeep_Mannapur_ai_agents_workflows |
 | https://aws.amazon.com/marketplace/build-learn/ai-agent-learning-series/agent-orchestration |
