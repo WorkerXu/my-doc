@@ -91,3 +91,10 @@
 | VS Code 官方演示统一管理本地、后台、云端以及 Claude、Codex 等多种 Coding Agent，并支持并行子 Agent 与独立上下文，适合分享 IDE 如何演进成多 Agent 研发控制台。 | https://www.youtube.com/watch?v=BsAHunfVwNs |
 | 以 PR Review 为目标从零搭建生产导向的多 Agent 系统，覆盖安全/质量/测试/文档专业 Agent 的 fan-out/fan-in、结构化输出、RAG、置信度与 HITL、超时重试、幂等和可观测性，适合做“可靠性优先”的完整工程案例。 | https://www.youtube.com/watch?v=RiN02OXjeeQ |
 | Google Cloud ADK 的实操型多 Agent 编排分享围绕任务拆解、Agent 通信、工作流协同与治理展开，并强调可扩展的协作系统设计，适合作为 ADK 体系下从概念到实践的案例素材。 | https://www.youtube.com/watch?v=Y3IFeghhT9Y |
+| WorkBuddy 把多人和多 Agent 放进同一团队空间，直接涉及权限、评论与版本管理，适合分享“多 Agent 落地不只是编排，还需要人/Agent 协作治理与协作资产管理”的产品化实践。 | https://www.bilibili.com/video/BV1yQgP6JEfX |
+| TabTin 以开源、可一键部署的团队 Agent 工作台为切入点，适合展示多 Agent 能力如何从脚本或 CLI 走向团队共享入口和可部署产品。 | https://www.bilibili.com/video/BV1fk8i65EUt |
+| 4TORM 围绕长期 Agent 设计独立对话、会议、工作室、工作流和自动任务，让同一批 Agent 能按任务重新组合，同时保留人类掌控方向，适合讲“长期 Agent 团队”如何从聊天窗口演进成协作系统。 | https://www.bilibili.com/video/BV1ae8A6rE7z |
+| Nexent 是开源多 Agent SDK 与平台，可自主规划 Agent 和工具，并把模型配置、数据处理、知识库、互联网查询、多模态、MCP 扩展及 Docker 部署串到一起，适合分享平台化 Agent 编排如何真正落地。 | https://www.bilibili.com/video/BV1ZejSzcEEk |
+| 用 6 个 Agent 组建一人公司的 AI 联合创始团队，并打通飞书、微信和 Obsidian 知识库，是一个很具体的“小团队业务运营 + 多 Agent + 外部系统集成”案例，适合展示协作从 Demo 进入日常工作流。 | https://www.bilibili.com/video/BV1spNn62EBb |
+| 360 智能体工厂把多 Agent 以“蜂群/拉群组队”的方式产品化，并强调自然语言搭建，适合补充低代码平台如何降低多智能体团队构建和协作门槛。 | https://www.bilibili.com/video/BV1B8tJzrEah |
+| 阿里 CoPaw 的多角色智能体工作流演示聚焦角色化 Agent 如何串成工作流，适合在分享里补充“角色分工 + 流程编排”这一类轻量多 Agent 落地方式。 | https://www.bilibili.com/video/BV1nRXfBNEYo |
