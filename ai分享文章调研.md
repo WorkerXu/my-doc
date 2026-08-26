@@ -98,3 +98,15 @@
 | 用 6 个 Agent 组建一人公司的 AI 联合创始团队，并打通飞书、微信和 Obsidian 知识库，是一个很具体的“小团队业务运营 + 多 Agent + 外部系统集成”案例，适合展示协作从 Demo 进入日常工作流。 | https://www.bilibili.com/video/BV1spNn62EBb |
 | 360 智能体工厂把多 Agent 以“蜂群/拉群组队”的方式产品化，并强调自然语言搭建，适合补充低代码平台如何降低多智能体团队构建和协作门槛。 | https://www.bilibili.com/video/BV1B8tJzrEah |
 | 阿里 CoPaw 的多角色智能体工作流演示聚焦角色化 Agent 如何串成工作流，适合在分享里补充“角色分工 + 流程编排”这一类轻量多 Agent 落地方式。 | https://www.bilibili.com/video/BV1nRXfBNEYo |
+| Microsoft ISE 基于大型零售客户的生产聊天系统，比较 Router、Group Chat、Coordinator 等模式并给出延迟与耦合权衡，适合分享“多 Agent 微服务化后如何选编排拓扑”以及为什么最终采用 Coordinator。 | https://devblogs.microsoft.com/ise/coordinator-patterns-multi-agent-systems/ |
+| Microsoft ISE 在真实 A2A 项目中比较共享存储、消息内嵌和 Agent 自持状态三种上下文传递方式，并落地“协调器推送摘要上下文 + 无状态域 Agent”，适合讲跨服务 Agent 协作的上下文、安全和独立部署边界。 | https://devblogs.microsoft.com/ise/a2a-context-passing-multi-agent-systems/ |
+| Microsoft ISE 结合大型电商场景总结几十到上百 Agent 扩展时的 Agent 选择、LLM 调用控制、延迟和可扩展性问题，适合补充多 Agent 从小规模编排走向规模化服务目录后的工程设计。 | https://devblogs.microsoft.com/ise/multi-agent-systems-at-scale/ |
+| AG2 用尽调场景把 Seed Crawler、6 个并行专业 Agent、Validator、Synthesis 与 Q&A 串成完整流水线，并明确单 Agent 失败时如何隔离、如何做结构化交付，适合作为 fan-out/fan-in + 质量校验的可复现案例。 | https://www.ag2.ai/blog/due-diligence-with-tinyfish |
+| Agent Squad 是成熟的开源多 Agent 编排框架，既支持基于意图的路由与上下文管理，也提供 SupervisorAgent 做并行专业 Agent 协调和分层团队，适合展示从“选一个 Agent”进化到“一个 Agent 团队协作”的框架实现。 | https://github.com/2FastLabs/agent-squad |
+| Microsoft ArgusAgent 把 Manager、Planner、Engineer、Reviewer 四类权限角色固化成可长期运行的多 Agent Runtime，任务、证据和 checkpoint 可跨会话保留，并要求独立 Reviewer 验证，适合分享长任务协作如何做到可恢复、可审查。 | https://github.com/microsoft/ArgusAgent |
+| Microsoft Build 2026 的 DEM312 让 Researcher、Content Creator、Podcaster 三个 Agent 通过 A2A 协作，并在 Azure Container Apps 中做隔离执行和 Application Insights 观测，适合作为“跨框架、跨模型、多服务”部署级演示。 | https://github.com/microsoft/Build26-DEM312-multi-agents-in-action-with-3-ai-agents-3-frameworks-tools-models |
+| Azure 的可部署实现把 3 个 Agent 做成内容工厂，从研究到多格式内容再到播客，并同时覆盖 Container Apps、Sandbox、Agent 注册、评估与可观测性，适合分享从协作逻辑到云端运行环境的一整套落地链路。 | https://github.com/Azure-Samples/azure-container-apps-multi-agent-workflow |
+| Microsoft 的 Multi-Agent Reference Architecture 基于客户生产方案沉淀 Orchestrator、Classifier、Agent Registry、Memory、A2A/MCP、Observability、Evaluation、Security 与 Governance，适合做分享中的企业级总体架构基线。 | https://github.com/microsoft/multi-agent-reference-architecture |
+| Azure Agentic Advisor 用 Planner 按需并行触发 News、SEC、Stock 等专业 Agent，并结合图关系、RAG、Mem0 持久记忆和 Phoenix Trace，适合展示“只运行必要 Agent + 业务数据层 + 可观测”的垂直生产型参考实现。 | https://github.com/Azure-Samples/postgres-agentic-advisor |
+| Azure AgenticShop 用 LlamaIndex Workflow 组织 Planning、Personalization、Inventory、Review、Evaluation、Presentation 等 Agent，采用事件驱动、持久记忆、超时降级和流程可视化，适合演示松耦合多 Agent 在电商场景的落地。 | https://github.com/Azure-Samples/postgres-agentic-shop |
+| frisian-mcp 的生产案例直接披露 194 个 worker 记录、50 个项目、17,000 个知识块以及多角色并发工作流，所有任务分配、讨论、决策、审批和检索都经 MCP 暴露给 Agent，适合展示“面向 Agent 设计的协作基础设施”真实运行形态。 | https://frisian-mcp.com/tech/test-cases/pre-release/production-consumer-case-study |
