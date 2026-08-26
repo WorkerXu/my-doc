@@ -598,3 +598,8 @@
 | https://brittek.net/journal/multi-agent-systems-are-orchestration-systems |
 | https://darlansandro.com/estudo-caso-viasul-rag-multiagentes-en |
 | https://blog.redlinesoft.net/posts/a2a-protocol-cross-organization-collaboration/ |
+| https://cloud.google.com/blog/topics/developers-practitioners/what-we-learned-about-agent-teamwork |
+| https://aclanthology.org/2026.acl-industry.29/ |
+| https://github.com/wshobson/agents/blob/main/plugins/agent-teams/README.md |
+| https://github.com/fujibee/agmsg |
+| https://www.aemjournal.org/index.php/AEM/article/view/4269 |
