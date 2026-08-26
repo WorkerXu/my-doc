@@ -345,3 +345,13 @@
 | https://www.bilibili.com/video/BV1GruR6KEVx |
 | https://developers.googleblog.com/build-cross-language-multi-agent-team-with-google-agent-development-kit-and-a2a/ |
 | https://www.fallbrookresearch.com/2026/05/08/multi-agent-workflows-in-production.html |
+| https://devblogs.microsoft.com/agent-framework/building-agent-teams-with-agent-framework-github-copilot-cli-and-squad/ |
+| https://devblogs.microsoft.com/aspire/building-distributed-multi-agent-systems-with-aspire-and-microsoft-agent-framework/ |
+| https://github.com/zetbrush/multiagents |
+| https://github.com/jessepwj/CCteam-creator |
+| https://github.com/zircote-plugins/claude-team-orchestration |
+| https://github.com/AgentsID-dev/agentsid-scanner/blob/master/docs/agent-teams-auth-gap-2026.md |
+| https://chipagents.ai/blogs/multi-agent-orchestration-ic-design-autonomy |
+| https://www.sciencedirect.com/science/article/abs/pii/S0278612526001147 |
+| https://developer.microsoft.com/en-us/reactor/events/27154/ |
+| https://github.com/AI-Foundry-Core/ril-agents |
