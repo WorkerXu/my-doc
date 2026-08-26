@@ -144,3 +144,12 @@
 | 用 OpenClaw + 飞书搭建 5 个可协作 AI 助理，强调独立工作空间与专业化分工，适合展示低门槛、多角色 Agent 团队如何嵌入日常协作工具。 | https://juejin.cn/post/7609481369001492499 |
 | 对比 Multi-Agent Routing 与 Sub-Agents 两种机制，解释多角色系统如何路由、委派和协作，适合作为分享中的架构选型案例，避免把所有“多 Agent”都当成同一种实现。 | https://juejin.cn/post/7613970761352462336 |
 | 用 LangGraph 演示拆分并行汇总、Supervisor 调度以及生成-评估-返工等多 Agent 协作方式，适合用同一框架对比不同协作拓扑和控制策略。 | https://juejin.cn/post/7602824293165170703 |
+| Agyn 直接以“团队式自主编码”为目标构建多 Agent 系统，适合展示 Coding Agent 如何从单实例执行升级为角色化团队协作与自主交付。 | https://www.youtube.com/watch?v=STkRrB9GQHo |
+| Devfest25 以生产成功模式为主题讲多 Agent 工程，适合提炼分享中的生产化设计清单，避免只停留在 Demo 级编排。 | https://www.youtube.com/watch?v=GnMQvN10Vvs |
+| 内容专门聚焦多 Agent 的 Context Engineering，适合讲解上下文隔离、传递与组织为什么是协作质量和稳定性的关键基础。 | https://www.youtube.com/watch?v=mbVVFEFhunQ |
+| Chi Wang 与 Xiao Ma 围绕生产环境中的多 Agent 架构展开讨论，适合补充从框架概念走向真实生产部署后的架构取舍与经验。 | https://www.youtube.com/watch?v=oVQi6LIHWtg |
+| Codex 多 Agent 工作流直接结合 Git Worktrees，适合展示并行 Coding Agent 如何用独立工作区减少文件冲突并形成可复用研发协作方式。 | https://www.youtube.com/watch?v=fVdBEgVE0wI |
+| VS Code 官方演示多个 Agent 的统一编排与协作，适合展示 IDE 如何成为多 Agent 开发控制面，并用于讲人类如何监督并行 Agent。 | https://www.youtube.com/watch?v=AtaehXB4hPQ |
+| AWS re:Invent 2025 直接讲用 A2A 与 MCP 构建可扩展、自编排 AI 工作流，适合分享协议化 Agent 通信、工具连接与规模化协作怎样组合落地。 | https://www.youtube.com/watch?v=9O9zZ1lQWiI |
+| Google Cloud 官方用 A2A 与 Agent Registry 搭建多 Agent 系统，适合讲 Agent 发现、注册与跨服务协作如何从点对点调用走向平台化治理。 | https://www.youtube.com/watch?v=-MME36Ft9Gc |
+| Microsoft Developer 从 Foundry 视角展示 AI 自动化与多 Agent 编排，适合补充企业平台层如何把 Agent 团队、工作流和生产运行能力统一承载。 | https://www.youtube.com/watch?v=v1Q7rEE3StM |
