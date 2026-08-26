@@ -124,3 +124,12 @@
 | Codex Team Orchestrator 把控制面、专业 worker、共享消息总线、任务板、产物交换与仲裁放进统一 runtime，并提供自适应 fan-out、结构化可观测、回放和 benchmark 工具，适合拆解 Coding Agent 团队如何从“并行开几个会话”走向可验证编排。 | https://github.com/ajjucoder/codex-team-orchestrator |
 | Society Protocol 通过 P2P 网络让不同机器、不同团队中的 Agent 自动发现、通信和共享知识，并结合密码学身份、MCP 接入与按复杂度动态组建临时团队，适合分享去中心化、跨边界 Agent 协作的协议层落地思路。 | https://github.com/societycomputer/society-protocol |
 | LlamaIndex 的 Multi-agent Concierge 用 orchestrator 路由多个专业 Agent，以共享全局状态处理跨任务依赖，并对高风险工具调用加入人工确认，适合用一个完整业务流程说明“专业化分工 + 状态共享 + HITL”怎样组合成可控多 Agent 服务。 | https://github.com/run-llama/multi-agent-concierge |
+| 物流全流程案例用 5 个专业 Agent 分别承接报价、订舱、报关、跟踪等环节，强调先把人工业务流程与接口契约画清再逐步 Agent 化，适合分享“多 Agent 不是堆角色，而是把组织协作翻译成可执行接口”的业务落地方法。 | https://zhuanlan.zhihu.com/p/2070144231914714259 |
+| 用 AgentTeams 从部署到代码审查团队完整演示多智能体协作，把审查任务拆给不同角色并给出可复现配置步骤，适合用作“从框架安装到第一个真实团队场景”的入门实战案例。 | https://zhuanlan.zhihu.com/p/2067014859225556471 |
+| 作者实际搭建 10 个 OpenClaw AI 助理，以总助理负责分发、多个专业 Agent 使用独立工作区/记忆/技能并通过飞书协同，适合展示面向日常运营的一人多 Agent 团队如何长期组织。 | https://zhuanlan.zhihu.com/p/2013748116243894716 |
+| JiuwenClaw AgentTeam 采用 Leader 动态组队、Teammate 并行执行、共享工作区与文件锁，并加入关键决策审批、故障恢复和实时可观测，适合分享“协同工程”如何把组织分工和运行治理一起产品化。 | https://zhuanlan.zhihu.com/p/2031476922773938489 |
+| 从 Managed Agents 原理延伸到开源 Multica 平台，把 Agent 模板、隔离运行环境、Session 生命周期和不可篡改 Events 统一管理，适合讲人类与 Claude Code/Codex/OpenCode 等异构 Agent 如何进入同一团队协作层。 | https://zhuanlan.zhihu.com/p/2046904024838976352 |
+| 用 LangGraph 搭建一个 Supervisor + 航班/酒店/行程三个专家 Agent，明确工具隔离、动态路由和完成条件，适合作为层级式多 Agent 的最小可运行教学案例。 | https://zhuanlan.zhihu.com/p/2074148599408207180 |
+| OpsPilot Zero 用 4 个 Agent、7 个 Skill 跑零人工运维闭环，并从任务拆解、上下文传递、验证证据、安全审计与可回滚等角度总结 9 条工程判断，适合分享生产级协作系统应该具备哪些“可信闭环”条件。 | https://zhuanlan.zhihu.com/p/2066174785340564426 |
+| Solon AI Harness 以技术文章生产为例，把调研、规划、写作、校对拆成带依赖的子 Agent DAG，并展示 task/multitask 委派和独立心智/记忆，适合讲主 Agent + 子代理如何落成可控任务编排。 | https://zhuanlan.zhihu.com/p/2058632024878059824 |
+| 文章反向提醒“先别急着做 Agent Teams”，从真实 P0 故障处理说明多 Agent 前必须先补齐状态、运行环境、权限与 Timeline 等 AgentOS 闭环能力，适合分享中用于解释为什么协作规模化前要先解决单 Agent 的可恢复与可审计。 | https://zhuanlan.zhihu.com/p/2045902247062769700 |
