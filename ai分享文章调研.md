@@ -571,3 +571,6 @@
 | 从企业多 Agent 系统角度对比 A2A 与 MCP，适合在分享中明确“Agent 间互操作”与“Agent 调工具”两类协议的职责边界，避免架构设计时混用概念。 | https://www.youtube.com/watch?v=oMjacYfwYyA |
 | Pi Coding Agent 的双向 Agent 编排演示聚焦 Agent-to-Agent 的互相调用与协作，适合补充中心 Supervisor 之外的双向/对等协作形态，并作为 Coding Agent 场景的轻量案例。 | https://www.youtube.com/watch?v=PIdETjcXNIk |
 | 以 Production Architecture & Design Patterns 为主线梳理多 Agent 系统，适合在分享中用于归纳生产级架构模式、系统边界和设计取舍，再连接更具体的框架实战。 | https://www.youtube.com/watch?v=g7aeVaUs9DU |
+| 从让 AI 长时自主工作出发，对比 Ralph 与多智能体方案，重点实战“主 Agent 只协调、子 Agent 分工开发/测试”、任务拆解、验收闭环与经验库，适合分享 Harness 如何把多 Agent 从并行调用推进到可持续交付。 | https://www.bilibili.com/video/BV1t9oZBDENp |
+| 用 WorkBuddy 把出题流程明确拆成“题型/考纲研究→试题编写→审核→输出”的串行 Agent 工作流，并对比单次生成 10 题中 9 题错误的基线，适合用一个小而具体的案例讲清职责拆分、独立审核和可定位失败如何改善质量。 | https://www.bilibili.com/video/BV1wMdFBVEk8 |
+| 以双 Agent 同步调用为切口做 35 分钟 A2A 协议实战，适合把“Agent 如何跨服务发起任务并返回结果”讲成具体调用链，用于补足框架内编排之外的协议化协作视角。 | https://www.bilibili.com/video/BV1GC7hzKEX9 |
