@@ -286,3 +286,6 @@
 | OpenClaw 多 Agent 配置实战从独立 Workspace/SOUL/模型/Tool Policy 到 Telegram 多账号绑定、路由优先级、权限与 Gateway 排障，完整记录配置踩坑，适合补充多 Agent 协作落地前的隔离、路由与运行治理。 | https://juejin.cn/post/7605810996125548578 |
 | 以独立开发者同时推进前端、后端和测试为场景，基于 ChatDev 2.0 的多智能体编排、预制模板和模块化扩展展示一人多角色协同交付，适合作为低门槛多 Agent 平台化实践案例。 | https://juejin.cn/post/7596687697755111434 |
 | AutoGen 团队协作实战用 RoundRobinGroupChat 跑主 Agent/批评 Agent 迭代，覆盖 run/stream、终止条件、外部停止/恢复与 Human-in-the-Loop，并给出代码和执行结果，适合展示可控团队运行机制如何实现。 | https://juejin.cn/post/7469440141447643148 |
+| “Introducing multi-agent orchestration”直接围绕多 Agent 编排展开，适合作为分享中建立 Orchestrator 如何组织多个 Agent、统一任务流与协作边界的入门案例。 | https://www.youtube.com/watch?v=RWT3sh68PWE |
+| AI Engineer 的“From Chaos to Choreography”聚焦真正可用的多 Agent 编排模式，适合提炼从无序自治转向明确协作拓扑、任务交接和控制策略的实践经验。 | https://www.youtube.com/watch?v=2czYyrTzILg |
+| AI Engineer 的 AgentCraft 演讲聚焦 Orchestration 本身，适合作为框架之外的工程案例，讨论如何把多个 Agent 的角色、执行顺序与协同机制组织成可落地系统。 | https://www.youtube.com/watch?v=kR64LOqBBCU |
