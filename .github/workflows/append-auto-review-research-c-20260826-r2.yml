@@ -1,0 +1,54 @@
+name: Append auto review research c 20260826 r2
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/append-auto-review-research-c-20260826-r2.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Append new research rows
+        shell: bash
+        run: |
+          set -euo pipefail
+          article='自动审查文章调研.md'
+          history='自动审查历史调研.md'
+
+          append() {
+            local reason="$1"
+            local url="$2"
+            if ! grep -Fq "$url" "$article" && ! grep -Fqx "$url" "$history"; then
+              printf '| %s | %s |\n' "$reason" "$url" >> "$article"
+              printf '%s\n' "$url" >> "$history"
+            fi
+          }
+
+          append 'GN Conductor 的标准流程在任务提交后取得 commit SHA，再把短哈希回写到 `plan.md` 的任务状态；阶段 checkpoint 也写入对应 SHA，直接提供“计划节点 ↔ 实际提交”的可复现双向绑定范式。' 'https://gn.googlesource.com/gn.git/%2B/HEAD/conductor/workflow.md'
+          append 'Microsoft ArgusAgent 将 Manager、Planner、Engineer、Reviewer 分权运行，Reviewer 独立验证且任务、checkpoint、decision、evidence 可跨会话持久化，并原生支持 Codex CLI；适合作为 Codex 外部长期运行的独立复审编排层。' 'https://github.com/microsoft/ArgusAgent'
+          append 'PeerBridge MCP 可把 Codex、Claude 等不同 provider 作为独立 Agent 并行实现/复审，以 reviewer quorum、受控 worktree、source-state 校验和 SHA-linked evidence 记录审查对象与证据；适合把多 Agent finding 精确绑定到被审源码状态。' 'https://github.com/Hoylon/peerbridge-mcp'
+          append 'Code Quorum 让 Codex 主机与 Claude、Gemini、OpenCode 等只读席位并行审查，并用结构化 anti-bias gate 在最终 synthesis 前隔离各自观点；同时提供 plan validate 与 code review 工作流，适合降低同模型自审和早期意见污染。' 'https://github.com/sdewell/code-quorum'
+          append 'Visual QA 把截图验收拆成 capture matrix、隔离 reviewer、对抗式 refutation、优先级 synthesis 与 recapture；可作为 Figma/设计上下文之外的独立视觉审查委员会，用真实可见证据过滤主观式 finding。' 'https://github.com/AntreasAntoniou/visual-qa'
+          append 'UX Design Review Skills 为 Codex 提供 Figma intake、结构化 UX/UI review、报告生成和端到端 design-review 四个可组合 skill；适合把设计文件证据标准化进入独立 reviewer，并直接产出可发布的审查报告。' 'https://github.com/Ocelot-UXUI/ux-design-review-skills'
+          append 'Codex Taskboard 是面向 Codex Desktop 的本地看板，可把任务关联到明确的 Codex session ID、工作目录和 Git worktree，并保留评论、附件与审计记录及 MCP 兼容入口；适合把聚合 findings 落成可继续沿原 Codex 会话处理的审查工作项。' 'https://github.com/leebobo/codex-taskboard'
+
+      - name: Commit research updates
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- '自动审查文章调研.md' '自动审查历史调研.md'; then
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- '自动审查文章调研.md' '自动审查历史调研.md'
+          git commit -m 'docs: append automatic review research c 20260826 r2'
+          git push
