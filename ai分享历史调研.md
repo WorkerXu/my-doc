@@ -391,3 +391,10 @@
 | https://agents-squads.com/engineering/ai-agent-orchestration-19-squads/ |
 | https://www.sciencedirect.com/science/article/pii/S2212827126009352 |
 | https://www.arcweb.com/blog/curing-copilot-tower-babel-orchestrating-multi-vendor-copilots-across-extended-industrial |
+| https://aws.amazon.com/blogs/machine-learning/scaling-agentic-ai-enterprise-patterns-without-vendor-lock-in/ |
+| https://aws.amazon.com/blogs/industries/build-a-multi-agent-assessment-workbench-with-amazon-bedrock-agentcore/ |
+| https://github.com/aws-samples/sample-assess-workbench |
+| https://aws.amazon.com/blogs/machine-learning/how-ktern-ai-built-agentic-ai-for-sap-on-amazon-bedrock-agentcore/ |
+| https://builder.aws.com/content/3C6RKnGhT7pBovw7sj1urk5ZeuK/building-a-production-grade-multi-agent-platform-with-zero-trust-governance-on-amazon-bedrock-agentcore |
+| https://arxiv.org/abs/2606.20058 |
+| https://arxiv.org/abs/2604.17240 |
