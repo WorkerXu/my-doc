@@ -343,3 +343,5 @@
 | https://www.bilibili.com/video/BV1Cs7h6MEsX |
 | https://www.bilibili.com/video/BV1PTPQz5Er4 |
 | https://www.bilibili.com/video/BV1GruR6KEVx |
+| https://developers.googleblog.com/build-cross-language-multi-agent-team-with-google-agent-development-kit-and-a2a/ |
+| https://www.fallbrookresearch.com/2026/05/08/multi-agent-workflows-in-production.html |
