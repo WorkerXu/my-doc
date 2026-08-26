@@ -110,3 +110,11 @@
 | Azure Agentic Advisor 用 Planner 按需并行触发 News、SEC、Stock 等专业 Agent，并结合图关系、RAG、Mem0 持久记忆和 Phoenix Trace，适合展示“只运行必要 Agent + 业务数据层 + 可观测”的垂直生产型参考实现。 | https://github.com/Azure-Samples/postgres-agentic-advisor |
 | Azure AgenticShop 用 LlamaIndex Workflow 组织 Planning、Personalization、Inventory、Review、Evaluation、Presentation 等 Agent，采用事件驱动、持久记忆、超时降级和流程可视化，适合演示松耦合多 Agent 在电商场景的落地。 | https://github.com/Azure-Samples/postgres-agentic-shop |
 | frisian-mcp 的生产案例直接披露 194 个 worker 记录、50 个项目、17,000 个知识块以及多角色并发工作流，所有任务分配、讨论、决策、审批和检索都经 MCP 暴露给 Agent，适合展示“面向 Agent 设计的协作基础设施”真实运行形态。 | https://frisian-mcp.com/tech/test-cases/pre-release/production-consumer-case-study |
+| Oracle 给出正在真实运行的企业多 Agent 平台：Orchestrator 通过 A2A 调度 HCM、MCP 集成和任意框架 Agent，并用 Agent Card 自动发现、并行调用、Langfuse 全链路观测与回归评估，适合讲“跨框架 Agent 平台如何动态扩容且保持可运维”。 | https://blogs.oracle.com/ai-and-datascience/building-a-dynamic-multi-agent-enterprise-platform |
+| IBM 用 BeeAI + watsonx Orchestrate 搭建可扩展、可观测的预测性维护多 Agent 工作流，把故障预测、维护决策和任务调度串成端到端工业流程，适合作为“多 Agent 直接进入设备运维业务闭环”的实操案例。 | https://developer.ibm.com/tutorials/automated-predictive-maintenance-beeai-watsonx-orchestrate/ |
+| IBM 演示把 CrewAI 多 Agent 服务部署到 Code Engine，再作为外部 Agent 接入 watsonx Orchestrate，适合分享“不同框架独立部署、通过平台统一编排”的跨框架生产集成方式。 | https://developer.ibm.com/tutorials/integrate-crew-ai-agents-watsonx-orchestrate/ |
+| NVIDIA 用 Signal、Code、Evaluation 三个专业 Agent 构成“提出信号→生成代码→回测评估→迭代改进”的闭环，并由 NeMo Agent Toolkit 保持 handoff 上下文，适合展示多 Agent 如何把业务研究变成可执行、可验证的迭代系统。 | https://developer.nvidia.com/blog/automating-and-optimizing-financial-signal-discovery-with-multi-agent-systems/ |
+| NVIDIA AI-Q 2.0 直接给出生产级部署路径：意图路由器协调浅层/深层研究 Agent，子 Agent 共享文件系统并在沙箱执行 Skills，同时用 Terraform + Helm 部署到 OKE 并接入 Vault，适合讲协作逻辑怎样落到真实云基础设施。 | https://developer.nvidia.com/blog/deploy-a-production-ready-nvidia-ai-q-blueprint-on-oracle-cloud-infrastructure/ |
+| CAID 研究把多 Agent 软件开发建立在中心任务分解、异步并行、隔离工作区和 branch/merge/test 验证上，并在 PaperBench、Commit0 上显著优于单 Agent，适合用实验数据说明“Git 协作原语为什么能让 Coding Agents 更可靠”。 | https://arxiv.org/abs/2603.21489 |
+| 这份生产级 Agentic AI 工程指南覆盖任务分解、多 Agent 设计模式、MCP、确定性编排、容器化部署、Responsible AI 与完整案例，适合作为分享里从架构设计到上线运维的一份端到端工程清单。 | https://arxiv.org/abs/2512.08769 |
+| CoffeeAGNTCY 是 AGNTCY 的端到端多 Agent 参考应用，组合 A2A、SLIM/NATS、LangGraph、MCP、身份与可观测性，并提供两 Agent 与更复杂群组通信两套可运行配置，适合展示跨框架 Agent 基础设施如何真正拼成系统。 | https://github.com/agntcy/coffeeAgntcy |
