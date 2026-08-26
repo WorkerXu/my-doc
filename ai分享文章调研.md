@@ -385,3 +385,13 @@
 | AOa 把 Claude Code、Codex 等异构 CLI Agent 收敛到统一 dispatch contract，提供共享任务状态、checkpoint、telemetry、rate-limit 恢复，并强制 worker 与 tester 身份分离后才能完成任务，适合分享跨模型协作里的可恢复执行与独立质量门禁。 | https://github.com/InonB2/multi-agent-orchestration |
 | git-meta-harness 把多 Agent 软件交付变成可移植 Harness：用 7 类 persona、传感器与 invariants 强制 feature flow，并提供项目接管、健康评分、Prometheus/Slack 监控等能力，适合展示协作角色之外如何用机器规则持续保证流程和质量。 | https://github.com/brenonaraujo/git-meta-harness |
 | Orloj 将 Agent、工具、模型、记忆、审批、策略、worker、trace、metric 与部署拓扑都声明为版本化资源，并借鉴控制器、lease、desired state 等基础设施模式运行多 Agent，适合分享“Agents as infrastructure”式生产控制面和治理思路。 | https://github.com/orlojHQ/orloj |
+| Orkes 将 Agent 的概率型推理与 Conductor 的确定性、持久化执行拆开，用工作流承接长任务、审批、重试与可解释执行，适合分享“LLM 负责判断，可靠性由编排层兜底”的生产架构。 | https://orkes.io/blog/agents-on-conductor-architecture-for-production-ai |
+| Commonly 是开源的人类 + 异构 Agent 协作空间，让 Claude Code、Codex、OpenClaw 等 Agent 拥有持久身份、记忆、工作站与共享任务板，并可自领任务、提交 PR，适合展示“Agent 团队协作层”如何产品化。 | https://github.com/Team-Commonly/commonly |
+| AgentConnect 用 ACP 把多种 Coding Agent 接入 Slack、Discord、GitHub/GitLab 等既有工作场景，支持角色、Agent 间调用、记忆、按 Agent 配置权限与运行环境，适合展示跨渠道、跨 Runtime 的多 Agent 协作落地。 | https://github.com/agentconnect-md/agentconnect |
+| SimScale 与 CoLab 的真实 PoC 让设计评审 Agent 直接调用仿真 Agent，自主设置/运行仿真并把结果和澄清问题返回原评审界面，同时保留人工校验，适合展示跨产品 Agent-to-Agent 协作进入工程设计流程。 | https://www.simscale.com/blog/agentic-engineering-design-review-simulation-workflows/ |
+| AccordAgents 把多 Coding Agent 协作设计成带 Gate 的交付流水线：签字需求/设计、独立 worktree、强制独立 Review、用户 Review 与最终证据化 QA，适合分享“多 Agent 靠可验证交接而不是群聊协作”的实践。 | https://accordagents.com/blog/coordinate-ai-coding-agents/ |
+| Accord 的共识机制先让 Agent 独立提交冻结方案，再统一综合、提出异议、修订并对同一版本签字，专门降低群体锚定和“多份答案无人决策”问题，适合分享多 Agent 决策与交叉复核机制。 | https://accordagents.com/blog/accord/ |
+| ITECS 将 Agent 委派定义为“有边界的任务合同 + 最小权限 + 证据化 handoff + 明确验收责任 + 失败控制”，适合补充生产级多 Agent 中任务交接、权限衰减与责任归属的治理方法。 | https://itecs.ai/insights/ai-agent-delegation-contracts-handoffs |
+| 这份 2026 年新综述专门梳理多 Agent LLM 的协作机制与结构性限制，重点从“如何协作”而不是“堆多少 Agent”组织研究脉络，适合为分享建立协作机制分类和后续工程案例的理论骨架。 | https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7243979 |
+| Warp 从 handoff、共享上下文、显式触发与人工审批四个工程要素拆解多 Agent 编排，强调“多个 Agent 同时跑”不等于“已完成协作”，适合作为分享中解释编排层最小职责的简洁案例。 | https://www.warp.dev/articles/multi-agent-orchestration-explained |
+| Airtable 用 hub-and-spoke、flat mesh、hierarchical 三类架构解释多 Agent 如何组织，并串联 Orchestrator、MCP/A2A 与单/多 Agent 选型，适合作为面向非框架用户的架构模式总览。 | https://www.airtable.com/articles/how-multi-agent-systems-work |
