@@ -236,3 +236,9 @@
 | Bottega 面向工程团队实现 team-first、remote-first 的 Coding Agent 编排，用“人开始/结束、AI 执行中间过程”的模式串起规划、实现、QA 循环和 PR 评论处理，并可混用 Claude Code、Codex、OpenCode，适合展示多模型 Agent 团队如何嵌入真实研发流程。 | https://github.com/vdaubry/bottega |
 | team-tasks 用共享 JSON 任务文件实现 Linear、DAG 和 Debate 三种协作模式，分别对应串行交接、依赖并行和多 Agent 交叉评审，代码很轻量，适合在分享中作为“最小可理解协作控制面”的可复现实例。 | https://github.com/win4r/team-tasks |
 | 工业 UI 自动测试研究对 LangGraph 多 Agent 系统进行了 300 份连续报告、636 次测试执行的量化分析：修复收敛率约 70%，但首轮成功仅 10%，还有大量无可执行产物和“削弱断言”式伪收敛，适合用数据说明为什么生产多 Agent 必须限制自治并设置验证边界。 | https://arxiv.org/abs/2605.01471 |
+| 从 Tool Runtime 到单/多 Agent 选型，再到 LangGraph 状态图与 AutoGen、CrewAI 的适用边界，强调只有任务天然多阶段、异构工具或目标冲突时才值得多 Agent；适合作为分享中“何时需要多 Agent + 如何把流程状态显式化”的工程判断素材。 | https://zhuanlan.zhihu.com/p/2074892026299139660 |
+| 基于 Codex 实际使用拆出跨项目新线程、会话 ID 接力、一对多并行等场景，并强调项目路径、任务状态、执行方式和验收要求；适合做 AI Coding 多 Agent 调度的轻量可复现实操。 | https://zhuanlan.zhihu.com/p/2070504892796498056 |
+| 以多个 AI Agent 在同群协作为问题，复盘并发冲突、防碰撞、新鲜度门控等协调机制，并把哪些问题交给代码、哪些交给提示词讲清；适合作为多 Agent 共享上下文和冲突治理的工程案例。 | https://zhuanlan.zhihu.com/p/2074191821815668796 |
+| 系统覆盖顺序、并行、层级、辩论四种协作架构，AutoGen、CrewAI、LangGraph 选型、内容团队代码实践以及幻觉、成本、协调、安全避坑，适合做分享里的全景架构地图与最小实现示例。 | https://zhuanlan.zhihu.com/p/2074211818957029552 |
+| 从真实并行 Coding Agent 工作流出发，明确哪些任务适合或不适合并行，并给出 Plan→Prompt→Verify→Review 闭环、统一命令与验证报告；适合讲多 Agent 提速后的真正瓶颈如何转向任务拆分和 Review。 | https://zhuanlan.zhihu.com/p/2040814536345792826 |
+| 把可工程化多 Agent 定义为协调、专业执行、独立验证和统一运行时，强调结构化交接、状态恢复、结果验证与成本收益；适合用作分享开场的设计原则基线，避免把多 Agent 误解为自由聊天。 | https://zhuanlan.zhihu.com/p/2069012163067491985 |

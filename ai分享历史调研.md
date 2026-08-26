@@ -280,3 +280,13 @@
 | https://hasgeek.com/fifthelephant/fifthelephant-2026-call-for-submissions/sub/too-many-cooks-production-lessons-from-orchestrati-7y75vG1eFrRB8RJ9Xq5Z5i |
 | https://insoftex.com/insights/multi-agent-collaboration/ |
 | https://www.tech-tavern.com/case-studies/CaseStudy-AutomatedAgenticDocumentation.pdf |
+| https://zhuanlan.zhihu.com/p/2074892026299139660 |
+| https://zhuanlan.zhihu.com/p/2070504892796498056 |
+| https://zhuanlan.zhihu.com/p/2074191821815668796 |
+| https://zhuanlan.zhihu.com/p/2074211818957029552 |
+| https://zhuanlan.zhihu.com/p/2040814536345792826 |
+| https://zhuanlan.zhihu.com/p/2069012163067491985 |
+| https://zhuanlan.zhihu.com/p/2072726261705789795 |
+| https://zhuanlan.zhihu.com/p/2060663639561000805 |
+| https://zhuanlan.zhihu.com/p/2048702272364876312 |
+| https://zhuanlan.zhihu.com/p/2065815369789526890 |
