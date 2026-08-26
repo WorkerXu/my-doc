@@ -305,3 +305,9 @@
 | AgentsID 横向分析 Claude Agent Teams、AutoGen、CrewAI、LangGraph、OpenAI Agents SDK，归纳 Agent 身份、凭证继承、Agent 间通信、委派时工具权限四类结构性鉴权缺口，并结合真实 CVE 说明风险，适合补齐多 Agent 落地经常被忽略的安全边界。 | https://github.com/AgentsID-dev/agentsid-scanner/blob/master/docs/agent-teams-auth-gap-2026.md |
 | ChipAgents 将多 Agent 编排落到 ASIC/3D IC 工程：多个 Agent 在隔离环境并行探索假设，工程师以批量 Review 把关，再进入 signoff；文中还给出 WhaleChip 根因分析从数天缩到 15 分钟的真实部署结果，适合讲“并行探索 + HITL”在高成本工程场景的价值。 | https://chipagents.ai/blogs/multi-agent-orchestration-ic-design-autonomy |
 | 2026 年制造业研究把机器人与 AGV 都建模为 LLM Embodied Agent，对比 Robot-Lead 与 Vehicle-Lead 两种去中心化协作策略；复杂拆解任务中 VLC 达到 100% 约束满足、同时减少 41% Token 和 68% API 调用，适合用量化数据说明“谁来主导协作”会直接影响质量与成本。 | https://www.sciencedirect.com/science/article/abs/pii/S0278612526001147 |
+| agent-team 基于 ACP 把 Claude、Codex、Gemini、OpenCode 等 20+ Coding Agent 收敛到同一 CLI 控制面，并用独立进程会话统一处理派活、日志与权限审批，适合展示“异构 Agent 如何先标准化运行与管理接口，再谈团队协作”的轻量落地方式。 | https://github.com/nekocode/agent-team |
+| codex-teams 用 Lead + Workers、独立上下文、群聊/私信/共享产物组织 Codex 团队，并把测试命令验证、失败后重新派修和中途 steer 做进执行闭环，适合拆解 AI Coding 多 Agent 从并行执行到机器验收的完整协作协议。 | https://github.com/skrabe/codex-teams |
+| aqm 用 YAML 定义显式队列、handoff、并行 fan-out、会议式共识与 Human Gate，还支持跨模型 Review、自动拒绝重试和上下文裁剪，并以“用 aqm 开发 aqm”给出真实流水线与耗时数据，适合分享声明式多 Agent 工作流怎样做到可复用、可验证和控成本。 | https://github.com/aqm-framework/aqm |
+| opencode-workspace 把 plan/build 编排器、researcher/coder/scribe/reviewer 专业 Agent、MCP、后台委派、通知与 Git worktree 打成一套 Harness，并对各角色设置细粒度读写/执行权限，适合说明生产协作除了分工还需要隔离、工具边界与最小权限。 | https://github.com/kdcokenny/opencode-workspace |
+| Claude Swarm 将复杂任务先拆成依赖图再分波并行执行，并内置文件锁冲突检测、预算硬限制、失败重试、统一质量 Gate、实时成本/进度看板和 Session Replay，适合用作“并行 Coding Agent 如何同时治理冲突、质量、成本与可观测性”的工程案例。 | https://github.com/affaan-m/claude-swarm |
+| π Multi-Agent 把 Goal→Plan→Execute→Evaluate→Replan→Output 做成完整生命周期，并提供顺序、并行、辩论、专家组、Critic-Reviewer、层级等协作模式，结合多模型路由、共享记忆、质量阈值重规划和沙箱/预算控制，适合用作多 Agent 平台架构与协作拓扑的系统化参考。 | https://github.com/jwangkun/Pi-Multi-Agent |
