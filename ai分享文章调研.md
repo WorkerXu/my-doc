@@ -134,7 +134,7 @@
 | Solon AI Harness 以技术文章生产为例，把调研、规划、写作、校对拆成带依赖的子 Agent DAG，并展示 task/multitask 委派和独立心智/记忆，适合讲主 Agent + 子代理如何落成可控任务编排。 | https://zhuanlan.zhihu.com/p/2058632024878059824 |
 | 文章反向提醒“先别急着做 Agent Teams”，从真实 P0 故障处理说明多 Agent 前必须先补齐状态、运行环境、权限与 Timeline 等 AgentOS 闭环能力，适合分享中用于解释为什么协作规模化前要先解决单 Agent 的可恢复与可审计。 | https://zhuanlan.zhihu.com/p/2045902247062769700 |
 | 文章直接以 Multi-Agent 协作模式与工程实践为主题，适合用来补充角色分工、协作机制与工程化约束的整体视角，便于在分享中建立从“为什么拆 Agent”到“怎样组织协作”的框架。 | https://juejin.cn/post/7668220205333790729 |
-| 用 NestJS + LangGraph 从零搭建多 Agent 编排平台，包含 Supervisor 自动路由、DAG 工作流、RAG 与多租户隔离，适合展示多 Agent 如何从流程 Demo 走向可复用平台。 | https://juejin.cn/post/7605780454579929139 |
+| 用 NestJS + LangGraph 从零搭建多 Agent 编排平台，包含 Supervisor 自动路由、DAG 工作流、RAG 与多租户隔离，适合展示多 Agent 如何从流程 Demo 走向可复用平台。 | https://juejin.cn/post/7605780455579929139 |
 | 从零构建 6 个 Agent 的自动化研发流水线，覆盖需求分析、架构、代码、测试到部署，并明确讨论状态流转、Agent 通信与 LLM 不稳定问题，适合拆解 AI Coding 团队的端到端协作。 | https://juejin.cn/post/7650719111396720682 |
 | 在多 Agent 架构跑通后继续补齐 FastAPI、SSE 与 Vue3 交互层，把命令行系统做成用户可用产品，适合分享“协作逻辑之外，产品化落地还需要什么”。 | https://juejin.cn/post/7643757385782411290 |
 | 用不足百行可运行代码实现研究员、批评家、总结员协作，覆盖共享状态、条件边、循环与收敛机制，特别适合作为分享现场可快速讲清核心概念的最小示例。 | https://juejin.cn/post/7639756570968653860 |
@@ -369,3 +369,9 @@
 | 横向比较 agent-team、Claude Agent Teams、Claude Squad、MetaGPT 的隔离机制、通信、角色复用、模型支持、质量门禁与任务管理，并给出多 Worktree 并行实操，适合做多 Agent Coding 架构选型的对照材料。 | https://juejin.cn/post/7614788881902551046 |
 | 把 Multi-Agent 放进完整生产工程体系，比较 Orchestrator、层级、P2P 三类协作模式，并讨论框架选型、共享记忆、通信爆炸、责任归因、成本、过度设计和可观测性，适合做分享的总体架构与反模式地图。 | https://juejin.cn/post/7632507085398949926 |
 | 用 SDD + Subagent 把上下文隔离、强制 TDD 红绿重构和“意图/质量”双阶段审查串成协作流程，适合说明多 Agent 的价值不只在并行，还在职责分离和可执行的质量门禁。 | https://juejin.cn/post/7625254134889791514 |
+| OpenClaw 多 Agents 配置教程从工作区、路由和角色划分切入，直接展示从单 Agent 到团队协作的配置路径，适合作为分享中“配置层怎样真正把 Agent 组起来”的实操材料。 | https://www.youtube.com/watch?v=WdTX_DdjSqE |
+| 通过阅读 OpenClaw 源码提炼多 Agent 自动协作的三个关键配置，适合补充表面教程背后的运行机制与配置取舍，帮助解释“为什么这样配才能协作”。 | https://www.youtube.com/watch?v=2x3DYrVhuR4 |
+| 开源方案用一条命令让 Claude、Codex、Gemini 组队执行任务，适合展示异构模型如何被统一调度，并作为跨模型 Coding Agent 协作的可复现实操案例。 | https://www.youtube.com/watch?v=uf6xyl9ppKk |
+| 对 Cognition《Don't Build Multi-Agents》的精读从反面讨论多 Agent 复杂度与失效边界，适合分享中加入“什么时候不该上多 Agent”的判断框架，避免只展示正向案例。 | https://www.youtube.com/watch?v=297owCxa4I8 |
+| Hermes Agent 的看板模式直接演示多 Agent 协作调度，适合讲共享任务板、状态推进和显式控制面怎样替代纯对话式派活，作为协作运行机制的直观案例。 | https://www.youtube.com/watch?v=cw12fxm6yNE |
+| Codex Multi-agent V2 支持 Kimi、MiniMax、GPT 多模型混用、动态派生 subagent 与并行执行，适合展示 Graph Engineering、动态 fan-out 和跨模型角色分工如何落到 Coding Agent 工作流。 | https://www.youtube.com/watch?v=RAFQc6zHdXE |
