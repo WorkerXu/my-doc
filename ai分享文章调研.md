@@ -219,3 +219,45 @@
 | Codex 多 Agent 自主协同实操以极简入口触发团队式执行，适合用来观察任务拆分、角色协同与自动推进如何在 Coding Agent 场景中被封装成低门槛工作流。 | https://www.bilibili.com/video/BV113EY6UEyy |
 | Multica 最佳实践聚焦“超级个体”场景下的多 Agent 协作，适合补充人与多个专业 Agent 共事、任务分工和团队化工作方式的实际落地视角。 | https://www.bilibili.com/video/BV18i8y6HEDc |
 | Codex 多智能体编排协同工作示例直接面向 Coding Agent 的并行协作，适合补充多 Agent 编排在日常软件开发中的轻量化实操案例。 | https://www.bilibili.com/video/BV1MUuR6hEdK |
+| AWS 用 Lambda Durable Functions 把 4 个专业 Agent、人工审批和外部异步流程编排成可恢复的医疗授权链路，重点展示 checkpoint/replay、幂等、回调、轮询与失败续跑，特别适合讲“多 Agent 长流程怎样做到可靠且不重复付费”。 | https://aws.amazon.com/blogs/compute/building-fault-tolerant-multi-agent-ai-workflows-with-aws-lambda-durable-functions/ |
+| Google Cloud 用 ADK 提出运行时动态加载 Schema 与确定性验证的多 Agent 交接模式，解决上下文膨胀、Attention Diffusion 和 malformed state 导致的 silent failure，适合分享“handoff 前如何把上下文契约变成可机器校验的边界”。 | https://cloud.google.com/blog/topics/developers-practitioners/beyond-static-prompts-with-google-adk |
+| Google DeepMind/Cloud 把多 Agent 委派总结为 contract-first decomposition、成本感知路由、最小数据授权和必要的人类认知摩擦，适合用作“主 Agent 怎样安全、可验证地把任务交出去”的设计原则。 | https://cloud.google.com/blog/products/ai-machine-learning/how-agents-can-delegate-better |
+| AWS 金融服务参考架构把 orchestrator 与投资组合、风险、市场数据等专业 Agent 跑在 EKS/AgentCore 上，并把每次 Agent hop 的认证、追踪、模型网关、成本控制、沙箱执行和 GitOps 一起落地，适合展示企业生产环境里“编排之外还缺什么”。 | https://aws.amazon.com/blogs/industries/multi-agent-systems-for-financial-services-on-amazon-eks-and-agentcore/ |
+| AWS Professional Services 用 Intake、IaC、治理、SRE 四个 Agent 覆盖 300+ 应用迁移生命周期，并通过共享记忆、MCP、身份权限和 HITL 把 IaC 开发从数周压到分钟级，适合作为有量化结果的企业多 Agent 流程改造案例。 | https://aws.amazon.com/blogs/machine-learning/scaling-cloud-migrations-with-agentic-ai-on-amazon-bedrock-agentcore/ |
+| AWS Security Agent 的自动渗透测试把基线扫描、动态探索、专业 swarm worker、独立验证与漏洞评分串成多阶段协作系统，还能根据应用反馈生成新攻击任务，适合分享“并行 Agent + 适应性规划 + 独立复核”的高风险生产实践。 | https://aws.amazon.com/blogs/security/inside-aws-security-agent-a-multi-agent-architecture-for-automated-penetration-testing/ |
+| AWS 的市场监控系统用 LangGraph 管共享状态、确定性流程、checkpoint/HITL，用 Strands 在节点内做专业推理，再交给 AgentCore 负责生产运行，适合讲“确定性 orchestrator + 局部 Agent 自主性”这一常见落地分工。 | https://aws.amazon.com/blogs/machine-learning/market-surveillance-agent-with-langgraph-and-strands-on-agentcore/ |
+| AWS M&A 尽调参考实现由 supervisor 协调筛选、财务、战略匹配、合规四类 Agent，并把 RAG、长期交易记忆、政策控制、自动引用校验和可部署样例整合起来，适合作为“多 Agent 输出如何做到可审计”的完整业务案例。 | https://aws.amazon.com/blogs/machine-learning/accelerating-ma-due-diligence-with-amazon-bedrock-agentcore/ |
+| AWS 医疗多模态实践把临床、影像、基因、论文、试验和预测等专业 Agent 以 A2A 暴露，由 supervisor 按需调用，并结合 MCP、JWT、独立 Runtime、Memory 与 OpenTelemetry 追踪，适合展示跨数据域多 Agent 如何标准化通信和独立扩缩容。 | https://aws.amazon.com/blogs/industries/multi-agent-multimodal-data-analysis-on-aws-part-2-multi-agent-orchestration-and-predictive-analytics/ |
+| 文章把 Agent 通信拆成工具调用、任务委派、消息传递三层，并分别讨论 MCP、A2A 与自定义消息协议的边界，适合分享中避免把“Agent 会通信”混成一个概念，并建立协议选型层次。 | https://niteagent.com/blog/agent-to-agent-communication-protocols-2026/ |
+| 这个 Claude Code Agent Teams Skill 紧跟当前 API，沉淀并行专家、竞争假设、流水线、自组织池四种可复用协作模式，同时记录共享工作树冲突与常见误用，适合直接做 Coding Agent 团队的可复现实操素材。 | https://github.com/mttzzz/claude-code-agent-teams |
+| agent-team-go 用 Go 实现结构化委派、技能自动安装、飞书/Telegram 通道、可回放运行、产物与事件日志等团队基础设施，适合补充“多 Agent 框架怎样做成易部署、可审计、能接真实协作渠道的服务”。 | https://github.com/daewoochen/agent-team-go |
+| SocioFi 基于 8–22 个 Agent 的生产系统总结顺序流水线、并行协作、层级编排与人工门禁等模式，并复盘 13-Agent GTM 与 22-Agent 制造平台在接口隔离、实时数据新鲜度和可观测性上的实际问题，适合作为“Agent 数量上升后协作复杂度如何失控”的一线案例。 | https://sociofitechnology.com/labs/blog/multi-agent-orchestration-patterns |
+| Adobe 的企业 B2B 营销多 Agent 系统把透明路由、会话/用户/组织三级记忆、plan-and-execute 与 discover-and-create 工作流、MCP 工具接入和组合式评估放在同一生产案例中，还讨论 Agent 单体表现不错但组合后失败的 compositionality gap，特别适合分享协作系统怎样做评估。 | https://llmday.com/2026-san-francisco-q2/Sanghamitra_Deb_Adobe_Building_Production_MultiAgent_Systems_Memory__Orchestration__Evaluation_at_Sc |
+| Conf42 的生产案例从单体客服聊天机器人演进到云原生多 Agent 订单支持平台，重点处理跨服务编排深度、延迟叠加、局部故障传播、多跳推理追踪与治理，适合讲“把多 Agent 当分布式系统而不是 Prompt 技巧”后的工程设计。 | https://www.conf42.com/Cloud_Native_2026_Sandeep_Mannapur_ai_agents_workflows |
+| AWS 的 Agent Orchestration 实践把网络分区、API 限流、长任务、人工审批、定时任务和事件触发都纳入编排层，强调 durable、observable、lifecycle-managed 的运行保障，适合补充多 Agent 上生产后为什么需要传统分布式工作流的可靠性机制。 | https://aws.amazon.com/marketplace/build-learn/ai-agent-learning-series/agent-orchestration |
+| Codeforges 的生产案例用 root agent 动态派生专业 Agent，并围绕真实成本、并行文件冲突、崩溃后的上下文恢复、高风险人工审批和全链路审计设计监督层，适合作为“自治 Agent 团队如何加预算、权限与审计护栏”的落地样本。 | https://codeforges.com/case-studies/autonomous-agent-orchestration |
+| 制造业案例由生产监控、维护、质量、库存、能源和交班 6 个专业 Agent 通过 Postgres 事件总线协作，在 40 台设备上 24/7 运行并坚持所有物理动作由人批准，同时披露停机改善、建设周期和成本，适合展示实体业务里多 Agent 与 HITL、事件驱动架构怎样结合。 | https://aliansoftware.com/en/blog/we-built-ai-agent-manufacturing-cost |
+| GitHub Agentic Workflows 官方把多个仓库 Agent 的协作提升到项目协调层，通过任务分解、依赖跟踪、进度监控和延迟告警来推进大型改造，适合分享“多 Agent 研发协作如何直接落在 Issue/PR/仓库工作流上”。 | https://github.github.io/gh-aw/blog/2026-01-13-meet-the-workflows-campaigns/ |
+| Bottega 面向工程团队实现 team-first、remote-first 的 Coding Agent 编排，用“人开始/结束、AI 执行中间过程”的模式串起规划、实现、QA 循环和 PR 评论处理，并可混用 Claude Code、Codex、OpenCode，适合展示多模型 Agent 团队如何嵌入真实研发流程。 | https://github.com/vdaubry/bottega |
+| team-tasks 用共享 JSON 任务文件实现 Linear、DAG 和 Debate 三种协作模式，分别对应串行交接、依赖并行和多 Agent 交叉评审，代码很轻量，适合在分享中作为“最小可理解协作控制面”的可复现实例。 | https://github.com/win4r/team-tasks |
+| 工业 UI 自动测试研究对 LangGraph 多 Agent 系统进行了 300 份连续报告、636 次测试执行的量化分析：修复收敛率约 70%，但首轮成功仅 10%，还有大量无可执行产物和“削弱断言”式伪收敛，适合用数据说明为什么生产多 Agent 必须限制自治并设置验证边界。 | https://arxiv.org/abs/2605.01471 |
+| 从 Tool Runtime 到单/多 Agent 选型，再到 LangGraph 状态图与 AutoGen、CrewAI 的适用边界，强调只有任务天然多阶段、异构工具或目标冲突时才值得多 Agent；适合作为分享中“何时需要多 Agent + 如何把流程状态显式化”的工程判断素材。 | https://zhuanlan.zhihu.com/p/2074892026299139660 |
+| 基于 Codex 实际使用拆出跨项目新线程、会话 ID 接力、一对多并行等场景，并强调项目路径、任务状态、执行方式和验收要求；适合做 AI Coding 多 Agent 调度的轻量可复现实操。 | https://zhuanlan.zhihu.com/p/2070504892796498056 |
+| 以多个 AI Agent 在同群协作为问题，复盘并发冲突、防碰撞、新鲜度门控等协调机制，并把哪些问题交给代码、哪些交给提示词讲清；适合作为多 Agent 共享上下文和冲突治理的工程案例。 | https://zhuanlan.zhihu.com/p/2074191821815668796 |
+| 系统覆盖顺序、并行、层级、辩论四种协作架构，AutoGen、CrewAI、LangGraph 选型、内容团队代码实践以及幻觉、成本、协调、安全避坑，适合做分享里的全景架构地图与最小实现示例。 | https://zhuanlan.zhihu.com/p/2074211818957029552 |
+| 从真实并行 Coding Agent 工作流出发，明确哪些任务适合或不适合并行，并给出 Plan→Prompt→Verify→Review 闭环、统一命令与验证报告；适合讲多 Agent 提速后的真正瓶颈如何转向任务拆分和 Review。 | https://zhuanlan.zhihu.com/p/2040814536345792826 |
+| 把可工程化多 Agent 定义为协调、专业执行、独立验证和统一运行时，强调结构化交接、状态恢复、结果验证与成本收益；适合用作分享开场的设计原则基线，避免把多 Agent 误解为自由聊天。 | https://zhuanlan.zhihu.com/p/2069012163067491985 |
+| 从“个人调用 Agent”进一步推进到人和 Agent 共享目标小队，提出 PM 调度者、任务图、依赖、进度和责任人共同状态，适合分享组织级多 Agent 协作如何从聊天走向可治理工作系统。 | https://juejin.cn/post/7676421042796544040 |
+| 基于源码对比 Claude Agent Teams 与 Codex multi-agent v2 的团队创建、任务分配、通信方式和工程取舍，适合做 AI Coding 多 Agent 机制与架构选型的对照材料。 | https://juejin.cn/post/7653415873380876330 |
+| claude-studio 将 Claude Code Agent Teams 的工作流从散落配置变成可视化 DAG 编排，适合展示多 Agent 协作如何产品化为可观察、可复用的编排控制面。 | https://juejin.cn/post/7629036295418806306 |
+| 从企业 AI 需求评估出发比较工作流、单 Agent 与多 Agent 协作的适用边界，适合作为分享里“什么时候值得上多 Agent”的前置决策框架。 | https://juejin.cn/post/7620718787835969536 |
+| 用具体业务场景完整展开 AgentScope 多智能体协作实践，适合拆解角色分工、消息传递和任务协同，让分享不只停留在框架概念层。 | https://juejin.cn/post/7591730714140540970 |
+| Dify 与 Nacos A2A 插件把 Agent Registry、注册发现和双向 Agent 协作接起来，适合补充多 Agent 从进程内编排走向跨服务互操作与治理的落地方式。 | https://juejin.cn/post/7603219519666257939 |
+| 以 4 个 AI Agent 重塑软件测试流程，并给出团队规模、用例设计和回归测试等真实业务背景，适合用垂直场景说明专业 Agent 分工如何进入研发流程。 | https://juejin.cn/post/7533512134002409522 |
+| 记录 16 个 AI Agent 在两周内协作完成约 10 万行 C 编译器并可编译 Linux 内核的案例，适合讨论大规模并行 Coding Agent 的任务拆分、协同收益与验证边界。 | https://juejin.cn/post/7603376587653169202 |
+| 从零搭建 CrewAI 多智能体协作系统，覆盖角色、任务和团队编排等核心实践，适合作为分享中可快速复现的框架级入门案例。 | https://juejin.cn/post/7649256802330443827 |
+| Claude Code Agent Teams 实机演示多个独立 Agent 同时编码与协作，适合直观看角色分工、并行执行和人类监督如何进入真实 AI Coding 工作流。 | https://www.youtube.com/watch?v=-1K_ZWDKpU0 |
+| Google for Developers 官方把 ADK、MCP 与 A2A 放到同一 Google Cloud 实操中，适合讲清“Agent 构建、工具连接、Agent 间通信”三层能力怎样组合成可落地系统。 | https://www.youtube.com/watch?v=6mQwHqK1I5w |
+| Strands Agents 实战用 A2A + MCP 打通多 Agent 与工具生态，主题直接聚焦消除 Agent 信息孤岛，适合作为跨框架、跨服务互操作的工程案例。 | https://www.youtube.com/watch?v=TjTgHA5DjDM |
+| AWS re:Invent 的 Cosine AI 案例把 LLM 微调与 Multi-Agent Orchestration 放进真实生产讨论，适合补充“协作效果不仅取决于编排，也取决于模型如何为角色和调度行为做针对性优化”的视角。 | https://www.youtube.com/watch?v=GYaDjPwLDGo |
+| 该分享从常见多 Agent 编排模式一路延伸到生产落地，适合用于串联架构选型、协作边界与生产化注意点，作为分享中的模式地图与实践过渡材料。 | https://www.youtube.com/watch?v=EtSO9vU84ws |
