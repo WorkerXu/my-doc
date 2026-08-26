@@ -253,3 +253,15 @@
 | https://www.bilibili.com/video/BV1cd9yBwEDk |
 | https://www.bilibili.com/video/BV1G7hG6MEQ6 |
 | https://www.bilibili.com/video/BV1nybe6GE9t |
+| https://aws.amazon.com/blogs/compute/building-fault-tolerant-multi-agent-ai-workflows-with-aws-lambda-durable-functions/ |
+| https://cloud.google.com/blog/topics/developers-practitioners/beyond-static-prompts-with-google-adk |
+| https://cloud.google.com/blog/products/ai-machine-learning/how-agents-can-delegate-better |
+| https://aws.amazon.com/blogs/industries/multi-agent-systems-for-financial-services-on-amazon-eks-and-agentcore/ |
+| https://aws.amazon.com/blogs/machine-learning/scaling-cloud-migrations-with-agentic-ai-on-amazon-bedrock-agentcore/ |
+| https://aws.amazon.com/blogs/security/inside-aws-security-agent-a-multi-agent-architecture-for-automated-penetration-testing/ |
+| https://aws.amazon.com/blogs/machine-learning/market-surveillance-agent-with-langgraph-and-strands-on-agentcore/ |
+| https://aws.amazon.com/blogs/machine-learning/accelerating-ma-due-diligence-with-amazon-bedrock-agentcore/ |
+| https://aws.amazon.com/blogs/industries/multi-agent-multimodal-data-analysis-on-aws-part-2-multi-agent-orchestration-and-predictive-analytics/ |
+| https://niteagent.com/blog/agent-to-agent-communication-protocols-2026/ |
+| https://github.com/mttzzz/claude-code-agent-teams |
+| https://github.com/daewoochen/agent-team-go |
