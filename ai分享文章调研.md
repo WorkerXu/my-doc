@@ -524,3 +524,8 @@
 | A2A 的 System Design 视角直接面向 Multi-Agent Architecture，适合分享跨 Agent 发现、通信与系统边界如何从协议概念落到整体架构设计。 | https://www.youtube.com/watch?v=bkqYfYNkJ_4 |
 | Google Cloud Tech 官方介绍 Agent2Agent（A2A）协议，适合作为跨服务、跨框架 Agent 协作的协议基线素材，便于后续连接更复杂的生产案例。 | https://www.youtube.com/watch?v=Fbr_Solax1w |
 | 以产品团队实时协作 AI Coding Agents 为主题，适合补充“人类团队 + 多个 Coding Agent”共同工作的实践形态，帮助分享从纯 Agent 编排延伸到真实团队协作。 | https://www.youtube.com/watch?v=QRwAuogj54M |
+| 阿里云云原生官方从 HiClaw 到 AgentTeams 展开多运行时 Worker、生产级控制面与企业协作能力升级，适合分享多 Agent 从单点能力走向可管理、可扩展团队平台时需要补齐哪些工程基础设施。 | https://www.bilibili.com/video/BV1QJ3F6UEpe |
+| 通过 40 分钟手搓 A2A 客户端与服务端并实现流式交互，且配套代码开源，适合把跨 Agent 通信协议从概念落到可运行代码，展示互操作、调用链和服务化协作怎样真正实现。 | https://www.bilibili.com/video/BV1dXboz5Ekz |
+| 在飞书里把文案、知识管理、盯盘、运维、天气等职责拆给独立 Agent，并分别配置人设、技能、群聊绑定和定时任务，适合展示多 Agent 如何嵌入现有协作工具并形成长期运行的专岗 AI 团队。 | https://www.bilibili.com/video/BV1CRPHzfEJZ |
+| Hermes + ChatClaw 直接演示多个智能体主动互相沟通、主动协作并与真人共同工作，适合补充多 Agent 从“被动派单”走向主动团队协同和 Human-in-the-Loop 共事的实践形态。 | https://www.bilibili.com/video/BV1eyNR6bE5N |
+| 内容围绕 Team 核心概念与四种协作模式展开，并强调按场景选择和构建多 Agent 团队，适合在分享中用作协作模式选型的简洁案例，帮助解释不同团队结构并非一种编排方式通吃。 | https://www.bilibili.com/video/BV1nnLx6UEBT |
