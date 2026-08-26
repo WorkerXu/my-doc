@@ -617,3 +617,10 @@
 | Amazon Aurora 的实操内容把多 Agent 编排与可扩展 Agentic AI 应用、数据层结合起来，适合展示协作系统从逻辑编排走向生产架构时数据库与状态基础设施如何参与。 | https://www.youtube.com/watch?v=T8_R2RvteRg |
 | 制造运营场景用多 Agent 编排构建自适应 AI 系统，适合补充研发之外的工业垂直案例，展示专业 Agent 如何围绕真实运营任务协作。 | https://www.youtube.com/watch?v=5J1g6BXzITU |
 | Copilot Studio 的完整演练直接从平台层搭建 Multi-Agent Orchestration，适合分享低代码/企业平台如何把多个 Agent 组织成可运行的协作流程。 | https://www.youtube.com/watch?v=syNyEqiTSKQ |
+| 从环境配置到 Team Lead、架构师、后端和安全员的角色分工，完整演示 Shared Task List、Mailbox 通信、验机与避坑，适合展示原生 Agent Team 如何把共享任务、消息机制和专业角色真正落到开发协作。 | https://www.bilibili.com/video/BV1HncxzZELZ |
+| 用 CrewAI + FastAPI 从零构建可对外提供 API 的多智能体应用，并兼容多类大模型，适合分享如何把多 Agent 从框架示例进一步封装成可集成、可服务化的应用。 | https://www.bilibili.com/video/BV1JXawzqEtA |
+| 用两个独立 TRAE 项目模拟两个 Agent 协作完成小程序后端开发，并深入拆解协同设计思想，适合展示多个 Agent 如何围绕同一工程任务进行分工、衔接与交付。 | https://www.bilibili.com/video/BV1v7P4z8Evn |
+| 用 Codex 搭建多 Agent 系统完成半自动化自媒体创作，属于研发之外的真实内容生产工作流，适合展示角色分工和自动化协作如何落到日常业务场景。 | https://www.bilibili.com/video/BV1vMQyBjEyi |
+| 基于 Codex App 的 Subagents 功能做完整上手实践，并结合官方文档介绍子代理使用方式，适合展示主 Agent 如何调用专业子 Agent 分工执行真实开发任务。 | https://www.bilibili.com/video/BV1KPwrzUEdB |
+| 用 AutoGen Studio 调用本地大模型搭建可运行的多 Agent 应用，覆盖较完整的实操流程，适合展示可视化编排、本地模型与多智能体应用结合的落地路径。 | https://www.bilibili.com/video/BV1ovKBzeEcz |
+| 让 Claude 负责规划和审核、Codex 负责编程，以跨模型角色分工提升代码质量，适合展示异构 Agent 通过明确责任边界形成“规划—实现—审查”的开发协作闭环。 | https://www.bilibili.com/video/BV1P1L96KE6Z |
