@@ -1,0 +1,80 @@
+name: Append auto review research a 20260826 r3
+
+on:
+  push:
+    paths:
+      - '.github/workflows/append-auto-review-research-a-20260826-r3.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Append new research rows
+        shell: bash
+        run: |
+          set -euo pipefail
+          article='自动审查文章调研.md'
+          history='自动审查历史调研.md'
+
+          ensure_newline() {
+            local file="$1"
+            if [ -s "$file" ] && [ -n "$(tail -c 1 "$file")" ]; then
+              printf '\n' >> "$file"
+            fi
+          }
+
+          append() {
+            local reason="$1"
+            local url="$2"
+            if ! grep -Fqx "$url" "$history"; then
+              printf '| %s | %s |\n' "$reason" "$url" >> "$article"
+              printf '%s\n' "$url" >> "$history"
+            fi
+          }
+
+          apply_rows() {
+            ensure_newline "$article"
+            ensure_newline "$history"
+            append 'Codex Armada 允许直接以 `--plan-file` 输入已审计划，并在 task capsule 同时固定 base commit、run/task identity、路径所有权和验证条件；适合把计划版本、候选 Git 基线与后续多 Agent 执行/复审放进同一可追踪契约。' 'https://github.com/RealAhmedOsama/Codex-Armada'
+            append 'codex-delegate-mcp 可并发启动多个委派任务，并在 review 前验证 workspace 与 base/commit；多个只读 reviewer 可并行对同一提交取证，适合作为 Codex 外部 MCP 审查编排层。' 'https://github.com/andreilungeanu/codex-delegate-mcp'
+            append 'improve-codex 把计划 critic、隔离 worktree 执行、advisor 与 Sol diff 复审串成有界两轮 gate，并逐轮保存报告；适合用独立 Agent 对计划与实现提交做对抗式复核。' 'https://github.com/IgorVaryvoda/improve-codex'
+            append 'ralphex 原生支持用 Codex 生成计划并按计划运行 task→首轮 review→二轮 review→finalize，还能把 reviewer 展开为 Codex subagents；适合把一个 plan 文件直接驱动成可重复的多 Agent 审查流水线。' 'https://github.com/umputun/ralphex'
+            append 'FlowCraft Codex handoff 会把 plan 文件转换为显式工作流图，限定独立可委派任务并用 `--max-subagents` 控制并发；适合把 plan verifier、code reviewer、design reviewer、publisher 固化成可验证的编排 DAG。' 'https://github.com/sleeplesshan/flowcraft-task-studio/blob/main/skills/flowcraft-codex-handoff/SKILL.md'
+            append 'figma-agent-mcp 提供 Codex 的直接 MCP 注册方式，并能读取当前 Figma 文档、选择、节点与 annotations；适合作为独立 design-reviewer 的真实设计文件证据源，再与代码 findings 聚合。' 'https://github.com/TrungLee003/figma-agent-mcp'
+            append 'figma-design-bridge 面向 Agent 暴露可读写的 Figma 设计桥接能力，可把结构、组件与画布修改纳入审查上下文；适合让设计 Agent 与代码 reviewer 围绕同一设计源做双向核验。' 'https://github.com/evidence-codes/figma-design-bridge'
+            append 'agent-kanban-pm 内置 orchestrator、architecture、test、diff_review、git_pr 等角色，并通过 MCP/REST 保存 review/approval 记录；适合把聚合 findings 推入看板后继续分派 Codex 修复与复审。' 'https://github.com/Raman369AI/agent-kanban-pm'
+            append 'ai4kanban 明确支持 Codex，卡片默认就是 Git 中的 Markdown 文件，可 diff、回滚和审阅；适合把审查摘要作为 git-native 项目条目/文章化记录沉淀，再让后续 Codex 会话继续消费。' 'https://github.com/ai4kanban/ai4kanban'
+          }
+
+          git fetch origin main
+          git reset --hard origin/main
+          apply_rows
+
+          if git diff --quiet -- "$article" "$history"; then
+            exit 0
+          fi
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+          for attempt in 1 2 3; do
+            git add -- "$article" "$history"
+            git commit -m 'docs: append automatic review research a 20260826 r3'
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            git fetch origin main
+            git reset --hard origin/main
+            apply_rows
+            if git diff --quiet -- "$article" "$history"; then
+              exit 0
+            fi
+          done
+
+          exit 1
