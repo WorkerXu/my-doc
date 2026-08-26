@@ -55,6 +55,11 @@ jobs:
             append 'review-skills 的 debate-review 会让两个不同模型先对同一 PR 的 finding 进行“提出→反驳/降级→最终裁决”，babysit-pr 再验证、修复、回复并触发下一轮；可直接与 Codex/Claude 等组合成真正的交叉多 Agent review。' 'https://github.com/amElnagdy/review-skills'
             append 'Codex Design Review Skill 以只读方式审查 Figma 链接、截图、PDF 和设计变体，按 S0–S3 分级并可生成标注图；适合作为多 Agent 代码审查中的独立 design-reviewer，把设计文件证据与代码 findings 分离。' 'https://github.com/vip999611-ai/Codex-design-review-skill'
             append 'CodeXBoard 把 Codex 已固定的 thread 映射成可持续流转的 Kanban 卡片，并保留本地 notes、阶段与项目归属；适合作为聚合审查结果回流 Codex 后的长期“审查主题/项目”看板入口，让同一 thread 从 finding 跟踪到修复完成。' 'https://github.com/Moorvan/CodeXBoard'
+            append 'claude-consensus 可由 Codex 作为主导者并行调用多模型，对实现计划和代码分别做独立评审、quorum 汇总与收敛复审；适合作为 Codex 原生流程之外的计划审查与代码复核委员会。' 'https://github.com/AltimateAI/claude-consensus'
+            append 'multi-model-review 把 spec.md、plan.md、tasks.md 与 git diff 打包成可移植 review package，并支持用独立 Codex/Gemini/Claude 等模型复审再回灌 findings；适合把版本化计划与具体代码变更放进同一审查证据包。' 'https://github.com/formin/multi-model-review'
+            append 'Agent Council 可让 Claude Code、Codex CLI、Gemini CLI 基于真实代码库并行给出意见，再互审并由主席综合结论，同时保留可重放会话；适合作为额外的跨模型工程审查层。' 'https://github.com/yogirk/agent-council'
+            append 'Figma 对 Code Connect + MCP 的 2026 评测显示中位任务代码质量提升 1 个等级、token 降低 29.5%、耗时降低 19.6%；可作为 design-reviewer 必须读取真实设计系统组件映射的量化依据。' 'https://www.figma.com/blog/the-benefits-of-code-connect-in-mcp/'
+            append 'ClickUp 官方 MCP 可创建和更新任务、搜索 Docs/评论并生成状态与组合报告；适合作为多 Agent 审查汇总后的项目看板与文章化落点，再由支持 MCP 的 Codex 继续读取和处理。' 'https://help.clickup.com/hc/en-us/articles/33335772678423-What-is-ClickUp-MCP'
           }
 
           git fetch origin main
