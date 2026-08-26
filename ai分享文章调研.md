@@ -516,3 +516,11 @@
 | OpenClaw 多 Agent 部署实践对比单 Gateway 多 Agent 与双 Gateway 独立部署，围绕场景隔离、多角色并行和部署边界展开；适合补充多 Agent 从逻辑分工走到运行时隔离与部署拓扑选择的实操素材。 | https://juejin.cn/post/7611462106036682802 |
 | 从单线程 Agent 向 OpenClaw 多 Agent 模式做深度改造，直接围绕上下文拥堵、串行执行和角色拆分带来的价值跃迁展开；适合分享“为什么拆、拆成什么、协作后解决了什么”这一架构演进路径。 | https://juejin.cn/post/7612929520988618787 |
 | Oh My OpenCode 的 AgentTeam 实战以可直接使用的 Coding Agent 团队为入口，适合展示多 Agent 编程工具如何从安装配置进入分工协作，并作为跨模型/多角色研发工作流的轻量实践案例。 | https://juejin.cn/post/7614566158142291977 |
+| Atlassian Demo Den 直接展示 Jira 中的 Multi-agent Orchestration，适合分享企业如何把 Agent 协作嵌进既有项目协同入口，而不是另起一套孤立工作台。 | https://www.youtube.com/watch?v=SOljsxCH37k |
+| Copilot Studio 的实操内容直接围绕 Multi-Agent Orchestration 展开，适合补充低代码企业平台如何组织多个 Agent、降低团队落地门槛的案例。 | https://www.youtube.com/watch?v=xtPlDde4Yv0 |
+| 该 Source Demo 从零展示 LangGraph 中多个 Agent 的协作执行，适合作为分享现场可复现的代码型案例，用来讲共享状态、协作流程与编排如何真正跑起来。 | https://www.youtube.com/watch?v=nx6HaySGOlc |
+| CrewAI 实操直接聚焦“让 Agent 团队真正协作”，适合用于拆解角色、任务和团队协同如何从框架配置变成可运行工作流。 | https://www.youtube.com/watch?v=hJuPoffsGdc |
+| 内容把 Teams、Protocols 与 Worktrees 放进同一套 Multi-Agent Orchestration 视角，适合串联团队组织、Agent 通信和并行工作区隔离这三个落地层次。 | https://www.youtube.com/watch?v=I9lT8m0NoiU |
+| A2A 的 System Design 视角直接面向 Multi-Agent Architecture，适合分享跨 Agent 发现、通信与系统边界如何从协议概念落到整体架构设计。 | https://www.youtube.com/watch?v=bkqYfYNkJ_4 |
+| Google Cloud Tech 官方介绍 Agent2Agent（A2A）协议，适合作为跨服务、跨框架 Agent 协作的协议基线素材，便于后续连接更复杂的生产案例。 | https://www.youtube.com/watch?v=Fbr_Solax1w |
+| 以产品团队实时协作 AI Coding Agents 为主题，适合补充“人类团队 + 多个 Coding Agent”共同工作的实践形态，帮助分享从纯 Agent 编排延伸到真实团队协作。 | https://www.youtube.com/watch?v=QRwAuogj54M |
