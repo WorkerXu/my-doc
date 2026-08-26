@@ -554,3 +554,11 @@
 | Olympus 把 Claude Code 扩展成 20+ 专业 Agent 的研发团队，用任务复杂度做模型路由，并以 AI-DLC 工作流、跨会话学习和持续执行机制约束交付，适合分享“角色分工、模型分层与研发流程”如何合成一套可复用团队 Harness。 | https://github.com/mikev10/olympus |
 | oh-my-pi 用 `/team` 把 Coding 任务按“拆解→启动隔离子 Agent→并行执行→聚合结果”跑成完整链路，并配套 planner/tester/verifier 等专业角色与持久重试机制，适合作为小而完整的多 Agent Coding 团队落地样例。 | https://github.com/Changhochien/oh-my-pi |
 | Sol 面向同时运行 10–30+ 个 Coding Agent 的场景，为每个任务创建独立 worktree，并用 SQLite/tmux 做持久状态、崩溃与卡死检测、自动重启以及经质量 Gate 的合并，适合分享“多 Agent 并发上规模后如何补齐监督、恢复与合并控制面”。 | https://github.com/nevinsm/sol |
+| ContractPilot 按真实企业分工设置 Orchestrator、法务、财务、业务、履约、合规与 Reviewer Agent，并围绕同一结构化合同、企业规则和证据链协作，在意见冲突时输出分级谈判方案和人工审批路径，适合分享多 Agent 如何从“多人给意见”升级为可执行决策流程。 | https://zhuanlan.zhihu.com/p/2067758665742996383 |
+| Aden Hive 把目标编译为 DAG，并用 graph、event loop、worker/judge、checkpoint、state isolation、event bus、HITL 与 MCP tools 组成 Agent Team Runtime，适合用来讲生产级多 Agent Harness 如何处理状态、失败、权限和审计，而不是只做模型间对话。 | https://zhuanlan.zhihu.com/p/2067355336470689783 |
+| 文章从单 Agent、编排层一路梳理到元 Harness，并以 Claude Code Agent Teams 为例拆解主从分工、工具路由和分层上下文管理，适合分享 AI Coding 多 Agent 为什么会从“模型能力”竞争转向统一治理、路由与故障恢复。 | https://zhuanlan.zhihu.com/p/2058543901124867338 |
+| MiniMax Mavis 的多 Agent 方案强调用确定性的代码驱动 Runtime 管理任务拆解、执行状态、失败恢复、验收和审计，而不是依赖 Prompt 让模型自行组织，适合用来对比“模型自发协作”和“工程化控制面”两条路线。 | https://zhuanlan.zhihu.com/p/2040003729152274900 |
+| 这篇 AgentTeams/AgentLoop 架构拆解把多 Agent 群聊进一步抽象成显式身份、角色、协作资源、治理与观测评估闭环，适合说明企业级多 Agent 真正需要的是协作平面、权限边界和持续优化机制，而不只是把几个 Agent 拉进群。 | https://zhuanlan.zhihu.com/p/2058654169129662447 |
+| OpenCSG 的小团队实践用 CSGClaw 的 Manager+Worker 模式拆解复杂任务，并允许人在 WebUI/IM 工作区观察、补充上下文和纠偏，同时把模型、数据、Agent 与协作链路串起来，适合展示三五人团队怎样把多 Agent 变成日常产品工作流。 | https://zhuanlan.zhihu.com/p/2054957116041983695 |
+| Octo 将多 Agent 协作拆成多种明确模式，而不是简单“拉群讨论”，覆盖独立执行、圆桌讨论以及不同任务下的协作结构，适合在分享中说明协作拓扑应随任务目标变化，并用产品化方式把不同模式交给用户选择。 | https://zhuanlan.zhihu.com/p/2055278393491469021 |
+| 从企业 To B 场景出发讨论 AgentTeams 的协作治理，重点覆盖跨 Agent 通信与分工、统一凭证托管、权限与安全、审计、Token 成本以及人在回路，适合补充“多 Agent 能不能规模化落地取决于治理，而不只取决于模型聪明度”的观点。 | https://zhuanlan.zhihu.com/p/2057880793431683528 |
