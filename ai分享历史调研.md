@@ -330,3 +330,7 @@
 | https://github.com/babebp/llm-agent-production-architecture |
 | https://github.com/WenyuChiou/awesome-agentic-ai-zh/blob/main/stages/07-multi-agent-production.zh-Hans.md |
 | https://gist.github.com/prasad-kumkar/f9a71a839afe8ed03da5909bae9e84f3 |
+| https://juejin.cn/post/7610141315292725288 |
+| https://juejin.cn/post/7605810996125548578 |
+| https://juejin.cn/post/7596687697755111434 |
+| https://juejin.cn/post/7469440141447643148 |
