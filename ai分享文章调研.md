@@ -375,3 +375,6 @@
 | 对 Cognition《Don't Build Multi-Agents》的精读从反面讨论多 Agent 复杂度与失效边界，适合分享中加入“什么时候不该上多 Agent”的判断框架，避免只展示正向案例。 | https://www.youtube.com/watch?v=297owCxa4I8 |
 | Hermes Agent 的看板模式直接演示多 Agent 协作调度，适合讲共享任务板、状态推进和显式控制面怎样替代纯对话式派活，作为协作运行机制的直观案例。 | https://www.youtube.com/watch?v=cw12fxm6yNE |
 | Codex Multi-agent V2 支持 Kimi、MiniMax、GPT 多模型混用、动态派生 subagent 与并行执行，适合展示 Graph Engineering、动态 fan-out 和跨模型角色分工如何落到 Coding Agent 工作流。 | https://www.youtube.com/watch?v=RAFQc6zHdXE |
+| AgentMesh 是开源多智能体协同框架，支持零代码定义 Agent、复杂任务拆解、多轮自主决策以及浏览器/搜索/文件/终端等工具，并在 Demo 中让软件开发 Agent 团队完成网页设计、开发、浏览器测试及文档/代码交付，适合作为“多 Agent 团队如何从框架能力落到完整研发闭环”的项目案例。 | https://www.bilibili.com/video/BV1QKLCzwEuy |
+| QM 把多 Agent 从个人助手推进到团队级工作台：每位成员拥有隔离的记忆、文件、密钥、权限和持久沙箱，又能在 Slack/Web 的共享空间协作；同时支持多种 Agent 引擎、共享技能、后台任务与安全策略，适合分享“多人 + 多 Agent”落地时如何同时处理协作、隔离和治理。 | https://www.bilibili.com/video/BV1e88G6KEo8 |
+| ClawChat + Hermes 直接把 Agent 放进真人群聊，让 Agent 可主动交流并与人共同完成邀请函与抽奖应用等任务，适合展示多 Agent/人机协作如何从后台编排进入现有沟通场景，并形成真实共同交付。 | https://www.bilibili.com/video/BV1rnun6QEMY |
