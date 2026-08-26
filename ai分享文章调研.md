@@ -447,3 +447,10 @@
 | 这篇生产经验复盘从传统“中央 Orchestrator + 一组 Agent”的失效案例出发，聚焦上下文膨胀、指令冲突、漂移、长任务可靠性和 Token 爆炸，适合做“为什么 Demo 架构上线后会坏”的反模式材料。 | https://sdivye92.medium.com/rethinking-multi-agent-systems-c06d1a354aa6 |
 | 作者基于半年让多 Agent 向真实用户交付代码的经验，给出并行 worktree、独立安全/质量 Review、人类架构与产品审批、Git 流程等规则，适合分享“多 Agent 提速之后如何把快速变成可安全发布”。 | https://medium.com/%40benovedoz/designing-a-multi-agent-ai-workflow-that-doesnt-break-production-792b7ed0f4cd |
 | 这份 2026 生产编排指南按 Supervisor、Fan-out、Pipeline、Hierarchical、Debate 等模式拆解 handoff、状态、失败恢复和成本特征，并明确不同模式的适用边界，适合整理成架构选型与失效模式对照表。 | https://www.belsoftsolutions.com/blog/multi-agent-ai-orchestration-patterns-2026 |
+| AITeamOps 把 Claude、Codex、Cursor、ChatGPT 在真实项目里的协作规则固化成可触发 Skills，并以 AGENTS.md 统一路由、共享项目记忆、交付复核和 Git/数据库红线形成可执行团队规范，适合分享“多 Agent/多工具协作如何靠流程契约而不是临场 Prompt 保持一致”。 | https://github.com/kross88/AITeamOps |
+| agent-team 用 Lead + Teammates、psmux 独立会话、共享邮箱/任务板、JSONL 审计日志和人工 spawn 审批统一编排 Claude CLI 与 Codex CLI，适合展示 Coding Agent 多人并行后的任务控制、隔离、审计与人类监督如何落到一个轻量控制面。 | https://github.com/stardino2lab/agent-team |
+| AgentRoom 把动态组队、按角色选模型、任务依赖图、ready-task 并发调度、Lead 汇总和 SSE 群聊可视化做成可直接启动的 FastAPI + React 应用，适合用一个小而完整的项目演示“多 Agent 从拆任务到并行交付”的端到端实现。 | https://github.com/xy1121/agentroom |
+| OpenMOSS 用 planner/executor/reviewer/patrol 四类 Agent、任务状态机、审查返工、卡死巡检、cron 自唤醒和 Web 管理台组织 7×24 自主协作，并给出 1M Reviews 的真实无人运营案例，适合分享长时间多 Agent 系统如何补齐质量闭环、恢复机制和运营控制面。 | https://github.com/uluckyXH/OpenMOSS |
+| AgentRadio 用可复现实验把“分工→协商→后台被动感知”逐层消融：四 Agent 在 SWE-Atlas QnA 上显著高于单 Agent，并通过后台监听让消息在执行中及时纠偏而不占工作回合，特别适合分享 Agent 间通信语义如何直接影响长任务协作效果。 | https://github.com/Coral-Protocol/AgentRadio |
+| ContextHub 把多 Agent 的 Memory、Skill、文档和数据元信息统一成 ctx:// 上下文治理层，提供团队可见性、private→team→org 晋升、版本固定、依赖传播、审计与租户隔离，适合补充“共享状态、记忆版本和权限边界”这一多 Agent 生产落地常被忽略的基础设施。 | https://github.com/The-AI-Framework-and-Data-Tech-Lab-HK/ContextHub |
+| AWS 的 Bedrock 多 Agent Workshop 用 Supervisor 协调预测、光伏和峰值负载三个专业 Agent 跑通能源管理业务，并提供从单 Agent 配置到协作调用的完整练习，适合做分享现场可复现的“Supervisor + Specialists”业务型最小实战。 | https://github.com/aws-samples/bedrock-multi-agents-collaboration-workshop |
