@@ -264,4 +264,18 @@
 | https://aws.amazon.com/blogs/industries/multi-agent-multimodal-data-analysis-on-aws-part-2-multi-agent-orchestration-and-predictive-analytics/ |
 | https://niteagent.com/blog/agent-to-agent-communication-protocols-2026/ |
 | https://github.com/mttzzz/claude-code-agent-teams |
-| https://github.com/daewoochen/agent-team-go |
+| https://github.com/daewoochen/agent-team-go || https://sociofitechnology.com/labs/blog/multi-agent-orchestration-patterns |
+| https://llmday.com/2026-san-francisco-q2/Sanghamitra_Deb_Adobe_Building_Production_MultiAgent_Systems_Memory__Orchestration__Evaluation_at_Sc |
+| https://www.conf42.com/Cloud_Native_2026_Sandeep_Mannapur_ai_agents_workflows |
+| https://aws.amazon.com/marketplace/build-learn/ai-agent-learning-series/agent-orchestration |
+| https://codeforges.com/case-studies/autonomous-agent-orchestration |
+| https://aliansoftware.com/en/blog/we-built-ai-agent-manufacturing-cost |
+| https://github.github.io/gh-aw/blog/2026-01-13-meet-the-workflows-campaigns/ |
+| https://github.com/vdaubry/bottega |
+| https://github.com/win4r/team-tasks |
+| https://arxiv.org/abs/2605.01471 |
+| https://nukcloud.com/en/blog/2026-multi-agent-ai-architecture-design-patterns-production-20260622.html |
+| https://www.tembo.io/blog/multi-agent-orchestration |
+| https://hasgeek.com/fifthelephant/fifthelephant-2026-call-for-submissions/sub/too-many-cooks-production-lessons-from-orchestrati-7y75vG1eFrRB8RJ9Xq5Z5i |
+| https://insoftex.com/insights/multi-agent-collaboration/ |
+| https://www.tech-tavern.com/case-studies/CaseStudy-AutomatedAgenticDocumentation.pdf |
