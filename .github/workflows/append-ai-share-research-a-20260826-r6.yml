@@ -1,0 +1,78 @@
+name: Append AI share research a 20260826 r6
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/append-ai-share-research-a-20260826-r6.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append-research:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Append unique research rows
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          ARTICLE='ai分享文章调研.md'
+          HISTORY='ai分享历史调研.md'
+
+          append_selected() {
+            local reason="$1"
+            local url="$2"
+            if ! grep -Fq "$url" "$HISTORY"; then
+              printf '| %s | %s |\n' "$reason" "$url" >> "$ARTICLE"
+              printf '| %s |\n' "$url" >> "$HISTORY"
+            fi
+          }
+
+          append_history_only() {
+            local url="$1"
+            if ! grep -Fq "$url" "$HISTORY"; then
+              printf '| %s |\n' "$url" >> "$HISTORY"
+            fi
+          }
+
+          apply_entries() {
+            append_selected 'Microsoft 官方展示如何把 Agent Framework、GitHub Copilot CLI/SDK 与 Squad 组合成可运行的 Agent 团队：协调器+专业成员、持久决策/技能、标准 AIAgent 接口和流式会话都能直接接入现有应用，适合讲“多 Agent 团队如何嵌入生产 SDK 与研发流水线”。' 'https://devblogs.microsoft.com/agent-framework/building-agent-teams-with-agent-framework-github-copilot-cli-and-squad/'
+            append_selected 'Microsoft 的 AlpineAI 示例把 advisor 与天气/客流/安全/教练/研究等专业 Agent 做成跨 .NET、Python、Go 的分布式服务，并用 A2A、Aspire、Container Apps、健康检查和 OpenTelemetry 统一部署与追踪，特别适合分享“多 Agent 上线后其实就是分布式系统”的工程实践。' 'https://devblogs.microsoft.com/aspire/building-distributed-multi-agent-systems-with-aspire-and-microsoft-agent-framework/'
+            append_selected 'multiagents 用 MCP 把 Claude Code、Codex CLI、Gemini CLI 组成同一协作团队，并把文件锁/ownership zone、任务状态机、互评闭环、共享知识、会话恢复和崩溃重启都做进运行时，适合展示异构 Coding Agent 如何真正解决并行冲突与状态一致性。' 'https://github.com/zetbrush/multiagents'
+            append_selected 'CCteam-creator 将 2–6 个 Claude Code Agent 的协作变成文件化 Harness：任务计划/发现/进度可持久恢复，并内置 CI、独立 Review、文档新鲜度、规则门禁和阶段健康检查，适合分享“共享事实源 + 机器验收”如何让 Agent 团队稳定长期推进。' 'https://github.com/jessepwj/CCteam-creator'
+            append_selected 'claude-team-orchestration 把共享任务、Agent 间消息和错误恢复封装成插件，并提供并行专家、pipeline、swarm、research+implement、plan approval、refactoring、RLM 等 7 类可复用模式，适合用同一套原语讲清不同协作拓扑如何选与如何落地。' 'https://github.com/zircote-plugins/claude-team-orchestration'
+            append_selected 'AgentsID 横向分析 Claude Agent Teams、AutoGen、CrewAI、LangGraph、OpenAI Agents SDK，归纳 Agent 身份、凭证继承、Agent 间通信、委派时工具权限四类结构性鉴权缺口，并结合真实 CVE 说明风险，适合补齐多 Agent 落地经常被忽略的安全边界。' 'https://github.com/AgentsID-dev/agentsid-scanner/blob/master/docs/agent-teams-auth-gap-2026.md'
+            append_selected 'ChipAgents 将多 Agent 编排落到 ASIC/3D IC 工程：多个 Agent 在隔离环境并行探索假设，工程师以批量 Review 把关，再进入 signoff；文中还给出 WhaleChip 根因分析从数天缩到 15 分钟的真实部署结果，适合讲“并行探索 + HITL”在高成本工程场景的价值。' 'https://chipagents.ai/blogs/multi-agent-orchestration-ic-design-autonomy'
+            append_selected '2026 年制造业研究把机器人与 AGV 都建模为 LLM Embodied Agent，对比 Robot-Lead 与 Vehicle-Lead 两种去中心化协作策略；复杂拆解任务中 VLC 达到 100% 约束满足、同时减少 41% Token 和 68% API 调用，适合用量化数据说明“谁来主导协作”会直接影响质量与成本。' 'https://www.sciencedirect.com/science/article/abs/pii/S0278612526001147'
+
+            append_history_only 'https://developer.microsoft.com/en-us/reactor/events/27154/'
+            append_history_only 'https://github.com/AI-Foundry-Core/ril-agents'
+          }
+
+          for attempt in 1 2 3; do
+            git fetch origin main
+            git reset --hard origin/main
+            apply_entries
+
+            if git diff --quiet -- "$ARTICLE" "$HISTORY"; then
+              echo 'No new entries to append.'
+              exit 0
+            fi
+
+            git add "$ARTICLE" "$HISTORY"
+            git commit -m 'docs: add fresh multi-agent collaboration research'
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            echo "Push conflict on attempt $attempt; retrying from latest main"
+          done
+
+          echo 'Failed to push after retries' >&2
+          exit 1
