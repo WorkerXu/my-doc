@@ -188,3 +188,13 @@
 | Pi Agent Teams 把 leader/teammate、共享任务列表、依赖图、文件邮箱、紧急消息、计划审批、worktree 隔离、模型策略和完整生命周期都做成可调用的团队控制面，适合直接拆解一个可操作的多 Agent 协作协议。 | https://github.com/tmustier/pi-agent-teams/blob/main/skills/agent-teams/SKILL.md |
 | 这份 Agent Team Orchestration Skill 明确定义 Orchestrator/Builder/Reviewer/Ops 角色、任务状态机、标准 handoff 内容、交叉 Review、checkpoint 与失败降级，适合在分享中提炼一套不依赖具体模型的“团队协作规约”。 | https://github.com/edisonzerolam/agent-team-orchestration/blob/main/SKILL.md |
 | Claude Code Agent Teams 的实现记录用独立完整上下文的 teammate + 共享任务列表，在 tmux 中由 Lead 实际构建出一个 Command→Agent→Skill 的工作流，适合做“原生 Agent Team 从启动、分工到产物落地”的小型可复现实操。 | https://github.com/shanraisshan/claude-code-best-practice/blob/main/implementation/claude-agent-teams-implementation.md |
+| openJiuwen 的企业级蜂群架构已在邮储金融生产环境落地，覆盖存量系统无侵入接入、多租户共享与强隔离、弹性调度、全链路审计及真实办公/监测/风控场景，适合作为“多 Agent 如何进入强监管生产系统并规模化运行”的案例。 | https://zhuanlan.zhihu.com/p/2069042095915000471 |
+| 企业 AI 软件工程 3.0 的一线分享把 Pod 式小组、全角色专属 Agent、多人+多智能体融合协作、代码库权限隔离和自动故障处理串在一起，适合补充“人和 Agent 混合组织如何真正改造团队研发流程”。 | https://zhuanlan.zhihu.com/p/2075979843955594765 |
+| 文章系统讨论企业多 Agent 的 Orchestrator、任务编排、共享上下文/记忆、并行处理、独立审查和权限边界，适合用来总结从单 Agent 升级为受控协作系统时必须补齐的最小工程要素。 | https://zhuanlan.zhihu.com/p/2069843019549955634 |
+| 制造业实践从“万能 Agent”转向调度、质检、运维等专业 Agent 集群，并强调确定性规则与大模型混合、独立部署和闭环协作，适合展示实体工业场景里的角色拆分、实时性与故障隔离权衡。 | https://zhuanlan.zhihu.com/p/2072736473464452198 |
+| 华为/openJiuwen 从 Coordination Engineering 与 Agent Scale Out 出发，涉及分布式动态调度、多模型路由、组织级记忆、多租户隔离、断点续跑和性能指标，适合讲多 Agent 如何从单机编排演进为企业级分布式平台。 | https://zhuanlan.zhihu.com/p/2062110218641732550 |
+| 淘宝直播基于 DataWorks Data Agent 重构真实数据研发流程，以规划/职能/报告 Agent 组成“数字工厂”，并结合人工 Confirm、标准化六环节、中心化/本地化双轨和持久记忆，适合作为大型团队多 Agent 流程再造案例。 | https://zhuanlan.zhihu.com/p/2060042247660474513 |
+| 用“Agent 军团 + 共享黑板”重构混沌工程，把无人干预、半小时内闭环、持续发现未知缺陷和结果可复用设为量化验收目标，适合分享共享状态、多 Agent 自动诊断与业务指标如何一起设计。 | https://zhuanlan.zhihu.com/p/2068687030658273687 |
+| 从 Agent→Agent、User→Agent→Agent、Agent→MCP 等真实协作链切入身份与权限传递，适合补充多 Agent 上生产后经常被忽略的最小权限、身份边界、跨 Agent 授权和审计治理。 | https://zhuanlan.zhihu.com/p/2063930333976847060 |
+| 专门讨论多智能体路由评测从单一完成率扩展到效率、质量、成本三维，并比较 RouterBench、BFCL V4、MasRouter 等方法，适合分享如何验证 Orchestrator 是否真的“选对 Agent”，而不只看最终答案。 | https://zhuanlan.zhihu.com/p/2040547723640842033 |
+| 优刻得的团队级 AI 编程方案把规划、执行、批量、审查 Agent 分工与多模型路由、独立审查、客观验证、最小权限和风险分级结合，适合作为“多 Agent 同时优化质量、成本与治理”的研发落地案例。 | https://zhuanlan.zhihu.com/p/2054975440863998381 |
