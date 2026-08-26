@@ -253,6 +253,11 @@
 | https://www.bilibili.com/video/BV1cd9yBwEDk |
 | https://www.bilibili.com/video/BV1G7hG6MEQ6 |
 | https://www.bilibili.com/video/BV1nybe6GE9t |
+| https://www.bilibili.com/video/BV19D9eB9Etg |
+| https://www.bilibili.com/video/BV11QdmBEESq |
+| https://www.bilibili.com/video/BV113EY6UEyy |
+| https://www.bilibili.com/video/BV18i8y6HEDc |
+| https://www.bilibili.com/video/BV1MUuR6hEdK |
 | https://aws.amazon.com/blogs/compute/building-fault-tolerant-multi-agent-ai-workflows-with-aws-lambda-durable-functions/ |
 | https://cloud.google.com/blog/topics/developers-practitioners/beyond-static-prompts-with-google-adk |
 | https://cloud.google.com/blog/products/ai-machine-learning/how-agents-can-delegate-better |
