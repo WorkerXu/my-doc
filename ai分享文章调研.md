@@ -421,3 +421,11 @@
 | 用 Google ADK 与 A2A 让多个 Agent 协作完成游戏设计，是较具体的端到端案例，适合展示专业 Agent 如何分工、互相调用并共同完成一个可观察的任务。 | https://www.youtube.com/watch?v=nGjGUCOiXk4 |
 | GitHub 场景下“一名开发者、两打 Agent、零对齐”的协作复盘很适合做反例材料，用来讨论 Agent 数量增加后的人类注意力、上下文对齐、任务边界与协作成本为何会成为瓶颈。 | https://www.youtube.com/watch?v=ClWD8OEYgp8 |
 | 通过 CMUX 同时编排 Claude Code 与 Pi Agent 的演示，适合展示异构 Coding Agent 如何进入同一执行控制面，并观察跨 Agent 调度、并行任务与人工监督的实际工作方式。 | https://www.youtube.com/watch?v=WAFUMBLOjHo |
+| WorkBuddy 把多人和多 Agent 放进同一团队空间，并直接涉及权限、评论与版本管理，适合作为“多 Agent 协作不只需要编排，还需要团队级协作与治理界面”的产品化案例。 | https://www.bilibili.com/video/BV1yQgP6JEfX |
+| Pi Subagents 可把复杂任务委派给多个专职子 Agent，并行执行代码审查、项目分析、功能开发与安全检查，适合作为 Coding Agent 中任务拆分、专业分工和并行执行的轻量落地示例。 | https://www.bilibili.com/video/BV1vL3o6UE5T |
+| 该 Codex 实战完整演示同项目新线程、跨项目任务、会话 ID 接力以及主 Agent 指挥多个工作 Agent 并行调研四种协作方式，还覆盖分发、监督、验收和汇总，特别适合分享任务交接与 1 对多编排。 | https://www.bilibili.com/video/BV1L73o67EGh |
+| Hermes Bot Mode 让每个 Bot 拥有独立角色、模型、记忆和技能，并通过 Agent Inbox 互相协作，可直接组合研究、写作等专职 Bot，适合展示“独立 Agent 身份 + 消息通道 + 专业分工”的协作产品形态。 | https://www.bilibili.com/video/BV1zs8U6LEk5 |
+| 该内容专门讨论多 Agent 协作中的记忆管理误区，适合作为反例材料补充共享记忆、上下文污染与协作状态设计的问题，避免分享只讲“怎么并行”而忽略“共享什么状态”。 | https://www.bilibili.com/video/BV1o7Lb67EhT |
+| 这期 Agent 实践聚焦多智能体通信和上下文管理，并提供持续更新的代码与笔记项目，适合从工程层讲清楚 Agent 之间如何传递信息、管理上下文并把协作机制落成可复现实现。 | https://www.bilibili.com/video/BV1nmTF6dEkz |
+| OpenCode 多 Agent 多线程实战强调同一时间并行推进更多工作，适合用于讨论 Coding Agent 的并发执行、任务切分与吞吐提升，以及并行带来的协调成本。 | https://www.bilibili.com/video/BV1TYud6hEk9 |
+| Coze 多 Agent 实战以课程开发助手为具体业务场景，从低代码方式搭建可用的多智能体应用，适合补充非研发团队如何通过角色分工把多 Agent 协作快速落到内容生产流程。 | https://www.bilibili.com/video/BV1vx4y1H74f |
