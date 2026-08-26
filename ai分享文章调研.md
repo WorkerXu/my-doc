@@ -18,7 +18,7 @@
 | Hermes Kanban 用三个 Agent 跑通真实协作流程，重点记录任务依赖、工作区隔离、中断接续与失败恢复等容易踩坑的细节，适合作为小规模多 Agent 协作如何真正跑起来的实操案例。 | https://zhuanlan.zhihu.com/p/2037533360826930853 |
 | 文章从 Agent、Skills 到 Teams 梳理架构演进与技术选型，并结合多智能体和 Agent Teams 的落地经验讨论能力边界，适合在分享中建立“什么时候该从单 Agent 升级为团队协作”的选型框架。 | https://zhuanlan.zhihu.com/p/2022259323544281560 |
 | 新浪微博案例聚焦企业 AI 应用平台、知识复用和多 Agent 业务场景的真实落地，同时覆盖内部推广和规模化应用路径，适合补充大型互联网组织如何把多 Agent 能力嵌入现有业务体系。 | https://zhuanlan.zhihu.com/p/1991186674080837925 |
-| AgentOps 实践把单智能体、多智能体和智能体协同放进统一运维平台，并强调 Human-in-the-Loop、审计、工具治理和可量化 ROI，适合分享高风险生产场景下多 Agent 如何做到可控、可审计、可推广。 | https://zhuanlan.zhihu.com/p/2015796905158923426 |
+| AgentOps 实践把单智能体、多智能体和智能体协同放进统一运维平台，并强调 Human-in-the-Loop、审计、工具治理和可量化 ROI，适合分享高风险生产场景下多 Agent 如何做到可控、可审计、可推广。 | https://zhuanlan.zhihu.com/p/2015796905158926426 |
 | 从单体 Agent 推进到分布式协作，系统讲主从与对等模式、同步与异步通信、共享状态、超时重试、状态机、补偿机制、并发与 Token 成本优化，并给出完整工作流代码，适合分享“协作架构如何工程化”。 | https://juejin.cn/post/7610444188525592616 |
 | 用同一业务场景对比 AgentScope 与 LangGraph 的多智能体实现，重点展示 StateGraph、Checkpoint Memory、跨 Agent 状态传递以及 Network、Supervisor、分层等协作模式，适合做框架选型与状态管理案例。 | https://juejin.cn/post/7591697558377431082 |
 | 以 4 个 Agent 组成真实 AI 写作团队，完整记录跨 Agent 通信权限、会话可见性等配置导致的协作失败与修复过程，适合用来讲多 Agent 从“能跑”到“稳定跑”的常见工程坑。 | https://juejin.cn/post/7607255496454881280 |
@@ -178,3 +178,13 @@
 | Microsoft Foundry 从生产运行层总结 Agent 的隔离沙箱、持久状态、跨框架部署和 OpenTelemetry 全链路追踪，其中每次 sub-agent hop 与 handoff 都进入统一 Trace，适合讲多 Agent 上线后运行时与可观测基础设施如何补齐。 | https://devblogs.microsoft.com/foundry/agent-service-build2026/ |
 | 该 Claude Code 多 Agent 项目把 planner、supervisor、worker 拆成明确角色，用 Git worktree 隔离、DAG 调度、接口契约、风险评分、冲突检测、状态恢复、worker mailbox 和验证套件组成完整并行研发控制面，适合做可复现的 Coding Agent 协作案例。 | https://github.com/SynBioExplorer/Claude_Code_agentic_coding |
 | Gaia 从安全视角实现事件驱动的多 Agent 编排：在路由、工具调用和 handoff 各阶段做风险分级、权限/同意门禁、上下文注入、handoff contract 校验、审计与记忆沉淀，适合分享“多 Agent 不只会协作，还要限制彼此能做什么”。 | https://github.com/metraton/gaia |
+| OpenHive 把 Queen + worker colony 做成面向生产业务流程的多 Agent Harness，通过共享 tracker、持久计划、动态 fan-out、crash-safe park/resume、预算约束、可观测与 HITL 形成完整运行闭环，适合分享“模型之外的 Harness 才是生产可靠性的关键”这一落地思路。 | https://github.com/aden-hive/hive |
+| Gas Town 把多 Coding Agent 协作做成持久工作区：用 Git-backed 状态、mailbox/handoff、任务 Convoy、watchdog、merge queue、升级机制与并发调度管理数十个 Agent，适合拆解长期并行研发中“状态、恢复、合并、监控”如何工程化。 | https://github.com/gastownhall/gastown |
+| Microsoft 的 Multi-Agent Custom Automation Engine 是可直接部署到 Azure 的业务自动化参考实现，用专业 Agent 协同完成计划、执行和校验，并配套 Container Apps、Cosmos DB、Foundry、安全与多类真实业务场景，适合作为企业方案从架构到部署的完整案例。 | https://github.com/microsoft/Multi-Agent-Custom-Automation-Engine-Solution-Accelerator |
+| Squad 把 GitHub Copilot Agent 团队直接放进代码仓库，用持久角色知识、共享决策、并行执行、Issue 轮询派发、checkpoint/state backend 和分级故障恢复保持人类主导，适合分享“Agent 团队如何嵌入现有 GitHub 研发流程并长期运转”。 | https://github.com/bradygaster/squad |
+| Agent Teams AI 把 Claude Code、Codex、OpenCode 等多种运行时统一到桌面协作层，提供 Agent 自主建任务/互相评审、看板、跨团队通信、worktree、逐任务日志、预算与人工审批，适合展示多 Agent 从 CLI 编排走向团队可视化产品的形态。 | https://github.com/777genius/agent-teams-ai |
+| AutoScientists 用去中心化、自组织 Agent 团队进行长时间科学实验：Agent 会围绕假设动态组队、互相批判方案、共享成功与失败以减少重复探索，并给出多个基准上的量化提升，适合用来讲“中心调度之外的自组织协作”及其验证方式。 | https://github.com/mims-harvard/AutoScientists |
+| Wegent 把本地 Coding Agent、远程执行机和自托管 Web/Backend 放进统一 project space，通过任务板、共享文件、自动化、执行历史和交付状态连接多人/多 Agent 工作，适合补充“协作落地最终需要项目空间与执行基础设施，而不只是 Agent 对话”。 | https://github.com/wecode-ai/Wegent |
+| Pi Agent Teams 把 leader/teammate、共享任务列表、依赖图、文件邮箱、紧急消息、计划审批、worktree 隔离、模型策略和完整生命周期都做成可调用的团队控制面，适合直接拆解一个可操作的多 Agent 协作协议。 | https://github.com/tmustier/pi-agent-teams/blob/main/skills/agent-teams/SKILL.md |
+| 这份 Agent Team Orchestration Skill 明确定义 Orchestrator/Builder/Reviewer/Ops 角色、任务状态机、标准 handoff 内容、交叉 Review、checkpoint 与失败降级，适合在分享中提炼一套不依赖具体模型的“团队协作规约”。 | https://github.com/edisonzerolam/agent-team-orchestration/blob/main/SKILL.md |
+| Claude Code Agent Teams 的实现记录用独立完整上下文的 teammate + 共享任务列表，在 tmux 中由 Lead 实际构建出一个 Command→Agent→Skill 的工作流，适合做“原生 Agent Team 从启动、分工到产物落地”的小型可复现实操。 | https://github.com/shanraisshan/claude-code-best-practice/blob/main/implementation/claude-agent-teams-implementation.md |
