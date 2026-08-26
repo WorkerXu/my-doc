@@ -209,3 +209,8 @@
 | AWS 的 Agent Orchestra 实战把多个容器化领域 Agent 通过 AgentCore Orchestrator 动态路由，并结合 Memory、Observability 与 MCP Lambda 汇总多模态结果，适合展示“运行时、记忆、监控和工具协议”如何一起支撑生产协作。 | https://www.youtube.com/watch?v=R0eY5lpyWOo |
 | AWS re:Invent 2025 用 SecOps 真实流程演示专业 Agent 共享漏洞上下文、定位受影响服务器并生成修复补丁/产物，适合把多 Agent 从通用 Demo 落到“调查→修复→交付”的高风险业务闭环。 | https://www.youtube.com/watch?v=gWY9z75qCcU |
 | 该视频把生产多 Agent 常见架构归纳为 Orchestrator-Worker、Hierarchical、Peer-to-Peer、Pipeline 四类，并结合真实用例与常见错误讨论选型，适合在分享开场建立协作模式地图，再衔接具体工程案例。 | https://www.youtube.com/watch?v=-zBbij9rrEI |
+| Hermes 的看板模式把“多个 Agent 同时存在”推进到真正的协作调度，演示用共享看板组织任务与状态，适合分享多 Agent 团队为什么需要显式任务控制面，而不能只靠对话和人工派活。 | https://www.bilibili.com/video/BV1Vm556BERU |
+| Claude Code 实战直接对比多个 Subagents 与多个独立 Agent 两种协作方式，适合用来讲轻量委派、独立上下文和并行团队之间的边界，以及 Coding 场景该怎样选多 Agent 模式。 | https://www.bilibili.com/video/BV1WtoTBiEuR |
+| DeepSeek Harness 同时实测 Workflow 与 Agent Teams：动态派生多个 SubAgent 并行审计代码，再组建专业评审团队，并展示任务状态、Token 消耗和结构化结果汇总，适合对比“动态工作流”和“团队式编排”两类落地方式。 | https://www.bilibili.com/video/BV1THhK63Ebd |
+| OpenCLAW 实操把多 Agent 协作拆成流水线、并行依赖和 AI 辩论三种模式，并用前端项目完整演示分工编码、审核和测试，还给出不同内存配置下的团队规模建议，适合讲协作拓扑与资源约束如何一起设计。 | https://www.bilibili.com/video/BV1tAdsBXE6Z |
+| 三个智能体协作编码案例用少量 Markdown 文件和提示词组织 Agent 团队自动完成复杂网站，并给出相对单智能体的明显效率收益，适合作为低门槛“角色分工 + 共享约定”式 Coding Agent 团队案例。 | https://www.bilibili.com/video/BV141gPzeEB7 |
