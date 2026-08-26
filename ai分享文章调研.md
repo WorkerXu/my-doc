@@ -364,3 +364,8 @@
 | 通过 Claude 澄清需求、Gemini 设计原型、Codex 并行编码与测试组成端到端开发团队，并用 Skills 自动激活和质量门禁串联流程，适合分享跨模型 Agent 如何按能力分工而不是让单一模型包办全部研发环节。 | https://zhuanlan.zhihu.com/p/2005277073036566597 |
 | 从真实开发任务依赖出发解释哪些任务可并行、哪些必须串行，并讨论多 Agent 同时改代码时的冲突问题，适合用于讲解 AI Coding 多 Agent 的任务图、并行度控制和协作边界。 | https://zhuanlan.zhihu.com/p/2023489705921004804 |
 | 用 12 个 Claude Code Agent 按研发岗位组成完整团队，设置阶段流水线、契约节点、独立 QA、失败打回与人工兜底，适合展示多 Agent 规模扩大后如何靠流程门禁维持可交付性。 | https://zhuanlan.zhihu.com/p/2045030955761521332 |
+| 把可连续运行 10 小时以上的本地全栈自治开发工作流演进成 Lead、Backend、Frontend、QA 分工的 Agent Team，并用文件状态、并行执行、自动测试和 Agent 间报错交接跑真实项目，适合展示多 Agent 从单线程自治到可验收团队协作的实战路径。 | https://juejin.cn/post/7613970761351430144 |
+| 围绕通义灵码 Agent Team/Quest 给出 Planner、开发、QA 的完整任务拆分，结合 Worktree 隔离、Spec 驱动、验收/回退和电商秒杀案例，适合补充国内 AI Coding 产品如何把团队协作落到真实研发流程。 | https://juejin.cn/post/7631179160284250163 |
+| 横向比较 agent-team、Claude Agent Teams、Claude Squad、MetaGPT 的隔离机制、通信、角色复用、模型支持、质量门禁与任务管理，并给出多 Worktree 并行实操，适合做多 Agent Coding 架构选型的对照材料。 | https://juejin.cn/post/7614788881902551046 |
+| 把 Multi-Agent 放进完整生产工程体系，比较 Orchestrator、层级、P2P 三类协作模式，并讨论框架选型、共享记忆、通信爆炸、责任归因、成本、过度设计和可观测性，适合做分享的总体架构与反模式地图。 | https://juejin.cn/post/7632507085398949926 |
+| 用 SDD + Subagent 把上下文隔离、强制 TDD 红绿重构和“意图/质量”双阶段审查串成协作流程，适合说明多 Agent 的价值不只在并行，还在职责分离和可执行的质量门禁。 | https://juejin.cn/post/7625254134889791514 |
