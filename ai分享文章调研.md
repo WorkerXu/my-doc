@@ -153,3 +153,8 @@
 | AWS re:Invent 2025 直接讲用 A2A 与 MCP 构建可扩展、自编排 AI 工作流，适合分享协议化 Agent 通信、工具连接与规模化协作怎样组合落地。 | https://www.youtube.com/watch?v=9O9zZ1lQWiI |
 | Google Cloud 官方用 A2A 与 Agent Registry 搭建多 Agent 系统，适合讲 Agent 发现、注册与跨服务协作如何从点对点调用走向平台化治理。 | https://www.youtube.com/watch?v=-MME36Ft9Gc |
 | Microsoft Developer 从 Foundry 视角展示 AI 自动化与多 Agent 编排，适合补充企业平台层如何把 Agent 团队、工作流和生产运行能力统一承载。 | https://www.youtube.com/watch?v=v1Q7rEE3StM |
+| Pi Agent 的 pi-dynamic-workflows 会按当前任务动态生成 workflow，把复杂任务拆给相互隔离的子 Agent，并以并行、串联、汇总组成可观察执行链，适合分享“动态规划 + 隔离执行 + fan-out/fan-in”如何落地。 | https://www.bilibili.com/video/BV11yM96nE45 |
+| ClawSwarm 是开源多 Agent 编排系统，用 FastAPI 调度中心、Vue 管理端和 OpenClaw 通道插件组织专业 Agent 讨论、分工与执行，适合展示 hub-and-spoke 式群体协作如何产品化。 | https://www.bilibili.com/video/BV1WuDZBFE8Q |
+| Taogen 的 p2p-english-class 让 teacher、student、memory-coach 三个 Agent 通过 coms-net 跨设备 P2P 协作，并验证发现、消息收发、自动回复和证据校验，适合讲去中心化 Agent 通信与真实业务状态传递。 | https://www.bilibili.com/video/BV1PT7C6gEs7 |
+| herdr + Tmux 实践聚焦跨 Agent、跨 Session 通信，适合补充多 Agent 协作里经常被忽略的“通信基础设施层”，尤其是并行 CLI Agent 如何交换消息与协调工作。 | https://www.bilibili.com/video/BV1suuj6CEje |
+| AionUi 自动识别 Claude Code、Codex、Gemini CLI 等 20+ CLI Agent，并在统一桌面里支持并行派活、组队协作和远程控制，适合展示异构 Coding Agent 如何从多个终端升级成统一协作工作台。 | https://www.bilibili.com/video/BV1TDbk6gEBU |
