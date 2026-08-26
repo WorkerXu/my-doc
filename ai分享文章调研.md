@@ -468,3 +468,6 @@
 | 从 AgentTeams、AgentLoop 到 Claude 群聊讨论多智能体“群聊模式”真正困难的地方，并把协作与治理平台、Leader/Worker 组织关系等放在一起分析，适合补充企业级多 Agent 不是“拉群聊天”，而需要专门协作治理层。 | https://juejin.cn/post/7660312458697228322 |
 | 用竞品调研等可复现任务从零搭建 Claude Agent Teams，让不同 Agent 分别搜索、分析、汇总，适合作为现场演示“任务拆分—专业分工—结果汇总”的最小端到端多 Agent 实战。 | https://juejin.cn/post/7613960231039860777 |
 | 从单体到 Agent Teams 的架构演进出发，重点给出“什么任务才值得上多 Agent”的判断启发，并围绕独立上下文与协作需求解释拆分边界，适合分享中建立“先判断是否需要团队，再谈编排”的选型框架。 | https://juejin.cn/post/7613359984269148206 |
+| 围绕 Orchestrator Agent + MCP 展示 Agent 驱动自动化，适合说明中央编排器如何借助标准工具协议连接多个执行能力并形成可扩展工作流。 | https://www.youtube.com/watch?v=Ons1Fv3IE4U |
+| 以 OpenClaw 搭建实际多 Agent Team 并做现场演示，适合观察个人或小团队如何组织多个 Agent 协作完成持续工作，而不只是框架概念。 | https://www.youtube.com/watch?v=bzWI3Dil9Ig |
+| SoulSync Demo & Deep Dive 聚焦多 Agent 在 Agentic Automation 中的协作，适合补充业务自动化场景里多个 Agent 如何围绕同一流程分工配合的演示案例。 | https://www.youtube.com/watch?v=arNWaddf-lc |
