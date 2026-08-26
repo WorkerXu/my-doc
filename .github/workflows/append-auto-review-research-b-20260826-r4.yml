@@ -1,0 +1,61 @@
+name: Append auto review research b 20260826 r4
+
+on:
+  push:
+    paths:
+      - '.github/workflows/append-auto-review-research-b-20260826-r4.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Append new research rows
+        shell: bash
+        run: |
+          set -euo pipefail
+          article='自动审查文章调研.md'
+          history='自动审查历史调研.md'
+
+          ensure_newline() {
+            local file="$1"
+            if [ -s "$file" ] && [ "$(tail -c 1 "$file" | od -An -t u1 | tr -d ' ')" != "10" ]; then
+              printf '\n' >> "$file"
+            fi
+          }
+
+          ensure_newline "$article"
+          ensure_newline "$history"
+
+          append() {
+            local reason="$1"
+            local url="$2"
+            if ! grep -Fqx "$url" "$history"; then
+              printf '| %s | %s |\n' "$reason" "$url" >> "$article"
+              printf '%s\n' "$url" >> "$history"
+            fi
+          }
+
+          append 'Swarms 原生支持 Codex 多 Agent 编排：planner 先生成带依赖的计划并派独立 subagent 查缺补漏，执行 Agent 完成任务后提交代码、回写计划状态与修改文件，再由 orchestrator 验证；适合把 repo 内 plan 文件、提交和并行 review 组织成同一可审计闭环。' 'https://github.com/am-will/swarms'
+          append 'codereview-cli 可用 Codex CLI 作为 reviewer runtime，固定 PR 的 base/head SHA、复用 PR 级 reviewer cohort，并持久化可恢复的审查状态后回贴 GitHub；适合作为 Codex 外部的多 Agent 审查控制面，避免审查目标随分支漂移。' 'https://github.com/open-cli-collective/codereview-cli'
+          append 'review-agent 会按前端/后端变更自动委派给不同 specialist subagents，并把结果发布成 GitHub PR review；适合作为 Codex 之外的独立 reviewer 层，再与设计审查 finding 聚合后回流实现 Agent。' 'https://github.com/juandarn/review-agent'
+          append 'figma-refine 会读取项目上下文和 Figma ReviewNote，并通过三层截图验证设计改动；适合把设计文件中的批注与视觉证据变成独立 design-reviewer 的可验证输入，而不是只靠代码 diff 判断。' 'https://github.com/fideguch/figma-refine'
+          append 'Foldo 是面向 AI 生成代码的 Figma 式多人 review canvas，并提供 MCP、评论、比较与发布工作流；适合把代码 reviewer 与设计 reviewer 的 findings 放进同一可交互审查面，再把结论交回 Agent 修复。' 'https://github.com/lukataylo/foldo'
+          append 'U2DIA AI Kanban 以 MCP 暴露 ticket、artifact、feedback、activity 等 17 个工具并实时展示 review 流转；可作为 Codex/其他 MCP Agent 外部看板的参考实现，把聚合 findings、审查证据和后续修复任务作为可追踪工件保存。' 'https://github.com/U2SY26/u2dia-kanban'
+          append 'proof-verify 要求用从未参与实现的独立 Agent，只读取 PLAN.md 与代码自行验证验收条件，并在 verdict 中记录 plan hash；适合把“计划版本 + 独立验证结论”固化为可比对证据，再与目标 commit SHA 一起进入最终审查记录。' 'https://github.com/AnastasiyaW/codex-claude-code-config/blob/main/skills/development/proof-verify/SKILL.md'
+
+      - name: Commit research updates
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- '自动审查文章调研.md' '自动审查历史调研.md'; then
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- '自动审查文章调研.md' '自动审查历史调研.md'
+          git commit -m 'docs: append automatic review research b 20260826 r4'
+          git push
