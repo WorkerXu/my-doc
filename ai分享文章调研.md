@@ -198,3 +198,7 @@
 | 从 Agent→Agent、User→Agent→Agent、Agent→MCP 等真实协作链切入身份与权限传递，适合补充多 Agent 上生产后经常被忽略的最小权限、身份边界、跨 Agent 授权和审计治理。 | https://zhuanlan.zhihu.com/p/2063930333976847060 |
 | 专门讨论多智能体路由评测从单一完成率扩展到效率、质量、成本三维，并比较 RouterBench、BFCL V4、MasRouter 等方法，适合分享如何验证 Orchestrator 是否真的“选对 Agent”，而不只看最终答案。 | https://zhuanlan.zhihu.com/p/2040547723640842033 |
 | 优刻得的团队级 AI 编程方案把规划、执行、批量、审查 Agent 分工与多模型路由、独立审查、客观验证、最小权限和风险分级结合，适合作为“多 Agent 同时优化质量、成本与治理”的研发落地案例。 | https://zhuanlan.zhihu.com/p/2054975440863998381 |
+| 从零构建 Coding Agent 的团队篇把 Teammate 设计为长期存在、带独立上下文/邮箱/名册的队友，并给出 TeamManager、持久化、独立 Agent Loop 与 Subagent/Runtime Task 的边界，适合用来讲“多 Agent 团队到底要补哪些基础机制”。 | https://juejin.cn/post/7627665051668414479 |
+| HiClaw 以开源 Agent Teams 系统把 Manager、无状态 Worker、Matrix 房间、AI Gateway、MinIO、MCP、心跳检查和 Human-in-the-Loop 串成可部署工作流，适合展示多 Agent 从聊天编排走向可观察、可干预的团队基础设施。 | https://juejin.cn/post/7614747451153743924 |
+| AI Mind 的真实项目复盘采用 Supervisor→Plan→Task→并行 Reviewer→返修链路，并用 strict schema contract、Runtime 硬规则和有限重试把 LLM 不确定性锁在可控范围内，特别适合分享“多 Agent 可靠性不能只靠 Prompt”。 | https://juejin.cn/post/7669221547006230574 |
+| OpenPencil 在真实设计工具中实现 Agent Team，把一句 UI 需求拆成多个子任务交给不同 Agent 协作生成，适合分享“多 Agent 如何嵌入既有产品功能并完成面向用户的实际交付”，而不只是框架 Demo。 | https://juejin.cn/post/7614336660986544154 |
