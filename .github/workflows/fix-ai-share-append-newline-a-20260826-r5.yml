@@ -1,0 +1,40 @@
+name: Fix AI share append newline a 20260826 r5
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-ai-share-append-newline-a-20260826-r5.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix-newline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fix joined table row without deleting data
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git pull --rebase origin main
+          python - <<'PY'
+          from pathlib import Path
+          for name in ['ai分享文章调研.md', 'ai分享历史调研.md']:
+              p = Path(name)
+              s = p.read_text(encoding='utf-8')
+              fixed = s.replace('https://github.com/daewoochen/agent-team-go ||', 'https://github.com/daewoochen/agent-team-go |\n|')
+              if fixed != s:
+                  p.write_text(fixed, encoding='utf-8')
+          PY
+          if git diff --quiet -- 'ai分享文章调研.md' 'ai分享历史调研.md'; then
+            exit 0
+          fi
+          git add 'ai分享文章调研.md' 'ai分享历史调研.md'
+          git commit -m 'docs: fix multi-agent research table newline'
+          git push origin HEAD:main
