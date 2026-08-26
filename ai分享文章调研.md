@@ -214,3 +214,8 @@
 | DeepSeek Harness 同时实测 Workflow 与 Agent Teams：动态派生多个 SubAgent 并行审计代码，再组建专业评审团队，并展示任务状态、Token 消耗和结构化结果汇总，适合对比“动态工作流”和“团队式编排”两类落地方式。 | https://www.bilibili.com/video/BV1THhK63Ebd |
 | OpenCLAW 实操把多 Agent 协作拆成流水线、并行依赖和 AI 辩论三种模式，并用前端项目完整演示分工编码、审核和测试，还给出不同内存配置下的团队规模建议，适合讲协作拓扑与资源约束如何一起设计。 | https://www.bilibili.com/video/BV1tAdsBXE6Z |
 | 三个智能体协作编码案例用少量 Markdown 文件和提示词组织 Agent 团队自动完成复杂网站，并给出相对单智能体的明显效率收益，适合作为低门槛“角色分工 + 共享约定”式 Coding Agent 团队案例。 | https://www.bilibili.com/video/BV141gPzeEB7 |
+| 用 7 分钟梳理工业级多 Agent 编排的四种控制模式，适合在分享中快速建立“谁负责决策、谁负责编排”的模式地图，并用于对比不同协作拓扑的适用边界。 | https://www.bilibili.com/video/BV19D9eB9Etg |
+| 通过开源插件让飞书群里的多个 Agent 机器人互相 @、协作并完成完整产品交付，适合展示多 Agent 如何直接嵌入现有团队沟通工具并形成真实交付闭环。 | https://www.bilibili.com/video/BV11QdmBEESq |
+| Codex 多 Agent 自主协同实操以极简入口触发团队式执行，适合用来观察任务拆分、角色协同与自动推进如何在 Coding Agent 场景中被封装成低门槛工作流。 | https://www.bilibili.com/video/BV113EY6UEyy |
+| Multica 最佳实践聚焦“超级个体”场景下的多 Agent 协作，适合补充人与多个专业 Agent 共事、任务分工和团队化工作方式的实际落地视角。 | https://www.bilibili.com/video/BV18i8y6HEDc |
+| Codex 多智能体编排协同工作示例直接面向 Coding Agent 的并行协作，适合补充多 Agent 编排在日常软件开发中的轻量化实操案例。 | https://www.bilibili.com/video/BV1MUuR6hEdK |
