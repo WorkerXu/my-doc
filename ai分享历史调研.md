@@ -554,3 +554,10 @@
 | https://sdivye92.medium.com/rethinking-multi-agent-systems-c06d1a354aa6 |
 | https://medium.com/%40benovedoz/designing-a-multi-agent-ai-workflow-that-doesnt-break-production-792b7ed0f4cd |
 | https://www.kunalganglani.com/blog/multi-agent-ai-systems-production |
+| https://github.com/kross88/AITeamOps |
+| https://github.com/stardino2lab/agent-team |
+| https://github.com/xy1121/agentroom |
+| https://github.com/uluckyXH/OpenMOSS |
+| https://github.com/Coral-Protocol/AgentRadio |
+| https://github.com/The-AI-Framework-and-Data-Tech-Lab-HK/ContextHub |
+| https://github.com/aws-samples/bedrock-multi-agents-collaboration-workshop |
