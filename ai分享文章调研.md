@@ -295,3 +295,5 @@
 | 企业级 Harness 项目把 Planning、异步子 Agent、Docker Sandbox、HITL、Skills 自进化和 Context Engineering 放进同一套商业级实现，特别适合拆解多 Agent 从委派到安全、恢复与人工治理的完整落地链路。 | https://www.bilibili.com/video/BV1Cs7h6MEsX |
 | OpenClaw 多 Agents 配置从单 Agent 的上下文拥堵、串行执行与权限风险出发，进一步实操权限隔离、模型差异化与团队协作，适合分享“为什么拆 Agent”以及配置层如何真正落地。 | https://www.bilibili.com/video/BV1PTPQz5Er4 |
 | 将 Multi-Agent、Harness、Tools、MCP、Deep Agent 与 Skills 放进同一个项目实战，适合展示多 Agent 协作如何和工具协议、技能体系及运行框架组合成端到端应用。 | https://www.bilibili.com/video/BV1GruR6KEVx |
+| Google 官方用 Python 提取 Agent 与 Go 确定性校验 Agent 通过 A2A 组成合同合规流水线，直接解决真实团队中不同语言、不同部署目标的 Agent 无需重写即可协作的问题，适合分享“跨语言、跨服务多 Agent 如何协议化落地”。 | https://developers.googleblog.com/build-cross-language-multi-agent-team-with-google-agent-development-kit-and-a2a/ |
+| Fallbrook 基于已上线企业多 Agent 工作流归纳 2026 年真正扩展成功的协作模式、失效方式与运维纪律，适合用来补充“哪些架构从 Demo 活到了生产、团队为此付出了哪些工程代价”的实践视角。 | https://www.fallbrookresearch.com/2026/05/08/multi-agent-workflows-in-production.html |
