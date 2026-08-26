@@ -1,0 +1,83 @@
+name: Append AI share research a 20260826 r5
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/append-ai-share-research-a-20260826-r5.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append-research:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Append unique research rows
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          ARTICLE='ai分享文章调研.md'
+          HISTORY='ai分享历史调研.md'
+
+          append_selected() {
+            local reason="$1"
+            local url="$2"
+            if ! grep -Fq "$url" "$HISTORY"; then
+              printf '| %s | %s |\n' "$reason" "$url" >> "$ARTICLE"
+              printf '| %s |\n' "$url" >> "$HISTORY"
+            fi
+          }
+
+          append_history_only() {
+            local url="$1"
+            if ! grep -Fq "$url" "$HISTORY"; then
+              printf '| %s |\n' "$url" >> "$HISTORY"
+            fi
+          }
+
+          apply_entries() {
+            append_selected 'SocioFi 基于 8–22 个 Agent 的生产系统总结顺序流水线、并行协作、层级编排与人工门禁等模式，并复盘 13-Agent GTM 与 22-Agent 制造平台在接口隔离、实时数据新鲜度和可观测性上的实际问题，适合作为“Agent 数量上升后协作复杂度如何失控”的一线案例。' 'https://sociofitechnology.com/labs/blog/multi-agent-orchestration-patterns'
+            append_selected 'Adobe 的企业 B2B 营销多 Agent 系统把透明路由、会话/用户/组织三级记忆、plan-and-execute 与 discover-and-create 工作流、MCP 工具接入和组合式评估放在同一生产案例中，还讨论 Agent 单体表现不错但组合后失败的 compositionality gap，特别适合分享协作系统怎样做评估。' 'https://llmday.com/2026-san-francisco-q2/Sanghamitra_Deb_Adobe_Building_Production_MultiAgent_Systems_Memory__Orchestration__Evaluation_at_Sc'
+            append_selected 'Conf42 的生产案例从单体客服聊天机器人演进到云原生多 Agent 订单支持平台，重点处理跨服务编排深度、延迟叠加、局部故障传播、多跳推理追踪与治理，适合讲“把多 Agent 当分布式系统而不是 Prompt 技巧”后的工程设计。' 'https://www.conf42.com/Cloud_Native_2026_Sandeep_Mannapur_ai_agents_workflows'
+            append_selected 'AWS 的 Agent Orchestration 实践把网络分区、API 限流、长任务、人工审批、定时任务和事件触发都纳入编排层，强调 durable、observable、lifecycle-managed 的运行保障，适合补充多 Agent 上生产后为什么需要传统分布式工作流的可靠性机制。' 'https://aws.amazon.com/marketplace/build-learn/ai-agent-learning-series/agent-orchestration'
+            append_selected 'Codeforges 的生产案例用 root agent 动态派生专业 Agent，并围绕真实成本、并行文件冲突、崩溃后的上下文恢复、高风险人工审批和全链路审计设计监督层，适合作为“自治 Agent 团队如何加预算、权限与审计护栏”的落地样本。' 'https://codeforges.com/case-studies/autonomous-agent-orchestration'
+            append_selected '制造业案例由生产监控、维护、质量、库存、能源和交班 6 个专业 Agent 通过 Postgres 事件总线协作，在 40 台设备上 24/7 运行并坚持所有物理动作由人批准，同时披露停机改善、建设周期和成本，适合展示实体业务里多 Agent 与 HITL、事件驱动架构怎样结合。' 'https://aliansoftware.com/en/blog/we-built-ai-agent-manufacturing-cost'
+            append_selected 'GitHub Agentic Workflows 官方把多个仓库 Agent 的协作提升到项目协调层，通过任务分解、依赖跟踪、进度监控和延迟告警来推进大型改造，适合分享“多 Agent 研发协作如何直接落在 Issue/PR/仓库工作流上”。' 'https://github.github.io/gh-aw/blog/2026-01-13-meet-the-workflows-campaigns/'
+            append_selected 'Bottega 面向工程团队实现 team-first、remote-first 的 Coding Agent 编排，用“人开始/结束、AI 执行中间过程”的模式串起规划、实现、QA 循环和 PR 评论处理，并可混用 Claude Code、Codex、OpenCode，适合展示多模型 Agent 团队如何嵌入真实研发流程。' 'https://github.com/vdaubry/bottega'
+            append_selected 'team-tasks 用共享 JSON 任务文件实现 Linear、DAG 和 Debate 三种协作模式，分别对应串行交接、依赖并行和多 Agent 交叉评审，代码很轻量，适合在分享中作为“最小可理解协作控制面”的可复现实例。' 'https://github.com/win4r/team-tasks'
+            append_selected '工业 UI 自动测试研究对 LangGraph 多 Agent 系统进行了 300 份连续报告、636 次测试执行的量化分析：修复收敛率约 70%，但首轮成功仅 10%，还有大量无可执行产物和“削弱断言”式伪收敛，适合用数据说明为什么生产多 Agent 必须限制自治并设置验证边界。' 'https://arxiv.org/abs/2605.01471'
+
+            append_history_only 'https://nukcloud.com/en/blog/2026-multi-agent-ai-architecture-design-patterns-production-20260622.html'
+            append_history_only 'https://www.tembo.io/blog/multi-agent-orchestration'
+            append_history_only 'https://hasgeek.com/fifthelephant/fifthelephant-2026-call-for-submissions/sub/too-many-cooks-production-lessons-from-orchestrati-7y75vG1eFrRB8RJ9Xq5Z5i'
+            append_history_only 'https://insoftex.com/insights/multi-agent-collaboration/'
+            append_history_only 'https://www.tech-tavern.com/case-studies/CaseStudy-AutomatedAgenticDocumentation.pdf'
+          }
+
+          for attempt in 1 2 3; do
+            git fetch origin main
+            git reset --hard origin/main
+            apply_entries
+
+            if git diff --quiet -- "$ARTICLE" "$HISTORY"; then
+              echo 'No new entries to append.'
+              exit 0
+            fi
+
+            git add "$ARTICLE" "$HISTORY"
+            git commit -m 'docs: add new multi-agent collaboration research'
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            echo "Push conflict on attempt $attempt; retrying from latest main"
+          done
+
+          echo 'Failed to push after retries' >&2
+          exit 1
