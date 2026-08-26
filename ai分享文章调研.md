@@ -405,3 +405,9 @@
 | agtx 用共享黑板/Kanban 承载持久任务，再由 Orchestrator 自动拆解、委派、推进阶段和检查冲突；不同阶段还能切换 Gemini/Claude/Codex 等 Agent，每个任务用独立 worktree + tmux 并行执行，适合展示“看板状态机 + 异构 Agent + 隔离并行”的完整研发工作流。 | https://github.com/fynnfluegge/agtx |
 | Agent Teams 是面向长期运行团队的自托管编排层，让多个 Hermes Agent 以明确岗位、角色和队友关系协作，并提供实时 Dashboard、团队脚手架以及 TLS、防火墙、Docker 隔离和 API Key 等 VPS 部署说明，适合分享“Agent 团队从本地 Demo 到可运维服务”需要补哪些基础设施。 | https://github.com/CyberTron957/agent-teams |
 | myclaude 用 Claude Code 做 Orchestrator，把 Codex、Claude、Gemini、OpenCode 统一成多后端执行层，并沉淀 5 阶段 feature workflow、智能路由、BMAD 专业 Agent 和需求到代码流水线；项目已有较高社区采用度，适合展示跨模型 Coding Agent 协作如何封装成可安装、可复用的工程工作流。 | https://github.com/stellarlinkco/myclaude |
+| AgentRun 在 A2A 协议之上补齐 AgentCard 服务发现、工作空间、多环境隔离、权限与注册治理，并用完整示例跑通远程 Agent 调用链，适合分享“协议规范如何真正变成生产级多 Agent 管理系统”。 | https://zhuanlan.zhihu.com/p/2017252789424768035 |
+| AgentScope 将 A2A 与 Nacos 注册中心结合，实现跨语言、跨框架 Agent 的统一发现、健康检查、命名空间隔离、错误重试与长任务管理，适合讲企业多 Agent 从本地协作扩展到分布式服务后的治理实践。 | https://zhuanlan.zhihu.com/p/1999905814828323456 |
+| 文章以智能工厂运维为场景，用 LangGraph Supervisor 组织设备查询与维保调度 Agent，并覆盖状态/记忆、Human-in-the-Loop、LangFuse 追踪评测及完整源码，适合作为可复现的工业级多 Agent 实战案例。 | https://zhuanlan.zhihu.com/p/1964805481429172552 |
+| 从 Demo 到生产的工程指南把多 Agent 拆成 Router、Planner、Worker、Critic 等职责，并强调状态机、局部重试、异常上抛、可观测与人工干预，适合提炼“用确定性控制面约束概率型 Agent”的生产架构方法。 | https://zhuanlan.zhihu.com/p/2016265577321219644 |
+| Routa 的 Agent Team 实践围绕 Token/成本约束、Specialist 角色化、状态外置和 MCP 跨 Agent 通信设计可演进的软件开发团队，适合分享多 Agent 如何从临时 Prompt 升级为可复用工程系统。 | https://zhuanlan.zhihu.com/p/2011849479800787650 |
+| 阿里云从 Agent 群聊的组织建模切入，结合 AgentLoop 的 TeamLeader + 多 Worker 研发流水线讨论上下文持久化、身份权限、凭证治理与成本归因，适合讲什么时候需要真正的多 Agent 协作空间以及企业治理边界。 | https://zhuanlan.zhihu.com/p/2055613904156468645 |

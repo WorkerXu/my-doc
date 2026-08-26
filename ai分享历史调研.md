@@ -508,3 +508,9 @@
 | https://github.com/fynnfluegge/agtx |
 | https://github.com/broskees/worktree-mcp |
 | https://github.com/Paths-Design/coding-agent-working-standard/blob/main/AGENTS.md |
+| https://zhuanlan.zhihu.com/p/2017252789424768035 |
+| https://zhuanlan.zhihu.com/p/1999905814828323456 |
+| https://zhuanlan.zhihu.com/p/1964805481429172552 |
+| https://zhuanlan.zhihu.com/p/2016265577321219644 |
+| https://zhuanlan.zhihu.com/p/2011849479800787650 |
+| https://zhuanlan.zhihu.com/p/2055613904156468645 |
