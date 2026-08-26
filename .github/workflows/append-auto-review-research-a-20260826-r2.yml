@@ -1,0 +1,78 @@
+name: Append auto review research a 20260826 r2
+
+on:
+  push:
+    paths:
+      - '.github/workflows/append-auto-review-research-a-20260826-r2.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Append new research rows
+        shell: bash
+        run: |
+          set -euo pipefail
+          article='自动审查文章调研.md'
+          history='自动审查历史调研.md'
+
+          ensure_newline() {
+            local file="$1"
+            if [ -s "$file" ] && [ -n "$(tail -c 1 "$file")" ]; then
+              printf '\n' >> "$file"
+            fi
+          }
+
+          append() {
+            local reason="$1"
+            local url="$2"
+            if ! grep -Fqx "$url" "$history"; then
+              printf '| %s | %s |\n' "$reason" "$url" >> "$article"
+              printf '%s\n' "$url" >> "$history"
+            fi
+          }
+
+          apply_rows() {
+            ensure_newline "$article"
+            ensure_newline "$history"
+            append 'commit-discipline-mcp 把 Codex 任务拆成 2–4 个有序、测试门禁的 Git 提交，计划状态可选择纳入版本控制，并检测意外 HEAD 移动；适合把 plan stage 与实际 commit checkpoint 做可验证绑定。' 'https://github.com/ayush-singh-0601/commit-discipline-mcp'
+            append 'multi-agent-review 可由 Codex notify hook 在新提交和 PR 出现后自动触发 Claude Code 独立复审，输出结构化 JSON 与逐行 PR 评论且更新既有 review 而不重复刷屏；适合作为实现 Agent 之外的第二 reviewer。' 'https://github.com/TheCraigHewitt/multi-agent-review'
+            append 'Review UI Design 是只读 Codex skill，可直接审截图和 Figma node，并用稳定 finding ID、证据等级、置信度和验收标准输出六类设计审查结论；适合作为独立 design-reviewer lane。' 'https://github.com/guoxuyee-create/Review-ui-design'
+            append 'AI Project Board 原生协调 Codex 与 Claude 并行任务，强制依赖与原子认领，完成证据可携带测试、变更文件和 commit ref，且支持 reviewer gate；很适合作为审查 findings 的项目化回流面。' 'https://github.com/hpigu/AIProjectDashboard'
+            append 'board 是 Codex、Claude、Cursor 等共用的本地 MCP Kanban 协调总线，支持 handoff、resume、notes 和跨项目活动视图；适合把多 Agent 审查摘要作为任务或留言写入共享看板并继续流转。' 'https://github.com/samuelloranger/board'
+            append 'Codex issue #14333 提议为当前分支持久化 plan、未提交上下文和按 commit 压缩的历史记录；可作为“计划文件/执行上下文 ↔ Git 提交”双向追踪字段与目录结构的设计参考。' 'https://github.com/openai/codex/issues/14333'
+            append 'Facets 可在 Codex 中按多个独立 persona 并行审 PR，并支持 review→fix→re-review 的有界循环、每轮提交和跨运行纸面轨迹；适合作为额外的多 Agent code-review 编排层。' 'https://github.com/0xbulma/facets'
+          }
+
+          git fetch origin main
+          git reset --hard origin/main
+          apply_rows
+
+          if git diff --quiet -- "$article" "$history"; then
+            exit 0
+          fi
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+          for attempt in 1 2 3; do
+            git add -- "$article" "$history"
+            git commit -m 'docs: append automatic review research a 20260826 r2'
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            git fetch origin main
+            git reset --hard origin/main
+            apply_rows
+            if git diff --quiet -- "$article" "$history"; then
+              exit 0
+            fi
+          done
+
+          exit 1
