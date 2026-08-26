@@ -468,3 +468,10 @@
 | https://www.bilibili.com/video/BV1QKLCzwEuy |
 | https://www.bilibili.com/video/BV1e88G6KEo8 |
 | https://www.bilibili.com/video/BV1rnun6QEMY |
+| https://engineering.atspotify.com/2026/2/our-multi-agent-architecture-for-smarter-advertising |
+| https://docs.databricks.com/aws/en/generative-ai/agent-framework/multi-agent-apps |
+| https://techcommunity.microsoft.com/blog/azuredevcommunityblog/building-a-multi-agent-on-call-copilot-with-microsoft-agent-framework/4499962 |
+| https://github.com/madebyaris/agent-orchestration |
+| https://github.com/InonB2/multi-agent-orchestration |
+| https://github.com/brenonaraujo/git-meta-harness |
+| https://github.com/orlojHQ/orloj |
