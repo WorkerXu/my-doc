@@ -1,0 +1,70 @@
+name: b-auto-review-append-20260826
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/b-auto-review-append-20260826.yml
+
+permissions:
+  contents: write
+
+jobs:
+  append-research:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Append new research without duplicates
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          article = Path("自动审查文章调研.md")
+          history = Path("自动审查历史调研.md")
+          workflow = Path(".github/workflows/b-auto-review-append-20260826.yml")
+
+          rows = [
+              ("Codex 官方 Plan Mode 模板要求最终计划必须 decision-complete、可直接交给另一位工程师或 Agent 执行；适合先把该计划固化为仓库工件，再用 plan hash、commit trailer 或 plan ref 绑定后续提交。", "https://github.com/openai/codex/blob/main/codex-rs/collaboration-mode-templates/templates/plan.md"),
+              ("GitHub Spec Kit 原生支持 Codex，并把 spec→plan→tasks→implement 产物保存在仓库流程中，还能把 tasks 转成 GitHub issues；适合作为“计划版本化 + 任务看板化 + 实现追踪”的标准骨架。", "https://github.com/github/spec-kit"),
+              ("codex-goal-md 用 GOAL.md、PLAN.md、EXPERIMENTS.md 等持久工件给 Codex /goal 提供可恢复约束与验证记录；适合把计划 ID/哈希和实际 commit SHA 一起纳入长期审计链。", "https://github.com/Threedv/codex-goal-md"),
+              ("Codex 的项目级编排提案把 plan.md 拆成 implementation、tests、docs、validation 等并行 streams，并设置 review gates、child threads/worktrees 与最终集成；很适合作为外部多 Agent reviewer 编排模型。", "https://github.com/openai/codex/discussions/22749"),
+              ("codex-mcp 用长期运行的 Codex app-server 暴露 thread/turn/MCP 控制面，而不是一次性 codex exec；适合让独立 orchestrator 把 plan、代码与设计 reviewer 的聚合 findings 精确回流同一 Codex 线程继续修复。", "https://github.com/zai-one/codex-mcp/blob/main/docs/REFERENCE.md"),
+              ("Penpot 官方 MCP Server 能让 Agent 直接查询和操作设计文件，并支持 design↔code 双向工作流；可作为 Figma 之外的结构化设计事实源，让独立 design reviewer 对组件、样式与 token 做机器化核验。", "https://github.com/penpot/penpot-mcp"),
+              ("figma-ui-mcp 提供设计树、截图、变量/token、组件映射、未映射组件与全文件 scan 等读取能力；适合同时给 design reviewer 结构化证据和视觉证据，再与代码 reviewer findings 聚合。", "https://github.com/TranHoaiHung/figma-ui-mcp"),
+              ("Crew 是支持并行 Agent 与 cross-review 的轻量编排工具；其 Writer↔Reviewer 循环与有界终止条件适合把 plan reviewer、code reviewer、design reviewer 组合成不会无限复审的外部质量门。", "https://github.com/garnetlyx/crew"),
+              ("Linear Coding Sessions 已把 triage、plan、build、review 与 Codex coding session 串在同一工作区，并支持团队 Documents；适合把聚合审查结论发布成项目文档/issue，再从同一任务继续启动 Codex 修复。", "https://linear.app/changelog/2026-06-11-coding-sessions"),
+              ("GitHub 社区的 Codex+Figma 案例显示仅接入 Figma MCP 仍可能偏离 1:1 设计，实践建议拆组件、显式提取 token 并做截图比较；进一步说明应增加独立视觉 reviewer，而不是让实现 Agent 自审。", "https://github.com/orgs/community/discussions/196923"),
+          ]
+
+          article_text = article.read_text(encoding="utf-8")
+          history_text = history.read_text(encoding="utf-8")
+          history_urls = {line.strip() for line in history_text.splitlines() if line.strip()}
+
+          additions = []
+          new_urls = []
+          for reason, url in rows:
+              if url in history_urls or url in article_text:
+                  continue
+              additions.append(f"| {reason} | {url} |")
+              new_urls.append(url)
+
+          if additions:
+              article.write_text(article_text.rstrip("\n") + "\n" + "\n".join(additions) + "\n", encoding="utf-8")
+              history.write_text(history_text.rstrip("\n") + "\n" + "\n".join(new_urls) + "\n", encoding="utf-8")
+
+          if workflow.exists():
+              workflow.unlink()
+          PY
+      - name: Commit appended research
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- "自动审查文章调研.md" "自动审查历史调研.md" ".github/workflows/b-auto-review-append-20260826.yml"
+          if ! git diff --cached --quiet; then
+            git commit -m "docs: append auto review research"
+            git push origin HEAD:main
+          fi
