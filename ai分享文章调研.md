@@ -158,3 +158,13 @@
 | Taogen 的 p2p-english-class 让 teacher、student、memory-coach 三个 Agent 通过 coms-net 跨设备 P2P 协作，并验证发现、消息收发、自动回复和证据校验，适合讲去中心化 Agent 通信与真实业务状态传递。 | https://www.bilibili.com/video/BV1PT7C6gEs7 |
 | herdr + Tmux 实践聚焦跨 Agent、跨 Session 通信，适合补充多 Agent 协作里经常被忽略的“通信基础设施层”，尤其是并行 CLI Agent 如何交换消息与协调工作。 | https://www.bilibili.com/video/BV1suuj6CEje |
 | AionUi 自动识别 Claude Code、Codex、Gemini CLI 等 20+ CLI Agent，并在统一桌面里支持并行派活、组队协作和远程控制，适合展示异构 Coding Agent 如何从多个终端升级成统一协作工作台。 | https://www.bilibili.com/video/BV1TDbk6gEBU |
+| Microsoft 最新多 Agent 架构指南把 MCP 与 A2A 的边界、最小权限、审计治理、类型化跨 Agent 载荷和人工审批放在同一套实践建议中，适合作为“企业多 Agent 如何安全互联”的设计基线。 | https://learn.microsoft.com/en-us/agents/architecture/multi-agent-patterns |
+| Azure Architecture Center 系统比较 sequential、concurrent、group chat、handoff、magentic 等编排模式，并明确每种模式的适用与避用条件以及“优先最低复杂度”原则，适合直接整理成协作架构选型表。 | https://learn.microsoft.com/en-us/azure/architecture/ai-ml/guide/ai-agent-design-patterns |
+| igot.ai 在 Google Cloud 上把多 Agent 编排跑到企业规模，披露 GKE 上多 Agent workflow 约 95% 完成率以及证据发现效率提升 300%+，适合用真实指标说明协作系统的工程化收益。 | https://cloud.google.com/customers/igot |
+| EVERSANA 用协调式多 Agent 系统把品牌策略、洞察、全渠道规划与内容生产串成 AI Agency Platform，并保留精简的人类监督团队，适合分享知识工作型多 Agent 如何进入大型企业业务流程。 | https://cloud.google.com/customers/eversana |
+| OrionStar 将语音、视觉、认知和决策能力统一进 AgentOS，让机器人通过多 Agent 编排获得团队式协同能力，同时用子 Agent 提升研发效率，适合补充“多 Agent 不只做软件流程，也能进入机器人实体协作”的案例。 | https://cloud.google.com/customers/orionstar |
+| 这项 2026 年工业研究把工作流式多 Agent 架构用于真实汽车供应商生产计划，在 1000+ 周订单和多条装配线约束下做 7 组实验并与人工规划对照，适合作为“多 Agent 进入硬业务优化”的量化案例。 | https://www.sciencedirect.com/science/article/pii/S0007850626000478 |
+| 论文从大型互联网公司的真实多 Agent 运行经验提炼角色定义、消息路由、业务流程、状态管理和错误处理等可复用设计模式，并讨论拥塞、依赖故障与非确定性输出，适合补充生产级设计模式视角。 | https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6973623 |
+| Gas City 把多 Agent Coding 的可复用基础设施做成声明式编排 SDK，提供 tmux/subprocess/ACP/Kubernetes 等运行时、工作路由、健康巡检和 controller/supervisor reconciliation，适合展示 Agent 团队如何走向平台控制面。 | https://github.com/gastownhall/gascity |
+| AWS 官方 Guidance 用 Supervisor + 订单、推荐、排障、个性化等专业 Agent 跑通完整客服架构，并同时给出会话存储、Knowledge Base、Athena/Action Group、部署与成本结构，适合做可复现的企业业务落地案例。 | https://github.com/aws-solutions-library-samples/guidance-for-multi-agent-orchestration-on-aws |
+| HKU DeepCode 是面向代码生成的开源 Multi-Agent 项目，仓库包含独立的 agent orchestration engine，并把项目、会话、目标、工具活动与验证统一进可交互工作台，适合展示多 Agent Coding 从算法到产品形态的实现。 | https://github.com/HKUDS/DeepCode |
