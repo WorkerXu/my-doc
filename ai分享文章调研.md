@@ -508,3 +508,11 @@
 | 从 RAG 演进到多智能体协同并进一步接入可观测平台，内容同时覆盖 Agent 架构、开发方案、常见问题与运行观测，适合补充“协作系统上线后如何看见调用链、定位问题并持续优化”的平台视角。 | https://zhuanlan.zhihu.com/p/2003043815884350644 |
 | 360 数科的智能营销案例把洞察、策略、文案、执行与效果分析拆给不同 Agent，形成从洞察到触达到转化的业务闭环，并结合真实金融营销场景讨论价值与数据成效，适合做非研发类多 Agent 落地案例。 | https://zhuanlan.zhihu.com/p/1997373801038622880 |
 | 用 AutoGen 的 Coder、Reviewer、Executor 跑通一次自动代码评审，并围绕 Planner-Executor-Critic、GroupChat、终止条件与可执行 Python 代码展开，适合作为现场快速复现“生成—审查—执行”协作闭环的入门实战。 | https://zhuanlan.zhihu.com/p/2043436947130012438 |
+| 作者在 WorkBuddy + DeepSeek 上把单 Agent 调度、蜂群式多 Agent 并行和深度分析 SOP 做成实际系统，累计跑过 200+ 次蜂群任务、经历 30+ 版本故障修复，并复盘两级调度、文件 I/O 通信与步骤越权问题；适合分享“多 Agent 可靠性为什么必须靠结构约束，而不只是 Prompt 规则”。 | https://juejin.cn/post/7655624648049016851 |
+| ERP_OPENCLAW 把 LangGraph/DeepAgents 主从 Agent、MCP 接真实 Java ERP、MongoDB Checkpoint、SSE 可观测与订单 HITL 审批串成采购分析/下单业务闭环，还明确生产化要补权限、审计和自动化测试；适合展示多 Agent 如何真正接入企业系统并控制高风险写操作。 | https://juejin.cn/post/7658236929163280393 |
+| ThinkingMap 从单体演进到 Eino 多智能体，基于图式编排、强类型和并发设计 Host/专家 Agent、状态/上下文、依赖与 SSE，并形成分析→规划→执行→反馈的可控闭环；适合补充 Go/Eino 技术栈下多 Agent 工程化架构案例。 | https://juejin.cn/post/7573687816430075914 |
+| 从无状态 Agent 逐步演进到多智能体协作，主题直接聚焦 AI Native 开发者的 Agent 工程化路径，适合用来讲清单 Agent 在状态、上下文和复杂任务上的瓶颈，以及为什么最终需要职责拆分与协作编排。 | https://juejin.cn/post/7654244323156951078 |
+| 文章以“Agent Demo 上线后为什么失控”为切入点，把重点从 Tool Calling 转向编排层，适合提炼任务规划、执行控制、状态流转和失败治理等从 Demo 到生产必须补齐的能力，作为多 Agent 落地的控制面视角。 | https://juejin.cn/post/7624470162226298907 |
+| OpenClaw 多 Agent 部署实践对比单 Gateway 多 Agent 与双 Gateway 独立部署，围绕场景隔离、多角色并行和部署边界展开；适合补充多 Agent 从逻辑分工走到运行时隔离与部署拓扑选择的实操素材。 | https://juejin.cn/post/7611462106036682802 |
+| 从单线程 Agent 向 OpenClaw 多 Agent 模式做深度改造，直接围绕上下文拥堵、串行执行和角色拆分带来的价值跃迁展开；适合分享“为什么拆、拆成什么、协作后解决了什么”这一架构演进路径。 | https://juejin.cn/post/7612929520988618787 |
+| Oh My OpenCode 的 AgentTeam 实战以可直接使用的 Coding Agent 团队为入口，适合展示多 Agent 编程工具如何从安装配置进入分工协作，并作为跨模型/多角色研发工作流的轻量实践案例。 | https://juejin.cn/post/7614566158142291977 |
