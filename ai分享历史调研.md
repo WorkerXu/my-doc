@@ -21,7 +21,6 @@
 | https://zhuanlan.zhihu.com/p/2037533360826930853 |
 | https://zhuanlan.zhihu.com/p/2027036057879725626 |
 | https://zhuanlan.zhihu.com/p/2029504755840422306 |
-| https://zhuanlan.zhihu.com/p/2053904853949210957 |
 | https://zhuan.zhihu.com/p/2025610298120320935 |
 | https://zhuanlan.zhihu.com/p/2027029874909397801 |
 | https://zhuanlan.zhihu.com/p/1991186674080837925 |
@@ -82,3 +81,8 @@
 | https://www.taskade.com/blog/multi-agent-production |
 | https://www.deeplearning.ai/blog/engineering-multi-agent-systems-a-path-from-prototype-to-production/ |
 | https://developer.salesforce.com/blogs/2026/06/the-salesforce-developers-guide-to-the-summer-26-release |
+| https://github.com/indiekitai/orchestration-playbook |
+| https://github.com/awslabs/cli-agent-orchestrator |
+| https://github.com/aws-samples/sample-claude-code-agent-team |
+| https://github.com/Kocoro-lab/Shannon |
+| https://github.com/Yeachan-Heo/oh-my-claudecode |
