@@ -323,3 +323,9 @@
 | TiDB 联合创始人结合大规模 Token 消耗、Agent Infra 和实际 Agent Team 工作经验，复盘纯黑盒协作为什么会失控，以及 Spec、人类点拨、约束与软件工程纪律为何仍关键，特别适合作为生产实践与反思案例。 | https://juejin.cn/post/7630681198803566655 |
 | 游戏小团队案例把 GDD 从给人看的文档升级为图像、视频、编程等多个 Agent 共用的“执行合同”和单一事实源，适合讲跨模态、跨角色 Agent 协作怎样通过共享规格减少对不齐和返工。 | https://juejin.cn/post/7602512226999533618 |
 | 对比 Claude Code Agent Teams 与 Codex multi-agent v2 的协作机制，涵盖上下文隔离、任务委派、成员通信和并行执行方向差异，适合在分享中用同类工具对照说明不同多 Agent 架构为何会做出不同工程取舍。 | https://juejin.cn/post/7653415873380876330 |
+| Arize Observe 2026 从“生产 AI Agent 团队正在构建什么”切入，适合补充当前团队级 Agent 的真实实践方向与生产化关注点，作为分享中的趋势型案例。 | https://www.youtube.com/watch?v=m0mS7lLLDaw |
+| AWS re:Invent 2025 把 Multi-agent Orchestration 直接落到反洗钱场景并结合 Strands，适合展示高价值、强合规业务中专业 Agent 协作如何进入企业实践。 | https://www.youtube.com/watch?v=VtrfpAVFKdE |
+| 这套 MCP + A2A Coding Masterclass 从零构建多 Agent 编排，把工具连接与 Agent 间通信放进同一实战，适合讲协议层如何支撑跨 Agent、跨工具协作。 | https://www.youtube.com/watch?v=utF6leQwcts |
+| 直接比较 Claude Subagents 与 Agent Teams 的差异，适合在分享中说明何时使用轻量委派、何时需要真正的团队式协作，避免把所有多 Agent 机制混为一谈。 | https://www.youtube.com/watch?v=jT1rg3TBf-I |
+| 以“如何更好地构建 Claude Agent Teams”为主线，适合作为 Coding Agent 团队从基础用法走向更成熟协作方式的实操补充。 | https://www.youtube.com/watch?v=vDVSGVpB2vc |
+| Microsoft Developer 的 Armchair Architects 从架构视角讨论 Multi-agent Orchestration 与 Patterns，适合梳理编排模式、架构取舍以及企业落地前应考虑的协作边界。 | https://www.youtube.com/watch?v=Dwyx8GomVvQ |
