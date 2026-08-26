@@ -1,0 +1,82 @@
+name: Append AI sharing research f 20260827
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/append-ai-share-research-f-20260827.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Append new research rows safely
+        shell: bash
+        run: |
+          set -euo pipefail
+          workflow='.github/workflows/append-ai-share-research-f-20260827.yml'
+
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+
+            python - <<'PY'
+          from pathlib import Path
+
+          article = Path('ai分享文章调研.md')
+          history = Path('ai分享历史调研.md')
+
+          rows = [
+              ('Atlassian Demo Den 直接展示 Jira 中的 Multi-agent Orchestration，适合分享企业如何把 Agent 协作嵌进既有项目协同入口，而不是另起一套孤立工作台。', 'https://www.youtube.com/watch?v=SOljsxCH37k'),
+              ('Copilot Studio 的实操内容直接围绕 Multi-Agent Orchestration 展开，适合补充低代码企业平台如何组织多个 Agent、降低团队落地门槛的案例。', 'https://www.youtube.com/watch?v=xtPlDde4Yv0'),
+              ('该 Source Demo 从零展示 LangGraph 中多个 Agent 的协作执行，适合作为分享现场可复现的代码型案例，用来讲共享状态、协作流程与编排如何真正跑起来。', 'https://www.youtube.com/watch?v=nx6HaySGOlc'),
+              ('CrewAI 实操直接聚焦“让 Agent 团队真正协作”，适合用于拆解角色、任务和团队协同如何从框架配置变成可运行工作流。', 'https://www.youtube.com/watch?v=hJuPoffsGdc'),
+              ('内容把 Teams、Protocols 与 Worktrees 放进同一套 Multi-Agent Orchestration 视角，适合串联团队组织、Agent 通信和并行工作区隔离这三个落地层次。', 'https://www.youtube.com/watch?v=I9lT8m0NoiU'),
+              ('A2A 的 System Design 视角直接面向 Multi-Agent Architecture，适合分享跨 Agent 发现、通信与系统边界如何从协议概念落到整体架构设计。', 'https://www.youtube.com/watch?v=bkqYfYNkJ_4'),
+              ('Google Cloud Tech 官方介绍 Agent2Agent（A2A）协议，适合作为跨服务、跨框架 Agent 协作的协议基线素材，便于后续连接更复杂的生产案例。', 'https://www.youtube.com/watch?v=Fbr_Solax1w'),
+              ('以产品团队实时协作 AI Coding Agents 为主题，适合补充“人类团队 + 多个 Coding Agent”共同工作的实践形态，帮助分享从纯 Agent 编排延伸到真实团队协作。', 'https://www.youtube.com/watch?v=QRwAuogj54M'),
+          ]
+
+          article_text = article.read_text(encoding='utf-8')
+          history_text = history.read_text(encoding='utf-8')
+
+          for reason, url in rows:
+              if url in article_text or url in history_text:
+                  continue
+              if article_text and not article_text.endswith('\n'):
+                  article_text += '\n'
+              article_text += f'| {reason} | {url} |\n'
+              if history_text and not history_text.endswith('\n'):
+                  history_text += '\n'
+              history_text += f'| {url} |\n'
+
+          article.write_text(article_text, encoding='utf-8')
+          history.write_text(history_text, encoding='utf-8')
+          PY
+
+            git rm -f -- "$workflow"
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add -- 'ai分享文章调研.md' 'ai分享历史调研.md'
+
+            if git diff --cached --quiet; then
+              exit 0
+            fi
+
+            git commit -m 'docs: append ai sharing research f 20260827'
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+
+            sleep 2
+          done
+
+          echo 'failed to append after retries' >&2
+          exit 1
