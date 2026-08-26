@@ -1,0 +1,61 @@
+name: Append AI share research once
+
+on:
+  push:
+    paths:
+      - ".github/workflows/append-ai-share-c-once.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Append deduplicated research
+        shell: bash
+        run: |
+          set -euo pipefail
+          article='ai分享文章调研.md'
+          history='ai分享历史调研.md'
+
+          append_article() {
+            local link="$1"
+            local reason="$2"
+            if ! grep -Fq "$link" "$article"; then
+              printf '| %s | %s |\n' "$reason" "$link" >> "$article"
+            fi
+          }
+
+          append_history() {
+            local link="$1"
+            if ! grep -Fq "$link" "$history"; then
+              printf '| %s |\n' "$link" >> "$history"
+            fi
+          }
+
+          append_article 'https://www.bilibili.com/video/BV1gwcAzkEhw' 'Claude Code Agent Teams 从核心概念、底层架构一路做到真实项目实测，由 Team Lead 拆任务、多个 Teammate 并行执行并互相通信，适合分享原生 Coding Agent 团队如何解决长上下文、串行瓶颈和单一视角问题。'
+          append_article 'https://www.bilibili.com/video/BV1Vvj86UEW4' 'Multica 直接以多 Agent 编排工具做完整实战演示，适合补充“编排平台如何从概念落到实际操作”的视角，用来观察多 Agent 团队怎样被组织并进入可执行工作流。'
+          append_article 'https://www.bilibili.com/video/BV1FahK6eEef' 'Hermes + DeepSeek Harness 实测让多个 Agent 在同一任务中讨论、分工、推进，再与真人共同收敛结果，覆盖需求拆解、代码修改和方案讨论，适合展示“Agent 团队 + Human-in-the-loop”的轻量协作落地。'
+          append_article 'https://www.bilibili.com/video/BV1ZBiRBrErU' 'oh-my-opencode 用编排器指挥 GPT、Claude、Gemini 分工协作，并结合 LSP 语义感知与 Ralph Loop 约束代码质量和任务收敛，适合分享跨模型 Coding Agent 怎样把编排、语义校验和完成度控制组合起来。'
+
+          append_history 'https://www.bilibili.com/video/BV1gwcAzkEhw'
+          append_history 'https://www.bilibili.com/video/BV1Vvj86UEW4'
+          append_history 'https://www.bilibili.com/video/BV1FahK6eEef'
+          append_history 'https://www.bilibili.com/video/BV1ZBiRBrErU'
+
+      - name: Commit appended rows
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add 'ai分享文章调研.md' 'ai分享历史调研.md'
+          git commit -m 'docs: append new Bilibili multi-agent research'
+          git push
