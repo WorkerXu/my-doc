@@ -534,3 +534,12 @@
 | https://www.bilibili.com/video/BV1nmTF6dEkz |
 | https://www.bilibili.com/video/BV1TYud6hEk9 |
 | https://www.bilibili.com/video/BV1vx4y1H74f |
+| https://openai.com/index/builders-guide-to-gpt-5-6/ |
+| https://resources.anthropic.com/2026-agentic-coding-trends-report |
+| https://aws.amazon.com/blogs/aws/runtime-instances-persistent-compute-for-production-ai-agents-on-amazon-bedrock-agentcore/ |
+| https://aws.amazon.com/blogs/security/enforce-least-privilege-authorization-in-multi-agent-ai-chains-using-cedar/ |
+| https://kiro.dev/blog/introducing-kiro-crew/ |
+| https://github.com/openai/openai-agents-python/blob/main/docs/models/index.md |
+| https://doi.org/10.1016/j.cirp.2026.04.027 |
+| https://junjietang.dev/blog/2026/five-rules-multi-agent-coding-teams/ |
+| https://github.com/jbrahy/meta-agent-teams |
