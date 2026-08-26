@@ -132,3 +132,12 @@
 | https://github.com/ajjucoder/codex-team-orchestrator |
 | https://github.com/societycomputer/society-protocol |
 | https://github.com/run-llama/multi-agent-concierge |
+| https://zhuanlan.zhihu.com/p/2070144231914714259 |
+| https://zhuanlan.zhihu.com/p/2067014859225556471 |
+| https://zhuanlan.zhihu.com/p/2013748116243894716 |
+| https://zhuanlan.zhihu.com/p/2031476922773938489 |
+| https://zhuanlan.zhihu.com/p/2046904024838976352 |
+| https://zhuanlan.zhihu.com/p/2074148599408207180 |
+| https://zhuanlan.zhihu.com/p/2066174785340564426 |
+| https://zhuanlan.zhihu.com/p/2058632024878059824 |
+| https://zhuanlan.zhihu.com/p/2045902247062769700 |
