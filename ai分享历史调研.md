@@ -309,3 +309,10 @@
 | https://www.youtube.com/watch?v=TjTgHA5DjDM |
 | https://www.youtube.com/watch?v=GYaDjPwLDGo |
 | https://www.youtube.com/watch?v=EtSO9vU84ws |
+| https://aws.amazon.com/blogs/machine-learning/how-fanatics-betting-and-gaming-built-a-multi-agent-customer-support-system/ |
+| https://www.cognizant.com/us/en/ai-lab/blog/cognizant-ai-agents-enterprise-intranet-transformation-neuro-san |
+| https://www.griddynamics.com/blog/multi-agent-enterprise-workflows-case-study |
+| https://cloud.google.com/blog/topics/developers-practitioners/create-expert-content-deploying-a-multi-agent-system-with-terraform-and-cloud-run |
+| https://github.com/ComposioHQ/agent-orchestrator |
+| https://github.com/gitpcl/openorchestrator |
+| https://github.com/resonatehq-examples/example-multi-agent-orchestration-py |
