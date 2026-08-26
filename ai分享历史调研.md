@@ -718,3 +718,12 @@
 | https://www.fourkites.ai/engineering-blog/multi-agent-orchestration |
 | https://www.ai.gov.au/news-and-insights/blog/when-ai-agents-interact-new-research-australian-ai-safety-institute |
 | https://github.com/agentscope-ai/AgentTeams/issues/1132 |
+| https://github.com/TauricResearch/TradingAgents |
+| https://github.com/THU-MAIC/OpenMAIC |
+| https://github.com/SciSharp/BotSharp |
+| https://github.com/datawhalechina/hugging-multi-agent |
+| https://github.com/peterfei/ai-agent-team |
+| https://github.com/TinyAGI/tinyagi |
+| https://github.com/linke-ai/hermes-agent-team |
+| https://github.com/revfactory/harness |
+| https://github.com/StreetLamb/tribe |

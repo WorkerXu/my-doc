@@ -586,3 +586,12 @@
 | FourKites 把多 Agent 编排用于真实供应链异常处置：多个专业 Agent 协同处理海运延误引发的订单、仓储预约、客户通知与报关连锁任务，底层用 Temporal 做可靠工作流，适合展示事件级业务闭环与 durable orchestration 的结合。 | https://www.fourkites.ai/engineering-blog/multi-agent-orchestration |
 | 澳大利亚 AI Safety Institute 专门研究组织之间 Agent-Agent 交互的风险、控制与治理，覆盖合作伙伴、供应商、客户 Agent 协作这一生产边界，适合补充多 Agent 从单企业内部走向跨组织互操作后的安全与责任问题。 | https://www.ai.gov.au/news-and-insights/blog/when-ai-agents-interact-new-research-australian-ai-safety-institute |
 | AgentTeams #1132 是真实企业光伏方案流程的落地反馈，串联 OCR、容量设计、提案、双 Reviewer、仲裁、证据和成本，并明确指出为何还需外置治理与编排层，适合用一线反馈解释“框架能协作”到“生产可控”之间的缺口。 | https://github.com/agentscope-ai/AgentTeams/issues/1132 |
+| TradingAgents 将分析师、正反方研究员、交易员、风险团队和投资组合经理组织成真实交易公司式协作，并已补齐结构化输出、Checkpoint 恢复、持久决策日志、重试预算与 CI 门禁，适合展示“角色分工 + 辩论 + 风险审批”怎样在垂直业务里工程化。 | https://github.com/TauricResearch/TradingAgents |
+| OpenMAIC 将多 Agent 协作做成可用的互动课堂产品，由 AI 教师和同学实时讲解、讨论并生成课件、测验、模拟和 PBL 活动，同时具备持久化、分阶段模型路由、SDK 与消息平台接入，适合展示从协作逻辑到用户产品的完整落地链路。 | https://github.com/THU-MAIC/OpenMAIC |
+| BotSharp 面向 .NET 企业应用把多 Agent 路由与规划、会话状态、RAG、MCP、REST/WebSocket、插件体系以及构建、测试、评估、审计放进同一框架，适合补充非 Python 团队如何把多 Agent 嵌入既有业务系统并形成可运维平台。 | https://github.com/SciSharp/BotSharp |
+| Datawhale 的 Hugging Multi-Agent 基于 MetaGPT 提供从 Agent 基础、RoleContext 到 Team、Environment、辩论式多智能体的代码化学习路径，适合分享时作为“从概念到第一个可运行 Agent 团队”的中文复现实操。 | https://github.com/datawhalechina/hugging-multi-agent |
+| AI Agent Team 把产品、前后端、测试、DevOps、技术负责人等研发岗位封装成可安装的专业 Agent，并用 Thread Manager 提供语义检索、任务线程、上下文恢复和 Git 版本管理，适合展示“岗位化团队 + 持久记忆”如何进入日常研发。 | https://github.com/peterfei/ai-agent-team |
+| TinyAGI 支持多个隔离 Agent 团队同时协作，通过 chain execution、fan-out、持久团队聊天室、并发队列、失败重试和 Web Kanban 管理长期任务，还能接 Discord、WhatsApp、Telegram，适合展示 24/7 多团队运行的产品化形态。 | https://github.com/TinyAGI/tinyagi |
+| Hermes Agents Team 用独立 Hermes profile 承载人设、技能、记忆和工具，再通过 Web 中枢、MCP、ACP 与 Kanban 完成拆解、派发、执行、审查和汇总，并实时展示终端与任务流转，适合分享“通信协议 + 任务控制面 + 本地隔离”的完整协作闭环。 | https://github.com/linke-ai/hermes-agent-team |
+| Harness 把“设计 Agent 团队”本身做成 Meta-Factory，可从领域描述自动生成 Agent 定义和 Skills，并在 Pipeline、Fan-out/Fan-in、Expert Pool、Producer-Reviewer、Supervisor、Hierarchical 六种模式间选型，同时提供验证与测试，适合展示团队架构自动生成与标准化。 | https://github.com/revfactory/harness |
+| Tribe AI 用拖拽式低代码方式构建多 Agent 团队，同时支持顺序与层级工作流、持久会话、LangSmith 可观测、RAG、HITL、Docker 和多租户，适合补充非底层开发者如何把多 Agent 协作快速配置成可部署业务应用。 | https://github.com/StreetLamb/tribe |
