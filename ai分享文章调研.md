@@ -356,3 +356,11 @@
 | Harmonist 不把 Review、记忆更新和供应链检查只写进 Prompt，而是用 IDE Hooks 做机械门禁：规则未满足就阻止 Agent 回合结束，并覆盖 subagent 派发与文件修改，适合展示“多 Agent 协作如何从软约束升级为可强制执行的工程治理”。 | https://github.com/GammaLabTechnologies/harmonist |
 | 飞书多 Agent 协作方案用一个飞书 Bot 驱动多个独立 Agent，通过群聊与 Session 做上下文隔离、独立工具白名单控制权限，并用 sessions_send 异步委派和脚本化建群/绑定完成部署，适合分享“多 Agent 如何直接嵌入现有团队协作工具”的可复现实操。 | https://github.com/hyperlist/feishu-multi-agent |
 | Claude Agent Framework 以 Lead + 专业 Subagents 组织复杂任务，内置 Research、Pipeline、Critic-Actor、Specialist Pool、Debate、Reflexion、MapReduce 七类模式，并提供成本/重试生命周期插件和 JSONL 全链路观测，适合做协作拓扑与生产能力对照。 | https://github.com/uukuguy/claude-agent-framework |
+| 阿里云从 Agent Native Cloud 的整体架构解释 AgentRun、AgentTeams、AgentLoop 如何把运行时、协作治理、审计评估和持续优化组合成企业级 Agent 平台，适合分享“多 Agent 如何从功能编排升级为组织级基础设施”。 | https://zhuanlan.zhihu.com/p/2062599702143672718 |
+| 文章把多智能体协同系统类比 Kubernetes，围绕 Worker、Team、Human、Manager、控制循环、Matrix 协作底座和 AI 网关展开，适合讲清“声明式编排 + 治理平面”如何支撑可复制、可治理、可演进的 Agent 团队。 | https://zhuanlan.zhihu.com/p/2050905023157122907 |
+| 从企业 To B 落地视角系统讨论多 Agent 协作治理，覆盖 Leader-Worker、AI Registry、凭证托管、IM 人在回路、审计与成本控制，适合补充“技术编排之外，企业为什么还需要组织与安全治理”。 | https://www.zhihu.com/question/2002294556490747945/answer/2057881050760721196 |
+| Cornucopia Multi-Agent 提供顺序、并行、辩论、专家团队、审核和层级协作等多种模式，并配套多种通信拓扑、FastAPI 与可视化界面，适合用一个可运行项目对比不同协作结构及其适用场景。 | https://zhuanlan.zhihu.com/p/2046654066827203602 |
+| 用 OpenClaw、Discord 与 ACP 实际搭建多个 Agent 的公开频道协作，并让 Agent 调用 Claude Code 或 Codex 执行编码任务，适合展示轻量多 Agent 团队如何通过通信空间、角色隔离和外部 Coding Agent 真正落地。 | https://zhuanlan.zhihu.com/p/2018714727715467590 |
+| 通过 Claude 澄清需求、Gemini 设计原型、Codex 并行编码与测试组成端到端开发团队，并用 Skills 自动激活和质量门禁串联流程，适合分享跨模型 Agent 如何按能力分工而不是让单一模型包办全部研发环节。 | https://zhuanlan.zhihu.com/p/2005277073036566597 |
+| 从真实开发任务依赖出发解释哪些任务可并行、哪些必须串行，并讨论多 Agent 同时改代码时的冲突问题，适合用于讲解 AI Coding 多 Agent 的任务图、并行度控制和协作边界。 | https://zhuanlan.zhihu.com/p/2023489705921004804 |
+| 用 12 个 Claude Code Agent 按研发岗位组成完整团队，设置阶段流水线、契约节点、独立 QA、失败打回与人工兜底，适合展示多 Agent 规模扩大后如何靠流程门禁维持可交付性。 | https://zhuanlan.zhihu.com/p/2045030955761521332 |
