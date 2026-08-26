@@ -411,3 +411,7 @@
 | 从 Demo 到生产的工程指南把多 Agent 拆成 Router、Planner、Worker、Critic 等职责，并强调状态机、局部重试、异常上抛、可观测与人工干预，适合提炼“用确定性控制面约束概率型 Agent”的生产架构方法。 | https://zhuanlan.zhihu.com/p/2016265577321219644 |
 | Routa 的 Agent Team 实践围绕 Token/成本约束、Specialist 角色化、状态外置和 MCP 跨 Agent 通信设计可演进的软件开发团队，适合分享多 Agent 如何从临时 Prompt 升级为可复用工程系统。 | https://zhuanlan.zhihu.com/p/2011849479800787650 |
 | 阿里云从 Agent 群聊的组织建模切入，结合 AgentLoop 的 TeamLeader + 多 Worker 研发流水线讨论上下文持久化、身份权限、凭证治理与成本归因，适合讲什么时候需要真正的多 Agent 协作空间以及企业治理边界。 | https://zhuanlan.zhihu.com/p/2055613904156468645 |
+| OpenClaw 多智能体实战从任务分解和专业 Agent 协作入手构建完整工作流，适合作为轻量多 Agent 团队如何从角色划分走到可运行流程的入门案例。 | https://juejin.cn/post/7613796323045883947 |
+| 文章聚焦 Manus 团队的上下文工程经验，专门讨论多智能体协作中的记忆与上下文组织难题，适合补充“协作质量最终受上下文设计约束”的实践视角。 | https://juejin.cn/post/7532995195127676937 |
+| Multica 把 AI 编程 Agent 做成可管理的团队成员，结合 Kanban、技能复用、WebSocket 实时推送和统一运行时，适合展示多 Agent 从脚本编排进一步走向团队协作产品的形态。 | https://juejin.cn/post/7628251518199365686 |
+| 文章把多智能体协同归纳成五种核心架构，并围绕不同 Agent 如何通过代码协调展开，适合在分享中快速建立协作模式地图，再连接具体工程案例。 | https://juejin.cn/post/7627870163742162994 |
