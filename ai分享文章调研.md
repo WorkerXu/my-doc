@@ -494,3 +494,17 @@
 | JockeyUI 以 ACP 统一编排不同 Agent/模型，在桌面端提供角色化模型选择、消息生命周期、上下文渐进披露和跨会话记忆，并实际演示 Claude PM 与 Codex Developer 热切换，适合展示异构 Agent 协作怎样产品化为统一工作台。 | https://github.com/recailai/jockey |
 | mini-claude-code 用 Java 按章节从 Agent Loop 一路实现到 Subagent、任务系统、Agent Teams、结构化 Team Protocol、自主认领与 MCP Plugin，适合从源码层讲清“一个能协作的 Agent Harness 到底需要哪些机制”，也便于非 Python 团队复现。 | https://github.com/DerekYRC/mini-claude-code |
 | MAS-Resilience 专门研究多 Agent 团队里出现错误/恶意 Agent 时的故障传播，并提供 AutoTransform/AutoInject 攻击注入和 Inspector/Challenger 防御代码，适合在分享中补充“协作规模扩大后如何做鲁棒性验证与防御”的反面实践。 | https://github.com/CUHK-ARISE/MAS-Resilience |
+| EMQ Device Agent 以智能座舱为真实工程场景，把数百到上千个车端原子能力按领域拆成多个 Agent，并正面处理跨 Agent 通信、时序依赖、冲突、编排可视化和多供应商集成问题，适合分享“为什么要拆 Agent，以及拆完后真正难在哪里”。 | https://zhuanlan.zhihu.com/p/2071197454326879723 |
+| 从生产级 Agent Loop 出发补齐工具超时、输出截断、HITL、错误恢复，再扩展到 Orchestrator+Workers 与 Swarm 两类多智能体模式，适合把单 Agent 工程化能力如何自然演进成多 Agent 编排讲成一条连续路径。 | https://zhuanlan.zhihu.com/p/2064254132505129129 |
+| 以 Dify Workflow 落地企业级技术报告生成系统，覆盖角色配置、并行分支、Reviewer 反馈环、流式输出、重试熔断、RAG 质量评估与自定义 Tool，适合做低代码/平台型多 Agent 从 Demo 到可用应用的完整实战。 | https://zhuanlan.zhihu.com/p/2068336512450683853 |
+| 在 Plan-and-Execute 基础上用 LangGraph.js、Send、interrupt、Checkpoint 扩展多 Agent 并发协作，具体讨论并行执行、状态持久化、人工审阅、超时重试和断点恢复，适合分享“确定性编排层如何承接 Agent 的不确定性”。 | https://zhuanlan.zhihu.com/p/2058528796987356461 |
+| RadarMind 用 5 个业务 Agent + 1 个 TeamLeader 端到端完成科研文献调研与理论路径生成，并复盘 Manager/Worker/Team 房间、Docker 隔离和实际部署踩坑，适合作为 AgentTeams 从安装到真实业务协作的可复现实例。 | https://zhuanlan.zhihu.com/p/2072406449624461470 |
+| OpsPilot Zero 把生产故障处置拆成告警归并、根因分析、修复规划、恢复验证 4 个 Agent 的 DAG，并用结构化交付契约、置信度证据链和风险审批控制自动化边界，适合展示高风险运维场景怎样形成可信协作闭环。 | https://zhuanlan.zhihu.com/p/2068110217808700098 |
+| 从 AgentTeams baseline 的实际使用出发，拆解 Manager/TeamLeader/Worker、Matrix 协作、Nacos 注册与 Skill 版本治理、Higress 凭证收敛和 OpenTelemetry 可观测，适合补充多 Agent 真正生产化所需的治理基础设施。 | https://zhuanlan.zhihu.com/p/2068115749751804511 |
+| 昆仑 AI 分布式多 Agent 企业平台采用 DDD 编排 + AutoGen 原子执行，并把知识库、记忆、异步任务、权限、观测和配置热更新放进九层架构，适合分享企业团队如何把多 Agent 从单个流程升级为长期演进的平台能力。 | https://zhuanlan.zhihu.com/p/2066558348422657228 |
+| 真实搭建“人类 + 5 个独立 Agent 团队”的跨境电商组织，PM、Coding、选品、内容与社媒 Agent 各有独立上下文和工具，并通过项目与委派路由协作，适合展示人机混合组织如何进入日常业务而非只做技术 Demo。 | https://zhuanlan.zhihu.com/p/2035422266629038719 |
+| Routa 把多 Agent 协作做成独立协调平面，用 ACP 管 Agent 进程、MCP 暴露协作动作、A2A 做联邦扩展，并用结构化任务、事件流、持久状态和恢复机制实现可追踪协作，适合讲协议分层与开放编排。 | https://zhuanlan.zhihu.com/p/2009668693362242633 |
+| 从企业 SOP 运行机制出发，把任务实例、唯一运行时主控、状态载体、执行节点、人工审核、异常处理和恢复明确成工程对象，并给出逐步扩大自动化范围的落地路径，适合分享“企业需要的不是更多 Agent，而是可靠协作机制”。 | https://zhuanlan.zhihu.com/p/2074177077218223659 |
+| 从 RAG 演进到多智能体协同并进一步接入可观测平台，内容同时覆盖 Agent 架构、开发方案、常见问题与运行观测，适合补充“协作系统上线后如何看见调用链、定位问题并持续优化”的平台视角。 | https://zhuanlan.zhihu.com/p/2003043815884350644 |
+| 360 数科的智能营销案例把洞察、策略、文案、执行与效果分析拆给不同 Agent，形成从洞察到触达到转化的业务闭环，并结合真实金融营销场景讨论价值与数据成效，适合做非研发类多 Agent 落地案例。 | https://zhuanlan.zhihu.com/p/1997373801038622880 |
+| 用 AutoGen 的 Coder、Reviewer、Executor 跑通一次自动代码评审，并围绕 Planner-Executor-Critic、GroupChat、终止条件与可执行 Python 代码展开，适合作为现场快速复现“生成—审查—执行”协作闭环的入门实战。 | https://zhuanlan.zhihu.com/p/2043436947130012438 |
