@@ -118,3 +118,9 @@
 | CAID 研究把多 Agent 软件开发建立在中心任务分解、异步并行、隔离工作区和 branch/merge/test 验证上，并在 PaperBench、Commit0 上显著优于单 Agent，适合用实验数据说明“Git 协作原语为什么能让 Coding Agents 更可靠”。 | https://arxiv.org/abs/2603.21489 |
 | 这份生产级 Agentic AI 工程指南覆盖任务分解、多 Agent 设计模式、MCP、确定性编排、容器化部署、Responsible AI 与完整案例，适合作为分享里从架构设计到上线运维的一份端到端工程清单。 | https://arxiv.org/abs/2512.08769 |
 | CoffeeAGNTCY 是 AGNTCY 的端到端多 Agent 参考应用，组合 A2A、SLIM/NATS、LangGraph、MCP、身份与可观测性，并提供两 Agent 与更复杂群组通信两套可运行配置，适合展示跨框架 Agent 基础设施如何真正拼成系统。 | https://github.com/agntcy/coffeeAgntcy |
+| Edict 用“规划→审核→派发→并行执行”的强制分权流程组织 12 个专业 Agent，并配套状态流转校验、实时看板、任务叫停/恢复、完整审计与健康监控，适合作为“多 Agent 协作如何靠制度化质量门禁和可观测性提高可控性”的工程案例。 | https://github.com/cft0808/edict |
+| 这份 Claude Code Agent Teams 实战指南不仅给出 PR 并行评审、竞争假设调试、跨层功能开发等可复用团队模式，还系统记录 plan approval、Hooks 质量门禁、文件冲突、Token 成本和团队规模边界，特别适合分享“什么时候该用团队、怎么避免协作反噬”。 | https://github.com/cobusgreyling/claude-agent-teams |
+| agent-teams-rs 用 Rust 抽象出 lead/teammate、任务 DAG、邮箱通信、跨 Claude/Codex/Gemini 后端、共识投票、HITL、Git notes checkpoint 与成本看板，适合展示跨模型 Agent 团队如何把协作、审计和路由做成通用基础设施。 | https://github.com/ZhangHanDong/agent-teams-rs |
+| Codex Team Orchestrator 把控制面、专业 worker、共享消息总线、任务板、产物交换与仲裁放进统一 runtime，并提供自适应 fan-out、结构化可观测、回放和 benchmark 工具，适合拆解 Coding Agent 团队如何从“并行开几个会话”走向可验证编排。 | https://github.com/ajjucoder/codex-team-orchestrator |
+| Society Protocol 通过 P2P 网络让不同机器、不同团队中的 Agent 自动发现、通信和共享知识，并结合密码学身份、MCP 接入与按复杂度动态组建临时团队，适合分享去中心化、跨边界 Agent 协作的协议层落地思路。 | https://github.com/societycomputer/society-protocol |
+| LlamaIndex 的 Multi-agent Concierge 用 orchestrator 路由多个专业 Agent，以共享全局状态处理跨任务依赖，并对高风险工具调用加入人工确认，适合用一个完整业务流程说明“专业化分工 + 状态共享 + HITL”怎样组合成可控多 Agent 服务。 | https://github.com/run-llama/multi-agent-concierge |
