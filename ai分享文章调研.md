@@ -133,3 +133,14 @@
 | OpsPilot Zero 用 4 个 Agent、7 个 Skill 跑零人工运维闭环，并从任务拆解、上下文传递、验证证据、安全审计与可回滚等角度总结 9 条工程判断，适合分享生产级协作系统应该具备哪些“可信闭环”条件。 | https://zhuanlan.zhihu.com/p/2066174785340564426 |
 | Solon AI Harness 以技术文章生产为例，把调研、规划、写作、校对拆成带依赖的子 Agent DAG，并展示 task/multitask 委派和独立心智/记忆，适合讲主 Agent + 子代理如何落成可控任务编排。 | https://zhuanlan.zhihu.com/p/2058632024878059824 |
 | 文章反向提醒“先别急着做 Agent Teams”，从真实 P0 故障处理说明多 Agent 前必须先补齐状态、运行环境、权限与 Timeline 等 AgentOS 闭环能力，适合分享中用于解释为什么协作规模化前要先解决单 Agent 的可恢复与可审计。 | https://zhuanlan.zhihu.com/p/2045902247062769700 |
+| 文章直接以 Multi-Agent 协作模式与工程实践为主题，适合用来补充角色分工、协作机制与工程化约束的整体视角，便于在分享中建立从“为什么拆 Agent”到“怎样组织协作”的框架。 | https://juejin.cn/post/7668220205333790729 |
+| 用 NestJS + LangGraph 从零搭建多 Agent 编排平台，包含 Supervisor 自动路由、DAG 工作流、RAG 与多租户隔离，适合展示多 Agent 如何从流程 Demo 走向可复用平台。 | https://juejin.cn/post/7605780454579929139 |
+| 从零构建 6 个 Agent 的自动化研发流水线，覆盖需求分析、架构、代码、测试到部署，并明确讨论状态流转、Agent 通信与 LLM 不稳定问题，适合拆解 AI Coding 团队的端到端协作。 | https://juejin.cn/post/7650719111396720682 |
+| 在多 Agent 架构跑通后继续补齐 FastAPI、SSE 与 Vue3 交互层，把命令行系统做成用户可用产品，适合分享“协作逻辑之外，产品化落地还需要什么”。 | https://juejin.cn/post/7643757385782411290 |
+| 用不足百行可运行代码实现研究员、批评家、总结员协作，覆盖共享状态、条件边、循环与收敛机制，特别适合作为分享现场可快速讲清核心概念的最小示例。 | https://juejin.cn/post/7639756570968653860 |
+| 以 DevOps 团队为场景，用 Manager Agent 编排专业 Agent，并结合 MCP、A2A 与人工反馈控制，适合展示跨工具、跨 Agent 协作怎样形成可治理的业务闭环。 | https://juejin.cn/post/7612949440031653888 |
+| 直接让一个 Agent 调度 Claude Code、Codex、Gemini 并行执行任务，并给出对应开源项目 mco，适合分享异构 Coding Agent 如何统一编排、并发协同。 | https://juejin.cn/post/7611095964389687342 |
+| 从 Managed Agents 原理讲到 Multica 实践，重点把 AI Agent 放进真实人机团队中作为正式协作成员，适合讨论“Agent 团队”从纯自动编排走向人与 Agent 共事的工程形态。 | https://juejin.cn/post/7647847267789832192 |
+| 用 OpenClaw + 飞书搭建 5 个可协作 AI 助理，强调独立工作空间与专业化分工，适合展示低门槛、多角色 Agent 团队如何嵌入日常协作工具。 | https://juejin.cn/post/7609481369001492499 |
+| 对比 Multi-Agent Routing 与 Sub-Agents 两种机制，解释多角色系统如何路由、委派和协作，适合作为分享中的架构选型案例，避免把所有“多 Agent”都当成同一种实现。 | https://juejin.cn/post/7613970761352462336 |
+| 用 LangGraph 演示拆分并行汇总、Supervisor 调度以及生成-评估-返工等多 Agent 协作方式，适合用同一框架对比不同协作拓扑和控制策略。 | https://juejin.cn/post/7602824293165170703 |
