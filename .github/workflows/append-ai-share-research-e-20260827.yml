@@ -1,0 +1,89 @@
+name: Append AI sharing research e 20260827
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/append-ai-share-research-e-20260827.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Append new research rows
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          article = Path('ai分享文章调研.md')
+          history = Path('ai分享历史调研.md')
+
+          article_rows = [
+              ('文章从单 Chat 演进到多 Agent 系统，给出 Supervisor + Coder/Reviewer/Documenter 的任务拆分、依赖顺序、并行/串行执行和 WebSocket 运行轨迹界面，适合分享“编排控制面 + 用户可见执行过程”如何一起落地。', 'https://juejin.cn/post/7628895336027799552'),
+              ('开源 Agent Teams 编排 Skill 把“建团队、分角色、派任务”从手工配置压成一句话自动组队，并专门区分 Agent Teams 与泛 Swarm 概念，适合展示多 Agent 协作怎样封装成可复用的工程能力。', 'https://juejin.cn/post/7606128564415103003'),
+              ('从 AgentTeams、AgentLoop 到 Claude 群聊讨论多智能体“群聊模式”真正困难的地方，并把协作与治理平台、Leader/Worker 组织关系等放在一起分析，适合补充企业级多 Agent 不是“拉群聊天”，而需要专门协作治理层。', 'https://juejin.cn/post/7660312458697228322'),
+              ('用竞品调研等可复现任务从零搭建 Claude Agent Teams，让不同 Agent 分别搜索、分析、汇总，适合作为现场演示“任务拆分—专业分工—结果汇总”的最小端到端多 Agent 实战。', 'https://juejin.cn/post/7613960231039860777'),
+              ('从单体到 Agent Teams 的架构演进出发，重点给出“什么任务才值得上多 Agent”的判断启发，并围绕独立上下文与协作需求解释拆分边界，适合分享中建立“先判断是否需要团队，再谈编排”的选型框架。', 'https://juejin.cn/post/7613359984269148206'),
+          ]
+
+          researched_urls = [
+              'https://juejin.cn/post/7621422089350103040',
+              'https://juejin.cn/post/7606128564415103003',
+              'https://juejin.cn/post/7613359984269148206',
+              'https://juejin.cn/post/7613960231039860777',
+              'https://juejin.cn/post/7624402097153638435',
+              'https://juejin.cn/post/7660312458697228322',
+              'https://juejin.cn/post/7628895336027799552',
+          ]
+
+          article_text = article.read_text(encoding='utf-8')
+          history_text = history.read_text(encoding='utf-8')
+          article_added = []
+          history_added = []
+
+          for reason, url in article_rows:
+              if url in article_text or url in history_text:
+                  continue
+              if article_text and not article_text.endswith('\n'):
+                  article_text += '\n'
+              article_text += f'| {reason} | {url} |\n'
+              article_added.append(url)
+
+          for url in researched_urls:
+              if url in history_text:
+                  continue
+              if history_text and not history_text.endswith('\n'):
+                  history_text += '\n'
+              history_text += f'| {url} |\n'
+              history_added.append(url)
+
+          if article_added:
+              article.write_text(article_text, encoding='utf-8')
+          if history_added:
+              history.write_text(history_text, encoding='utf-8')
+
+          print(f'article added: {len(article_added)}')
+          print(f'history added: {len(history_added)}')
+          PY
+
+      - name: Commit research updates
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- 'ai分享文章调研.md' 'ai分享历史调研.md'; then
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- 'ai分享文章调研.md' 'ai分享历史调研.md'
+          git commit -m 'docs: append ai sharing research e 20260827'
+          git push
