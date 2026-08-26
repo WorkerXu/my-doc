@@ -1,0 +1,79 @@
+name: Append auto review research a 20260826
+
+on:
+  push:
+    paths:
+      - '.github/workflows/append-auto-review-research-a-20260826.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Append new research rows
+        shell: bash
+        run: |
+          set -euo pipefail
+          article='自动审查文章调研.md'
+          history='自动审查历史调研.md'
+
+          ensure_newline() {
+            local file="$1"
+            if [ -s "$file" ] && [ -n "$(tail -c 1 "$file")" ]; then
+              printf '\n' >> "$file"
+            fi
+          }
+
+          append() {
+            local reason="$1"
+            local url="$2"
+            if ! grep -Fqx "$url" "$history"; then
+              printf '| %s | %s |\n' "$reason" "$url" >> "$article"
+              printf '%s\n' "$url" >> "$history"
+            fi
+          }
+
+          apply_rows() {
+            ensure_newline "$article"
+            ensure_newline "$history"
+            append 'git patch-id --stable 能为实现 diff 生成相对稳定且近似唯一的 patch ID，并可直接建立 patch ID→commit ID 映射；适合让 Codex plan 同时记录计划哈希、commit SHA 与 patch ID，在 rebase/cherry-pick 改变 SHA 后仍能追踪同一实现补丁。' 'https://git-scm.com/docs/git-patch-id'
+            append 'Codex 官方 orchestrator 模板明确要求多步骤计划尽可能按步骤并行生成 sub-agent、等待全部完成再汇总，且 review 优先检查 bug、风险、回归和缺失测试；适合作为 plan verifier、代码 reviewer、design reviewer、judge 的原生编排契约。' 'https://github.com/openai/codex/blob/main/codex-rs/core/templates/agents/orchestrator.md'
+            append 'Meta_Kim 原生面向 Codex，把执行组织成 Critical→Fetch→Thinking→Execution→Review→Meta-Review→Verification→Evolution，并把 review/verification 产出持久证据、Kanban/Markdown/HTML 统一投影；适合作为多 Agent findings 聚合、验证和看板/报告写回层。' 'https://github.com/KimYx0207/Meta_Kim'
+            append 'agent-loop 0.18.0 将 changed Git candidates、workspace artifacts 与确定性验证证据绑定到精确 Task、Run、Contract revision、execution plan、stage、attempt 和 candidate lineage；适合把 Codex 计划、候选提交和审查证据固化成防漂移的可审计链。' 'https://github.com/voku/agent-loop/blob/main/CHANGELOG.md'
+            append 'THE Frame 的 Review 阶段对 diff 并行执行规格符合性、安全、性能、业务逻辑、测试和约定六类审查，并对 FAIL finding 做对抗式验证；配合 plan、worktree、board 和 ship，可作为 Codex 之外的多 Agent 代码复审控制层。' 'https://github.com/andrey-chmerev/the-frame-ai'
+            append 'Codex Design(Figma in Codex) 会解析当前 Figma file/node/selection，并强制通过官方 Figma MCP 读取、写入和验证；它优先使用结构化 metadata/design context/geometry、仅在必要时回退截图，适合作为独立 design-reviewer 的稳定设计证据入口。' 'https://github.com/liaocaoxuezhe/Codex-Design-Figma-in-Codex/blob/main/figma-in-codex/README.md'
+            append 'Figma Design Agent 支持并行设计任务、连接设计库、直接引用 components/variables/styles、通过 MCP connector 与外部工具双向写回，并能汇总评论和执行设计 critique；适合让设计侧 reviewer 与 Codex 代码 reviewer 分离后再把结论回写设计或项目系统。' 'https://help.figma.com/hc/en-us/articles/37998629035799-Work-with-the-Figma-agent-in-design-files'
+            append 'T3 Code Planning Fork 把 project-local agent board、Kanban/Planning/Dependency views、worker handoff/report、review report 与 supervisor proof ledger 放在同一控制面，并支持 Codex CLI；适合把聚合审查结果发布成可视化看板卡片并保留计划、验收标准和审查证据。' 'https://github.com/RyHale/t3code-planning-fork/blob/main/README.md'
+          }
+
+          git fetch origin main
+          git reset --hard origin/main
+          apply_rows
+
+          if git diff --quiet -- "$article" "$history"; then
+            exit 0
+          fi
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+          for attempt in 1 2 3; do
+            git add -- "$article" "$history"
+            git commit -m 'docs: append automatic review research a 20260826'
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            git fetch origin main
+            git reset --hard origin/main
+            apply_rows
+            if git diff --quiet -- "$article" "$history"; then
+              exit 0
+            fi
+          done
+
+          exit 1
