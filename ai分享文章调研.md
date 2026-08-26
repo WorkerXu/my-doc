@@ -242,3 +242,12 @@
 | 系统覆盖顺序、并行、层级、辩论四种协作架构，AutoGen、CrewAI、LangGraph 选型、内容团队代码实践以及幻觉、成本、协调、安全避坑，适合做分享里的全景架构地图与最小实现示例。 | https://zhuanlan.zhihu.com/p/2074211818957029552 |
 | 从真实并行 Coding Agent 工作流出发，明确哪些任务适合或不适合并行，并给出 Plan→Prompt→Verify→Review 闭环、统一命令与验证报告；适合讲多 Agent 提速后的真正瓶颈如何转向任务拆分和 Review。 | https://zhuanlan.zhihu.com/p/2040814536345792826 |
 | 把可工程化多 Agent 定义为协调、专业执行、独立验证和统一运行时，强调结构化交接、状态恢复、结果验证与成本收益；适合用作分享开场的设计原则基线，避免把多 Agent 误解为自由聊天。 | https://zhuanlan.zhihu.com/p/2069012163067491985 |
+| 从“个人调用 Agent”进一步推进到人和 Agent 共享目标小队，提出 PM 调度者、任务图、依赖、进度和责任人共同状态，适合分享组织级多 Agent 协作如何从聊天走向可治理工作系统。 | https://juejin.cn/post/7676421042796544040 |
+| 基于源码对比 Claude Agent Teams 与 Codex multi-agent v2 的团队创建、任务分配、通信方式和工程取舍，适合做 AI Coding 多 Agent 机制与架构选型的对照材料。 | https://juejin.cn/post/7653415873380876330 |
+| claude-studio 将 Claude Code Agent Teams 的工作流从散落配置变成可视化 DAG 编排，适合展示多 Agent 协作如何产品化为可观察、可复用的编排控制面。 | https://juejin.cn/post/7629036295418806306 |
+| 从企业 AI 需求评估出发比较工作流、单 Agent 与多 Agent 协作的适用边界，适合作为分享里“什么时候值得上多 Agent”的前置决策框架。 | https://juejin.cn/post/7620718787835969536 |
+| 用具体业务场景完整展开 AgentScope 多智能体协作实践，适合拆解角色分工、消息传递和任务协同，让分享不只停留在框架概念层。 | https://juejin.cn/post/7591730714140540970 |
+| Dify 与 Nacos A2A 插件把 Agent Registry、注册发现和双向 Agent 协作接起来，适合补充多 Agent 从进程内编排走向跨服务互操作与治理的落地方式。 | https://juejin.cn/post/7603219519666257939 |
+| 以 4 个 AI Agent 重塑软件测试流程，并给出团队规模、用例设计和回归测试等真实业务背景，适合用垂直场景说明专业 Agent 分工如何进入研发流程。 | https://juejin.cn/post/7533512134002409522 |
+| 记录 16 个 AI Agent 在两周内协作完成约 10 万行 C 编译器并可编译 Linux 内核的案例，适合讨论大规模并行 Coding Agent 的任务拆分、协同收益与验证边界。 | https://juejin.cn/post/7603376587653169202 |
+| 从零搭建 CrewAI 多智能体协作系统，覆盖角色、任务和团队编排等核心实践，适合作为分享中可快速复现的框架级入门案例。 | https://juejin.cn/post/7649256802330443827 |
