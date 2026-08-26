@@ -653,3 +653,11 @@
 | https://www.bilibili.com/video/BV1CRPHzfEJZ |
 | https://www.bilibili.com/video/BV1eyNR6bE5N |
 | https://www.bilibili.com/video/BV1nnLx6UEBT |
+| https://aws.amazon.com/blogs/machine-learning/design-multi-agent-orchestration-with-reasoning-using-amazon-bedrock-and-open-source-frameworks/ |
+| https://aws.amazon.com/blogs/machine-learning/using-strands-agents-to-create-a-multi-agent-solution-with-metas-llama-4-and-amazon-bedrock/ |
+| https://cloud.google.com/blog/topics/developers-practitioners/building-connected-agents-with-mcp-and-a2a |
+| https://aws.amazon.com/blogs/industries/hyundai-autoever-building-a-multi-tenant-generative-ai-sandbox-and-production-aiops-on-amazon-bedrock/ |
+| https://github.com/langchain-ai/langgraph-swarm-py |
+| https://github.com/i-am-bee/beeai-framework |
+| https://github.com/lastmile-ai/mcp-agent |
+| https://github.com/agentscope-ai/agentscope |
