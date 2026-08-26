@@ -487,3 +487,10 @@
 | 这个 Claude Code Agent Teams 插件把并行代码审查、竞争假设调试、跨层功能开发、研究、安全审计和迁移做成可复用团队模板，适合现场展示“同一套共享任务与消息机制如何映射不同协作拓扑”。 | https://github.com/wshobson/agents/blob/main/plugins/agent-teams/README.md |
 | agmsg 用 Bash + SQLite 提供 Claude Code、Codex、Gemini、Copilot 等 CLI Agent 的跨厂商消息层，不引入完整框架或守护进程，适合分享“多 Agent 协作可以先从轻量通信互操作层落地”的基础设施思路。 | https://github.com/fujibee/agmsg |
 | 这项长周期任务研究把控制面与执行面分离，用目录服务、QoS 驱动的 Contract Net 动态选择 Agent，并按任务实例动态授予和回收权限，适合补充“多 Agent 协作如何同时处理服务变化、故障与最小权限”的系统设计。 | https://www.aemjournal.org/index.php/AEM/article/view/4269 |
+| MAOF 把团队、Kanban、Agent 间消息、异步工作流、共享内存和加密审计日志做进同一生产型控制面，适合分享“多 Agent 不只是编排模型调用，还要补齐任务、协作、运行与审计基础设施”的完整项目案例。 | https://github.com/mrx-arafat/Multi-Agent-Orchestration |
+| Mission Control 用 10 个明确岗位的 OpenClaw Agent 配合持久记忆、共享任务/文档空间、@mention 通信、完整任务生命周期和定时心跳长期协作，适合展示“小型 AI 团队怎样从一次性对话变成可持续运营系统”。 | https://github.com/bensheed/mission-control |
+| Agent Collab Skills 把任务拆分、上下文预算、结果对账、对抗式辩论、共享记忆、验收 Gate 和 Plan-Act-Reflect 封装成可组合 Skills，并能接 Codex/Gemini 委派，适合提炼跨模型协作中可复用的工程规约。 | https://github.com/WenyuChiou/agent-collab-skills |
+| agent-tasks 用 MCP 把 backlog→spec→plan→implement→test→review→done 做成有状态流水线，并加入 DAG 依赖、审批、产物版本、评论、Agent 认领/角色、心跳清理与知识传播，适合说明“共享任务控制面”如何降低多 Coding Agent 的协作混乱。 | https://github.com/keshrath/agent-tasks |
+| JockeyUI 以 ACP 统一编排不同 Agent/模型，在桌面端提供角色化模型选择、消息生命周期、上下文渐进披露和跨会话记忆，并实际演示 Claude PM 与 Codex Developer 热切换，适合展示异构 Agent 协作怎样产品化为统一工作台。 | https://github.com/recailai/jockey |
+| mini-claude-code 用 Java 按章节从 Agent Loop 一路实现到 Subagent、任务系统、Agent Teams、结构化 Team Protocol、自主认领与 MCP Plugin，适合从源码层讲清“一个能协作的 Agent Harness 到底需要哪些机制”，也便于非 Python 团队复现。 | https://github.com/DerekYRC/mini-claude-code |
+| MAS-Resilience 专门研究多 Agent 团队里出现错误/恶意 Agent 时的故障传播，并提供 AutoTransform/AutoInject 攻击注入和 Inspector/Challenger 防御代码，适合在分享中补充“协作规模扩大后如何做鲁棒性验证与防御”的反面实践。 | https://github.com/CUHK-ARISE/MAS-Resilience |

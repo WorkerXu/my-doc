@@ -603,3 +603,10 @@
 | https://github.com/wshobson/agents/blob/main/plugins/agent-teams/README.md |
 | https://github.com/fujibee/agmsg |
 | https://www.aemjournal.org/index.php/AEM/article/view/4269 |
+| https://github.com/mrx-arafat/Multi-Agent-Orchestration |
+| https://github.com/bensheed/mission-control |
+| https://github.com/WenyuChiou/agent-collab-skills |
+| https://github.com/keshrath/agent-tasks |
+| https://github.com/recailai/jockey |
+| https://github.com/DerekYRC/mini-claude-code |
+| https://github.com/CUHK-ARISE/MAS-Resilience |
