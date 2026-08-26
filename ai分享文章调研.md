@@ -612,3 +612,8 @@
 | 把 Claude Agent Teams、Cognition/Devin 等路线放在同一工程视角比较，讨论多 Agent 架构何时值得使用以及如何避免过度复杂化，适合用作落地选型与架构原则材料。 | https://juejin.cn/post/7642158541734412342 |
 | 用 Claude Skills 改造 AgentTeams，把松散临时团队变成更规范、可复用的复杂工作流，适合展示角色协作如何进一步沉淀为可复用 SOP/Skill，而不是每次靠临时 Prompt 组织。 | https://juejin.cn/post/7614802150371934251 |
 | 从工程体系化角度专门讨论多 Agent 结构化通信，用 Schema、校验、状态机/黑板、trace_id、重试与降级控制级联错误，适合分享“Agent 协作稳定性最终要靠协议与运行时约束”的生产实践。 | https://juejin.cn/post/7643764221012459563 |
+| AIDevTLV 的生产实践分享直接围绕如何构建并编排生产级多 Agent 系统展开，适合用来讲从角色拆分、编排控制到上线运行的工程落地路径。 | https://www.youtube.com/watch?v=HrbcX-iNZBs |
+| 该演讲专门复盘 Production-Grade Multi-Agent System 的真实挑战，适合补充分享中最容易被 Demo 掩盖的可靠性、协作失效与生产治理问题。 | https://www.youtube.com/watch?v=ZxcuuBJa_3Y |
+| Amazon Aurora 的实操内容把多 Agent 编排与可扩展 Agentic AI 应用、数据层结合起来，适合展示协作系统从逻辑编排走向生产架构时数据库与状态基础设施如何参与。 | https://www.youtube.com/watch?v=T8_R2RvteRg |
+| 制造运营场景用多 Agent 编排构建自适应 AI 系统，适合补充研发之外的工业垂直案例，展示专业 Agent 如何围绕真实运营任务协作。 | https://www.youtube.com/watch?v=5J1g6BXzITU |
+| Copilot Studio 的完整演练直接从平台层搭建 Multi-Agent Orchestration，适合分享低代码/企业平台如何把多个 Agent 组织成可运行的协作流程。 | https://www.youtube.com/watch?v=syNyEqiTSKQ |
