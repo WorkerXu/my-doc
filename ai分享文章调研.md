@@ -429,3 +429,12 @@
 | 这期 Agent 实践聚焦多智能体通信和上下文管理，并提供持续更新的代码与笔记项目，适合从工程层讲清楚 Agent 之间如何传递信息、管理上下文并把协作机制落成可复现实现。 | https://www.bilibili.com/video/BV1nmTF6dEkz |
 | OpenCode 多 Agent 多线程实战强调同一时间并行推进更多工作，适合用于讨论 Coding Agent 的并发执行、任务切分与吞吐提升，以及并行带来的协调成本。 | https://www.bilibili.com/video/BV1TYud6hEk9 |
 | Coze 多 Agent 实战以课程开发助手为具体业务场景，从低代码方式搭建可用的多智能体应用，适合补充非研发团队如何通过角色分工把多 Agent 协作快速落到内容生产流程。 | https://www.bilibili.com/video/BV1vx4y1H74f |
+| OpenAI 2026 年 GPT-5.6 构建者指南汇总了生产项目的技术经验，并专门讨论 Multi-agent、Responses API 与程序化工具调用的组合，适合分享“新一代模型能力如何真正转化为可控的多 Agent 系统设计”。 | https://openai.com/index/builders-guide-to-gpt-5-6/ |
+| Anthropic 2026 Agentic Coding 趋势报告把“单 Agent 演进为协同团队”列为核心趋势，并结合真实企业案例与人类监督方式讨论多 Agent 协作，适合用数据和案例说明组织级落地正在发生什么变化。 | https://resources.anthropic.com/2026-agentic-coding-trends-report |
+| AWS AgentCore Runtime Instances 面向生产级长时运行 Agent，支持多个 Agent 在同一持久会话中协作、共享文件系统、GPU、暂停恢复和最长 14 天会话，并给出代码编写/审查双 Agent 示例，适合讲多 Agent 的基础设施落地。 | https://aws.amazon.com/blogs/aws/runtime-instances-persistent-compute-for-production-ai-agents-on-amazon-bedrock-agentcore/ |
+| AWS 用 Cedar 给出多 Agent 委派链的最小权限参考实现，分别约束 Agent→Tool、Agent→Agent 与原始用户授权，并处理身份透传、委派深度和能力校验，适合作为企业多 Agent 安全治理的工程案例。 | https://aws.amazon.com/blogs/security/enforce-least-privilege-authorization-in-multi-agent-ai-chains-using-cedar/ |
+| Kiro Crew 把持久记忆、跨会话任务、并行子 Agent、检查点/重试、审批与可观测性整合成开源研发工作空间，针对真实工程“跨仓库、跨工具、跨天”的协作形态，适合展示多 Agent 开发团队如何长期运行。 | https://kiro.dev/blog/introducing-kiro-crew/ |
+| OpenAI Agents SDK 新增 Hosted multi-agent 实验能力，由 GPT-5.6 根 Agent 在服务端创建并协调子 Agent，同时保留本地工具执行、并发限制、调用者元数据与幂等/授权控制，适合分享托管式多 Agent 编排的新落地形态。 | https://github.com/openai/openai-agents-python/blob/main/docs/models/index.md |
+| CIRP Annals 论文在汽车供应商数据上用 Strategy、Analysis、Data、Simulation 四类 Agent 完成生产计划，并以 7 组实验验证结构化 handoff、上下文工程与仿真/优化协作，适合补充真实工业场景的多 Agent 实证案例。 | https://doi.org/10.1016/j.cirp.2026.04.027 |
+| 文章基于 27 组受控实验总结多 Agent 编程团队的五条实践规则，包括 3–5 个 Agent、共享目录但限制写入范围、集成测试与故障注入、专职 DevOps Agent、重复运行报告方差，适合作为可验证的工程经验。 | https://junjietang.dev/blog/2026/five-rules-multi-agent-coding-teams/ |
+| Meta-Agent Teams 用角色/关系定义团队，由 meta-agent 根据人类反馈持续改进，再用独立 auditor 审核，并通过 Git 记录每次演化，适合分享“多 Agent 团队如何形成可追踪的持续改进闭环”。 | https://github.com/jbrahy/meta-agent-teams |
