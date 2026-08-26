@@ -86,3 +86,14 @@
 | https://github.com/aws-samples/sample-claude-code-agent-team |
 | https://github.com/Kocoro-lab/Shannon |
 | https://github.com/Yeachan-Heo/oh-my-claudecode |
+| https://zhuanlan.zhihu.com/p/2069505265544720400 |
+| https://zhuanlan.zhihu.com/p/1989786047844991637 |
+| https://zhuanlan.zhihu.com/p/2073400762441511561 |
+| https://zhuanlan.zhihu.com/p/2067367489571382672 |
+| https://zhuanlan.zhihu.com/p/2061086733131945183 |
+| https://zhuanlan.zhihu.com/p/2058188813529244032 |
+| https://zhuanlan.zhihu.com/p/2070142074624668518 |
+| https://zhuanlan.zhihu.com/p/2030309910798391120 |
+| https://zhuanlan.zhihu.com/p/2043410428491977017 |
+| https://zhuanlan.zhihu.com/p/2022398691491815748 |
+| https://zhuanlan.zhihu.com/p/2025864547731272052 |
