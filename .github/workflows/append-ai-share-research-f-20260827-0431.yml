@@ -1,0 +1,85 @@
+name: Append AI sharing research f 20260827 0431
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/append-ai-share-research-f-20260827-0431.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Append new research rows safely
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+
+            python - <<'PY'
+          from pathlib import Path
+
+          article = Path('ai分享文章调研.md')
+          history = Path('ai分享历史调研.md')
+
+          rows = [
+              ('直接展示 Claude Code + Opus 4.6 在 tmux 与 Agent Sandbox 中做多 Agent 编排，适合分享并行 Coding Agent 如何通过会话与工作区隔离降低互相干扰。', 'https://www.youtube.com/watch?v=RpUTF_U4kiw'),
+              ('用 3 小时完整构建 PR Review 多 Agent 系统，适合作为从角色拆分到可运行代码的长流程实战案例，便于讲清多 Agent 审查如何真正落地。', 'https://www.youtube.com/watch?v=RiN02OXjeeQ'),
+              ('围绕 Orchestrator Agent + MCP 展示 Agent 驱动自动化，适合说明中央编排器如何借助标准工具协议连接多个执行能力并形成可扩展工作流。', 'https://www.youtube.com/watch?v=Ons1Fv3IE4U'),
+              ('以 OpenClaw 搭建实际多 Agent Team 并做现场演示，适合观察个人或小团队如何组织多个 Agent 协作完成持续工作，而不只是框架概念。', 'https://www.youtube.com/watch?v=bzWI3Dil9Ig'),
+              ('作者展示自己同时运行 6 个 Coding Agent 的真实工作流，适合分享并行任务拆分、Agent 调度与人工监督在日常开发中的实际操作方式。', 'https://www.youtube.com/watch?v=dDeoblrGRGM'),
+              ('把 Codex 与 Claude Code 组合成 Agentic Software Factory，适合讨论异构 Coding Agent 如何分工接力，形成从任务到代码交付的自动化生产线。', 'https://www.youtube.com/watch?v=AbpyqAfxZ8c'),
+              ('VS Code 官方演示 multi-agent development，适合分享多 Agent 能力如何直接嵌入主流 IDE 的开发流程，以及从单 Agent 协助走向并行协同开发的产品化路径。', 'https://www.youtube.com/watch?v=BsAHunfVwNs'),
+              ('SoulSync Demo & Deep Dive 聚焦多 Agent 在 Agentic Automation 中的协作，适合补充业务自动化场景里多个 Agent 如何围绕同一流程分工配合的演示案例。', 'https://www.youtube.com/watch?v=arNWaddf-lc'),
+          ]
+
+          article_text = article.read_text(encoding='utf-8')
+          history_text = history.read_text(encoding='utf-8')
+
+          added = []
+          for reason, url in rows:
+              if url in article_text or url in history_text:
+                  continue
+              if article_text and not article_text.endswith('\n'):
+                  article_text += '\n'
+              article_text += f'| {reason} | {url} |\n'
+              if history_text and not history_text.endswith('\n'):
+                  history_text += '\n'
+              history_text += f'| {url} |\n'
+              added.append(url)
+
+          if added:
+              article.write_text(article_text, encoding='utf-8')
+              history.write_text(history_text, encoding='utf-8')
+              print(f'added {len(added)} rows')
+          else:
+              print('no new rows')
+          PY
+
+            if git diff --quiet -- 'ai分享文章调研.md' 'ai分享历史调研.md'; then
+              echo 'no new rows to commit'
+              exit 0
+            fi
+
+            git add -- 'ai分享文章调研.md' 'ai分享历史调研.md'
+            git commit -m 'docs: append ai sharing research f 20260827'
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+
+            echo "push failed on attempt ${attempt}; retrying on latest main"
+          done
+
+          exit 1
