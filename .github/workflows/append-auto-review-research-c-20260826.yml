@@ -2,6 +2,7 @@ name: Append auto review research c 20260826
 
 on:
   push:
+    branches: [main]
     paths:
       - '.github/workflows/append-auto-review-research-c-20260826.yml'
 
@@ -13,6 +14,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Append new research rows
         shell: bash
         run: |
@@ -29,15 +32,16 @@ jobs:
             fi
           }
 
-          append '该工作流要求把持久化的计划 ID/路径与当前完整 head/base SHA 一起写入交接和验证状态，可直接借鉴为 Codex PLAN.md ↔ Git 提交/范围的机器可读绑定协议。' 'https://github.com/shakacode/agent-workflows/blob/main/workflows/pr-processing.md'
-          append 'Plan Review 可在计划获批前调用 Codex 或独立 Claude 做多轮只读审查，并把每版计划与审查记录持久化到仓库工作区，适合作为提交前的计划质量门。' 'https://github.com/dachev/plan-review'
-          append 'AgentReview 由编排器把 PR diff 并行分发给质量、安全、文档代理，并通过 MCP 调用 Roslyn、Semgrep、GitHub 后汇总排序结果，适合作为 Codex 之外的独立多 Agent 复核层。' 'https://github.com/vondraysanford/AgentReview'
-          append 'agentic-atdd 把规格同步到 GitHub Issues，代码阶段并行运行架构/意图 reviewer，并持续吸收 CI 与机器人 review 反馈，适合把多 Agent findings 直接变成可追踪的看板任务闭环。' 'https://github.com/mpiton/agentic-atdd'
-          append 'Figma MCP Bridge 能把当前打开的 Figma 文件、截图、变量、设计 token 与 token 使用审计直接暴露给 Agent，适合让 design reviewer 用真实设计文件/设计系统上下文核对 Codex 生成代码。' 'https://github.com/Liar0320/figma-mcp-bridge'
-          append 'figma-spec-search 能在大型 Figma 文件中定位规则、标注、状态和设计依据并返回原始节点链接，适合让代码审查 finding 可回溯到具体设计证据，而不是只靠模型主观判断。' 'https://github.com/zicator/figma-spec-search'
-          append 'pinfix 把运行中 React 页面上的 Figma 式视觉批注直接写成仓库 Markdown 任务，并记录组件链与源码文件，可把设计审查结果无损转成 Codex 可消费、可版本化的修复队列。' 'https://github.com/VianneyBertrand/pinfix'
-          append 'AgentBoard 以卡片承载 Codex/Claude/Cursor 会话并通过生命周期 hooks 展示等待、运行和完成状态，可作为把 reviewer 线程与审查结果集中回流到本地项目看板的轻量承载层。' 'https://github.com/mikky-a/agentboard'
-          append 'Tribunal 使用不同厂商 AI CLI 进行结构化多轮辩论并保留异议后给出裁决，适合作为代码 reviewer、设计 reviewer 之后的独立最终 judge，降低单一模型共识偏差。' 'https://github.com/kdoubt/tribunal'
+          append 'gstack 会把 plan review 状态写回计划文件，同时将各类审查记录关联当前 commit 并检测 HEAD 漂移；适合把“计划文件 ↔ 被审提交 ↔ 审查状态”固化成可持续校验的绑定。' 'https://github.com/garrytan/gstack/blob/main/scripts/resolvers/review.ts'
+          append 'gstack 已把 Codex + 独立 Claude 子 Agent 的并行设计复核纳入设计审查，并让 Codex/code/design review 日志携带 commit hash；适合用跨模型意见和提交级过期检测避免实现 Agent 自审。' 'https://github.com/garrytan/gstack/blob/main/CHANGELOG.md'
+          append 'dex 将 plan.md、实现前冻结的 review-base-ref 和多个 reviewer findings 分开持久化，中断恢复后仍能按同一 Git 基线复审，并由 fixer 验证后提交修复；适合作为 Codex 外部可恢复审查编排器。' 'https://github.com/francescoalemanno/dex'
+          append 'auto-codex 采用“Codex 规划 → Opus 对抗审计划 → Sonnet swarm 并行实现 → Codex/Opus 代码门禁”的跨模型流水线，并持久化 plan/review gate；适合作为独立于实现 Agent 的多 Agent 复审层。' 'https://github.com/neonplants/auto-codex'
+          append 'OpenAI 官方 Figma design-system skill 把 get_design_context + get_screenshot + 1:1 验证设为必经流程，并要求映射项目 token/组件规则；适合给独立 design reviewer 建立与 Codex 一致、可执行的设计审查基线。' 'https://github.com/openai/skills/blob/main/skills/.curated/figma-create-design-system-rules/SKILL.md'
+          append 'audit-design-system 同时取 Figma 结构、截图、变量绑定和 Code Connect 映射，再按设计系统化证据判定 finding；适合让 design-reviewer 用多证据核对实现与设计源，而不是只靠视觉主观判断。' 'https://github.com/edenspiekermann/Skills/blob/main/skills/audit-design-system/SKILL.md'
+          append 'design-superskills 可把多 reviewer 的视觉/UX 分析与 Figma 设计上下文继续转换成 GitHub issues（dev-handoff）；适合作为“设计审查 findings → 项目看板任务 → Codex/开发 Agent 修复”的发布桥。' 'https://github.com/shub-rajput/design-superskills'
+          append 'Detent 直接以 GitHub ProjectV2 看板为事实源，为 ready issue 建隔离 worktree、调度 Codex、跑验证门禁并进入 PR/review/merge 状态；适合把聚合审查结果变成可继续驱动 Codex 的项目工作项。' 'https://github.com/digitaldrywood/detent'
+          append 'spec_driven_develop 把架构/规格/任务分解与 GitHub Issues、Project board、worktree、PR 串成闭环，并支持 Codex；适合将审查结论结构化回流为项目项并沿提交/PR 生命周期持续跟踪。' 'https://github.com/zhu1090093659/spec_driven_develop'
+          append 'coding-agent-orchestration 用 .vibe/PLAN.md checkpoint + STATE/HISTORY 做持久控制，规定每个 checkpoint 实现后必须 commit 再进入 IN_REVIEW；适合将计划单元、提交和复审状态形成稳定的一对一推进节奏。' 'https://github.com/brifl/coding-agent-orchestration'
 
       - name: Commit research updates
         shell: bash
