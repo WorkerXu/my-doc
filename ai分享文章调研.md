@@ -395,3 +395,13 @@
 | 这份 2026 年新综述专门梳理多 Agent LLM 的协作机制与结构性限制，重点从“如何协作”而不是“堆多少 Agent”组织研究脉络，适合为分享建立协作机制分类和后续工程案例的理论骨架。 | https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7243979 |
 | Warp 从 handoff、共享上下文、显式触发与人工审批四个工程要素拆解多 Agent 编排，强调“多个 Agent 同时跑”不等于“已完成协作”，适合作为分享中解释编排层最小职责的简洁案例。 | https://www.warp.dev/articles/multi-agent-orchestration-explained |
 | Airtable 用 hub-and-spoke、flat mesh、hierarchical 三类架构解释多 Agent 如何组织，并串联 Orchestrator、MCP/A2A 与单/多 Agent 选型，适合作为面向非框架用户的架构模式总览。 | https://www.airtable.com/articles/how-multi-agent-systems-work |
+| Agent Board 把多 Agent 协作的共享任务状态做成独立控制面：Kanban、DAG 依赖、质量 Gate、自动重试、任务链、实时评论/Webhook、MCP 与完整审计都可直接运行，并特别处理并发写入与故障恢复，适合分享“Agent 团队怎样靠任务系统而不是聊天记录稳定协作”。 | https://github.com/quentintou/agent-board |
+| questpie/agent-board 用纯 Markdown + CLI 保存 goals、tasks、specs、knowledge 与 flows，把 claim 锁、依赖检查、验证证据和 done gate 变成机器约束，并支持本地 multi-agent fan-out、Review 与汇总，适合展示“持久事实源 + 可执行契约”怎样让 Coding Agent 长任务可恢复、可审查。 | https://github.com/questpie/agent-board |
+| agent-taskboard 不负责替 Agent 派活，而是在开工前登记文件/模块 scope、自动发现重叠、通过任务线程协商边界，并用 bug 验证循环和异步 standup 维持团队可见性；这种“先消灭重复劳动和编辑冲突”的设计很适合作为多人多 Agent 并行开发的协作治理案例。 | https://github.com/chenjxin/agent-taskboard |
+| AI Agent Board 把 Copilot、Claude Code、Codex、OpenCode 等 Coding Agent 收敛到同一 Kanban UI，每个任务可选择 repo、branch、worktree 并实时流式展示执行过程，最后由人 Review、合并或开 PR，适合分享“多 Agent 执行层 + 人类项目控制面”的产品化落地。 | https://github.com/DanWahlin/ai-agent-board |
+| Onetree 反其道而行，不靠每 Agent 一个 worktree，而是在同一 working tree 上用文件 lease、原子任务板、跨 Agent 定向消息、共享验证记忆与统计指标避免互踩，并能测量 speedup、utilization、critical path；适合对比“隔离式并行”之外的实时协同模型。 | https://github.com/kedarvartak/onetree |
+| Agent Collab 把多 Coding Agent 协作定义成 runtime 无关的 worktree-first 协议，任务、handoff、Review、测试报告、风险、ADR 与 merge recommendation 都持久化在 `.agent/`，角色职责和人工审批 Gate 也被显式约束，适合提炼一套可跨 Claude/Codex 等工具复用的团队工程规约。 | https://github.com/egesabanci/agent-collab |
+| AI Sidekicks 把“session”而不是单个 Agent 作为协作核心，让多人、Claude Code、Codex 等 Agent 在跨机器共享空间里看到统一时间线、暂停/steer、审批高风险动作，并用加密频道和 git-worktree 流程协同交付，适合补充多 Agent 从后台编排走向真正多人协作产品的形态。 | https://github.com/Sawmonabo/ai-sidekicks |
+| agtx 用共享黑板/Kanban 承载持久任务，再由 Orchestrator 自动拆解、委派、推进阶段和检查冲突；不同阶段还能切换 Gemini/Claude/Codex 等 Agent，每个任务用独立 worktree + tmux 并行执行，适合展示“看板状态机 + 异构 Agent + 隔离并行”的完整研发工作流。 | https://github.com/fynnfluegge/agtx |
+| Agent Teams 是面向长期运行团队的自托管编排层，让多个 Hermes Agent 以明确岗位、角色和队友关系协作，并提供实时 Dashboard、团队脚手架以及 TLS、防火墙、Docker 隔离和 API Key 等 VPS 部署说明，适合分享“Agent 团队从本地 Demo 到可运维服务”需要补哪些基础设施。 | https://github.com/CyberTron957/agent-teams |
+| myclaude 用 Claude Code 做 Orchestrator，把 Codex、Claude、Gemini、OpenCode 统一成多后端执行层，并沉淀 5 阶段 feature workflow、智能路由、BMAD 专业 Agent 和需求到代码流水线；项目已有较高社区采用度，适合展示跨模型 Coding Agent 协作如何封装成可安装、可复用的工程工作流。 | https://github.com/stellarlinkco/myclaude |
