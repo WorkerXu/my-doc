@@ -1,0 +1,60 @@
+name: Append auto review research b 20260826 r5
+
+on:
+  push:
+    paths:
+      - '.github/workflows/append-auto-review-research-b-20260826-r5.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Append new research rows
+        shell: bash
+        run: |
+          set -euo pipefail
+          article='自动审查文章调研.md'
+          history='自动审查历史调研.md'
+
+          ensure_newline() {
+            local file="$1"
+            if [ -s "$file" ] && [ "$(tail -c 1 "$file" | od -An -t u1 | tr -d ' ')" != "10" ]; then
+              printf '\n' >> "$file"
+            fi
+          }
+
+          ensure_newline "$article"
+          ensure_newline "$history"
+
+          append() {
+            local reason="$1"
+            local url="$2"
+            if ! grep -Fqx "$url" "$history"; then
+              printf '| %s | %s |\n' "$reason" "$url" >> "$article"
+              printf '%s\n' "$url" >> "$history"
+            fi
+          }
+
+          append 'Claudex 会把 PLAN.md 作为持久计划工件，由 Codex 按工程、安全、SRE 多视角循环审 plan，再用只读 review 审实现 diff 并把 findings 写入 reviews/；适合作为“冻结 plan → 跨角色复审 → 提交前后验证”的轻量多 Agent 质量门。' 'https://github.com/promptadvisers/claudex'
+          append 'PR Cockpit 可让 Codex/Claude 在隔离只读 worktree 中批量审 PR，产出结构化 file:line findings，再经人工勾选门禁回贴 GitHub review；适合作为独立审查 cockpit，把精确提交复审、修复和发布串成可审计闭环。' 'https://github.com/taovc/pr-cockpit'
+          append 'claude-gpt-workflow 可把计划目录改到项目内 ./plans，先用 Codex 对 plan-file 做对抗式多轮审查，再由 Claude 编排、Codex 实现、Claude 复审、Codex 修复直到通过；适合把版本化 plan 与跨模型 code-review loop 接到同一 Git 流程。' 'https://github.com/longranger2/claude-gpt-workflow'
+          append 'claude-plan-reviewer 会在 ExitPlanMode 前用 hook 自动找到最新 plan 文件，并调用只读 Codex/Gemini 审查；有 finding 就阻断退出并要求改 plan，LGTM 才放行，适合作为最终 plan 固化、哈希和绑定 commit 之前的自动质量门。' 'https://github.com/yuuichieguchi/claude-plan-reviewer'
+          append 'figma-codex-cli 让 Codex 直接检查真实 Figma Desktop 文件，能读取设计 token、variables、components 并执行颜色、排版、间距、可访问性和 design lint；适合作为独立 design-review lane 的结构化设计证据源，再与代码 reviewer findings 聚合。' 'https://github.com/cstueberitz/figma-codex-cli'
+          append 'uxui-figma-review-agent 把 Senior UX/UI 设计 reviewer、机器可读 checklist 和两轮 triage 流程拆成独立子 Agent；可通过 Figma MCP 按 node-id 审真实设计并检查 Variables、Styles 与 token debt，适合作为代码多 Agent 审查中的专门设计 reviewer。' 'https://github.com/Sotanis/uxui-figma-review-agent'
+
+      - name: Commit research updates
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- '自动审查文章调研.md' '自动审查历史调研.md'; then
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- '自动审查文章调研.md' '自动审查历史调研.md'
+          git commit -m 'docs: append automatic review research b 20260826 r5'
+          git push
