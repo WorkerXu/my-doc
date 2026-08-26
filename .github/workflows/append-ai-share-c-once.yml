@@ -59,3 +59,5 @@ jobs:
           git add 'ai分享文章调研.md' 'ai分享历史调研.md'
           git commit -m 'docs: append new Bilibili multi-agent research'
           git push
+
+# trigger after workflow registration
