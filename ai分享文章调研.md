@@ -202,3 +202,10 @@
 | HiClaw 以开源 Agent Teams 系统把 Manager、无状态 Worker、Matrix 房间、AI Gateway、MinIO、MCP、心跳检查和 Human-in-the-Loop 串成可部署工作流，适合展示多 Agent 从聊天编排走向可观察、可干预的团队基础设施。 | https://juejin.cn/post/7614747451153743924 |
 | AI Mind 的真实项目复盘采用 Supervisor→Plan→Task→并行 Reviewer→返修链路，并用 strict schema contract、Runtime 硬规则和有限重试把 LLM 不确定性锁在可控范围内，特别适合分享“多 Agent 可靠性不能只靠 Prompt”。 | https://juejin.cn/post/7669221547006230574 |
 | OpenPencil 在真实设计工具中实现 Agent Team，把一句 UI 需求拆成多个子任务交给不同 Agent 协作生成，适合分享“多 Agent 如何嵌入既有产品功能并完成面向用户的实际交付”，而不只是框架 Demo。 | https://juejin.cn/post/7614336660986544154 |
+| Google Cloud 把 1000 个真实 ADK Agent 同时运行在开源生产级 Race Condition 系统中，并复盘 HTTP/A2A 在规模化时为何切到 Redis Pub/Sub、重试退避、上下文缓存、Skills 懒加载与 Agent mesh，特别适合分享“大规模多 Agent 真跑起来后架构如何改”。 | https://www.youtube.com/watch?v=WSIzaih2vq4 |
+| Google Cloud 从本地开发到 Cloud Run 生产部署完整搭建分布式多 Agent 系统，用 Researcher、Judge、LoopAgent、SequentialAgent 形成自纠错流水线，并通过 A2A 连接服务，适合做“专业分工 + 反馈闭环 + 云端部署”的实操案例。 | https://www.youtube.com/watch?v=VjBijrS19gY |
+| Microsoft Developer 官方介绍 Agent Framework 如何把 Semantic Kernel 与 AutoGen 汇合为生产级多 Agent SDK，覆盖状态/记忆、企业基础能力、Team Conversation 与后续 Workflow 编排，适合讲微软体系从实验框架走向统一生产栈。 | https://www.youtube.com/watch?v=AAgdMhftj8w |
+| Microsoft Azure Developers 直接用 Agent Framework 的图式编排搭建多 Agent workflow，并展示 streaming、checkpointing、human-in-the-loop 等生产能力，适合分享“确定性工作流如何约束 Agent 协作”。 | https://www.youtube.com/watch?v=dg8eloQbKLM |
+| AWS 的 Agent Orchestra 实战把多个容器化领域 Agent 通过 AgentCore Orchestrator 动态路由，并结合 Memory、Observability 与 MCP Lambda 汇总多模态结果，适合展示“运行时、记忆、监控和工具协议”如何一起支撑生产协作。 | https://www.youtube.com/watch?v=R0eY5lpyWOo |
+| AWS re:Invent 2025 用 SecOps 真实流程演示专业 Agent 共享漏洞上下文、定位受影响服务器并生成修复补丁/产物，适合把多 Agent 从通用 Demo 落到“调查→修复→交付”的高风险业务闭环。 | https://www.youtube.com/watch?v=gWY9z75qCcU |
+| 该视频把生产多 Agent 常见架构归纳为 Orchestrator-Worker、Hierarchical、Peer-to-Peer、Pipeline 四类，并结合真实用例与常见错误讨论选型，适合在分享开场建立协作模式地图，再衔接具体工程案例。 | https://www.youtube.com/watch?v=-zBbij9rrEI |
