@@ -322,3 +322,11 @@
 | https://github.com/google/adk-docs/blob/main/docs/a2a/quickstart-exposing.md |
 | https://www.tunerlabs.com/blog/multi-agent-orchestration-patterns |
 | https://coverge.ai/blog/multi-agent-orchestration |
+| https://github.com/microsoft/MultiAgent-Accelerator |
+| https://github.com/Azure-Samples/multi-agent-student-loan-processing-SA |
+| https://github.com/microsoft/Prior-Authorization-Multi-Agent-Solution-Accelerator |
+| https://github.com/a2aproject/A2A/blob/main/docs/announcing-1.0.md |
+| https://github.com/OmPrajapati7901/a2a-mcp-multi-agent/blob/main/ARCHITECTURE.md |
+| https://github.com/babebp/llm-agent-production-architecture |
+| https://github.com/WenyuChiou/awesome-agentic-ai-zh/blob/main/stages/07-multi-agent-production.zh-Hans.md |
+| https://gist.github.com/prasad-kumkar/f9a71a839afe8ed03da5909bae9e84f3 |
