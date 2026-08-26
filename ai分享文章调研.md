@@ -477,3 +477,8 @@
 | 以 LangGraph + MCP + RAG 从零搭建企业级多智能体系统，把图编排、工具协议和知识检索放进同一工程实践，适合用于分享多 Agent 应用从角色协作到工具接入、知识增强和业务落地的一体化实现路径。 | https://www.bilibili.com/video/BV1eFqVBnEQX |
 | 科研场景把文献分析、创新点生成、代码实现和论文写作拆成 4 个 Agent，并结合 CrewAI、RAG 知识库、长期记忆与反思机制，还复盘 Agent 循环、无效代码和幻觉等失败问题，适合作为多 Agent 垂直业务闭环与失败治理案例。 | https://www.bilibili.com/video/BV1kEqnBHEzi |
 | SpringAI 多 Agent 实战覆盖角色划分、消息通信、Skills 调度、RAG 融合和分布式协同，并提供任务完成率/协同效率评估以及消息乱序、任务死锁、调度异常等排障内容，适合补充多 Agent 真正工程化后需要面对的可靠性与评估问题。 | https://www.bilibili.com/video/BV1bEgY6iEah |
+| LendingTree 将 Supervisor、教育与匹配三个 Agent 真正跑进房贷生产服务，并结合 LangGraph、MCP、Guardrails、分布式追踪和独立部署；截至 2026 Q1 已处理约 1,960 次会话、12,100 条消息且 97%+ 无需人工升级，适合用真实金融指标讲“多 Agent + 合规 + 可观测”如何落地。 | https://aws.amazon.com/blogs/machine-learning/how-lendingtree-built-a-multi-agent-mortgage-assistant-on-amazon-bedrock/ |
+| AWS 用 S3 Files 把分布在 EC2、Lambda、EKS、Fargate 与 AgentCore 的多 Agent 放进同一共享文件工作区，通过目录交接、POSIX 一致性、按 Agent 隔离和去重机制协调中间产物，适合展示“共享文件状态”怎样替代脆弱的 Prompt 传递并支撑异构运行时协作。 | https://aws.amazon.com/blogs/storage/orchestrating-multi-agent-ai-architectures-with-amazon-s3-files/ |
+| AWS 从共享状态缺失导致重复工作、决策冲突和上下文耗尽出发，用 S3 Vectors 设计“工作记忆 + 个体长期记忆 + 团队共享记忆”三层体系，并给出强一致性、租户隔离、生命周期和可观测实践，适合补齐多 Agent 协作中常被忽视的持久记忆基础设施。 | https://aws.amazon.com/blogs/storage/building-persistent-memory-for-multi-agent-ai-systems-with-amazon-s3-vectors/ |
+| AAIF 说明 A2A 已进入中立基金会治理并被 150+ 组织采用，文章给出 HarmonyOS/微信、云平台、金融和供应链等生产互操作案例，适合说明多 Agent 从“同框架内部编排”走向跨厂商、跨组织协作后，为什么需要标准化发现、委派与身份契约。 | https://aaif.io/blog/a2a-joins-aaif |
+| 这篇生产架构笔记把多 Agent 的可靠性问题归结到编排控制面：明确协调/执行分离、Agent-to-Agent 与 Agent-to-Tool 两类边界、最小权限/HITL、全链路追踪和成本反馈，适合做框架无关的生产架构检查表。 | https://brittek.net/journal/multi-agent-systems-are-orchestration-systems |
