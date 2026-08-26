@@ -562,3 +562,7 @@
 | OpenCSG 的小团队实践用 CSGClaw 的 Manager+Worker 模式拆解复杂任务，并允许人在 WebUI/IM 工作区观察、补充上下文和纠偏，同时把模型、数据、Agent 与协作链路串起来，适合展示三五人团队怎样把多 Agent 变成日常产品工作流。 | https://zhuanlan.zhihu.com/p/2054957116041983695 |
 | Octo 将多 Agent 协作拆成多种明确模式，而不是简单“拉群讨论”，覆盖独立执行、圆桌讨论以及不同任务下的协作结构，适合在分享中说明协作拓扑应随任务目标变化，并用产品化方式把不同模式交给用户选择。 | https://zhuanlan.zhihu.com/p/2055278393491469021 |
 | 从企业 To B 场景出发讨论 AgentTeams 的协作治理，重点覆盖跨 Agent 通信与分工、统一凭证托管、权限与安全、审计、Token 成本以及人在回路，适合补充“多 Agent 能不能规模化落地取决于治理，而不只取决于模型聪明度”的观点。 | https://zhuanlan.zhihu.com/p/2057880793431683528 |
+| 从 DeepSeeker-Code 源码拆解 planMode、spawn_agent/run_workflow 与子 Agent 执行机制，并覆盖工具收权、递归深度熔断、并发限制和审批锁，适合作为多 Agent 从提示词协作走向 Harness 级可靠编排的实现案例。 | https://juejin.cn/post/7675326962214731785 |
+| 从 Coding Agent 的 LongTask 抽象说明如何把多个 Agent Run、确定性任务、等待节点和人工审批组织成可持久化、可 Checkpoint、可暂停恢复的长流程，适合分享多 Agent 长时任务如何实现可靠执行。 | https://juejin.cn/post/7677161347231088646 |
+| 基于 Spring AI Alibaba + Nacos 的分布式多 Agent Demo，用 Supervisor 调度多个独立进程 Agent，并通过 Nacos 注册发现与 A2A 通信实现水平扩展，同时串联 MCP、RAG、Memory 和可观测性，适合作为 Java/企业级落地案例。 | https://juejin.cn/post/7564307224267522063 |
+| DeepSeek Harness 教程把子 Agent 的并行派发、独立会话、消息/中断/状态管理与可脚本化 Workflow 串起来，并讨论任务拆分与结果验证，适合作为 Coding Agent 多 Agent 协作的上手与工程实践案例。 | https://juejin.cn/post/7673390412729614390 |
