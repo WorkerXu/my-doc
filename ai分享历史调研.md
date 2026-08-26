@@ -711,3 +711,10 @@
 | https://www.instaclustr.com/blog/scaling-agent-systems-with-apache-kafka-and-a2a-part-4-visualizing-the-agent2agent-protocol/ |
 | https://mikezupper.com/posts/a2a-agent-to-agent-protocol/ |
 | https://www.agentagency.ai/articles/from-proofofconcept-to-production-scaling-governed-multiagen |
+| https://www.servicenow.com/uk/blogs/2026/how-is-servicenow-using-ai-agents |
+| https://newsroom.servicenow.com/press-releases/details/2026/ServiceNow-and-Google-Cloud-unite-AI-agents-for-autonomous-enterprise-operations/default.aspx |
+| https://developer.salesforce.com/blogs/2026/08/migrate-legacy-agents-to-the-new-agentforce-builder |
+| https://cloud.google.com/blog/products/ai-machine-learning/agent-executor-googles-distributed-agent-runtime |
+| https://www.fourkites.ai/engineering-blog/multi-agent-orchestration |
+| https://www.ai.gov.au/news-and-insights/blog/when-ai-agents-interact-new-research-australian-ai-safety-institute |
+| https://github.com/agentscope-ai/AgentTeams/issues/1132 |
