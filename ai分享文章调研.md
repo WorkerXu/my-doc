@@ -501,13 +501,13 @@
 | RadarMind 用 5 个业务 Agent + 1 个 TeamLeader 端到端完成科研文献调研与理论路径生成，并复盘 Manager/Worker/Team 房间、Docker 隔离和实际部署踩坑，适合作为 AgentTeams 从安装到真实业务协作的可复现实例。 | https://zhuanlan.zhihu.com/p/2072406449624461470 |
 | OpsPilot Zero 把生产故障处置拆成告警归并、根因分析、修复规划、恢复验证 4 个 Agent 的 DAG，并用结构化交付契约、置信度证据链和风险审批控制自动化边界，适合展示高风险运维场景怎样形成可信协作闭环。 | https://zhuanlan.zhihu.com/p/2068110217808700098 |
 | 从 AgentTeams baseline 的实际使用出发，拆解 Manager/TeamLeader/Worker、Matrix 协作、Nacos 注册与 Skill 版本治理、Higress 凭证收敛和 OpenTelemetry 可观测，适合补充多 Agent 真正生产化所需的治理基础设施。 | https://zhuanlan.zhihu.com/p/2068115749751804511 |
-| 昆仑 AI 分布式多 Agent 企业平台采用 DDD 编排 + AutoGen 原子执行，并把知识库、记忆、异步任务、权限、观测和配置热更新放进九层架构，适合分享企业团队如何把多 Agent 从单个流程升级为长期演进的平台能力。 | https://zhuanlan.zhihu.com/p/2066558348422657228 |
-| 真实搭建“人类 + 5 个独立 Agent 团队”的跨境电商组织，PM、Coding、选品、内容与社媒 Agent 各有独立上下文和工具，并通过项目与委派路由协作，适合展示人机混合组织如何进入日常业务而非只做技术 Demo。 | https://zhuanlan.zhihu.com/p/2035422266629038719 |
-| Routa 把多 Agent 协作做成独立协调平面，用 ACP 管 Agent 进程、MCP 暴露协作动作、A2A 做联邦扩展，并用结构化任务、事件流、持久状态和恢复机制实现可追踪协作，适合讲协议分层与开放编排。 | https://zhuanlan.zhihu.com/p/2009668693362242633 |
-| 从企业 SOP 运行机制出发，把任务实例、唯一运行时主控、状态载体、执行节点、人工审核、异常处理和恢复明确成工程对象，并给出逐步扩大自动化范围的落地路径，适合分享“企业需要的不是更多 Agent，而是可靠协作机制”。 | https://zhuanlan.zhihu.com/p/2074177077218223659 |
-| 从 RAG 演进到多智能体协同并进一步接入可观测平台，内容同时覆盖 Agent 架构、开发方案、常见问题与运行观测，适合补充“协作系统上线后如何看见调用链、定位问题并持续优化”的平台视角。 | https://zhuanlan.zhihu.com/p/2003043815884350644 |
-| 360 数科的智能营销案例把洞察、策略、文案、执行与效果分析拆给不同 Agent，形成从洞察到触达到转化的业务闭环，并结合真实金融营销场景讨论价值与数据成效，适合做非研发类多 Agent 落地案例。 | https://zhuanlan.zhihu.com/p/1997373801038622880 |
-| 用 AutoGen 的 Coder、Reviewer、Executor 跑通一次自动代码评审，并围绕 Planner-Executor-Critic、GroupChat、终止条件与可执行 Python 代码展开，适合作为现场快速复现“生成—审查—执行”协作闭环的入门实战。 | https://zhuanlan.zhihu.com/p/2043436947130012438 |
+| 昆仑 AI 分布式多 Agent 企业平台采用 DDD 编排 + AutoGen 原子执行，并把知识库、记忆、异步任务、权限、观测和配置热更新放进九层架构，适合分享企业团队如何把多 Agent 从单个流程升级为长期演进的平台能力。 | https://zhuan.zhihu.com/p/2066558348422657228 |
+| 真实搭建“人类 + 5 个独立 Agent 团队”的跨境电商组织，PM、Coding、选品、内容与社媒 Agent 各有独立上下文和工具，并通过项目与委派路由协作，适合展示人机混合组织如何进入日常业务而非只做技术 Demo。 | https://zhuan.zhihu.com/p/2035422266629038719 |
+| Routa 把多 Agent 协作做成独立协调平面，用 ACP 管 Agent 进程、MCP 暴露协作动作、A2A 做联邦扩展，并用结构化任务、事件流、持久状态和恢复机制实现可追踪协作，适合讲协议分层与开放编排。 | https://zhuan.zhihu.com/p/2009668693362242633 |
+| 从企业 SOP 运行机制出发，把任务实例、唯一运行时主控、状态载体、执行节点、人工审核、异常处理和恢复明确成工程对象，并给出逐步扩大自动化范围的落地路径，适合分享“企业需要的不是更多 Agent，而是可靠协作机制”。 | https://zhuan.zhihu.com/p/2074177077218223659 |
+| 从 RAG 演进到多智能体协同并进一步接入可观测平台，内容同时覆盖 Agent 架构、开发方案、常见问题与运行观测，适合补充“协作系统上线后如何看见调用链、定位问题并持续优化”的平台视角。 | https://zhuan.zhihu.com/p/2003043815884350644 |
+| 360 数科的智能营销案例把洞察、策略、文案、执行与效果分析拆给不同 Agent，形成从洞察到触达到转化的业务闭环，并结合真实金融营销场景讨论价值与数据成效，适合做非研发类多 Agent 落地案例。 | https://zhuan.zhihu.com/p/1997373801038622880 |
+| 用 AutoGen 的 Coder、Reviewer、Executor 跑通一次自动代码评审，并围绕 Planner-Executor-Critic、GroupChat、终止条件与可执行 Python 代码展开，适合作为现场快速复现“生成—审查—执行”协作闭环的入门实战。 | https://zhuan.zhihu.com/p/2043436947130012438 |
 | 作者在 WorkBuddy + DeepSeek 上把单 Agent 调度、蜂群式多 Agent 并行和深度分析 SOP 做成实际系统，累计跑过 200+ 次蜂群任务、经历 30+ 版本故障修复，并复盘两级调度、文件 I/O 通信与步骤越权问题；适合分享“多 Agent 可靠性为什么必须靠结构约束，而不只是 Prompt 规则”。 | https://juejin.cn/post/7655624648049016851 |
 | ERP_OPENCLAW 把 LangGraph/DeepAgents 主从 Agent、MCP 接真实 Java ERP、MongoDB Checkpoint、SSE 可观测与订单 HITL 审批串成采购分析/下单业务闭环，还明确生产化要补权限、审计和自动化测试；适合展示多 Agent 如何真正接入企业系统并控制高风险写操作。 | https://juejin.cn/post/7658236929163280393 |
 | ThinkingMap 从单体演进到 Eino 多智能体，基于图式编排、强类型和并发设计 Host/专家 Agent、状态/上下文、依赖与 SSE，并形成分析→规划→执行→反馈的可控闭环；适合补充 Go/Eino 技术栈下多 Agent 工程化架构案例。 | https://juejin.cn/post/7573687816430075914 |
@@ -605,3 +605,10 @@
 | 作者基于 Meetkat、FlockMind、MuseCraft、HydraMind 的开发实践总结多智能体“过程评测”，把 handoff、challenge、gate、状态所有权、证据引用和回归测试做成可验证执行轨迹，适合分享如何从只看最终答案升级为可审计、可恢复的协作质量治理。 | https://zhuanlan.zhihu.com/p/2059918431927939887 |
 | DeepEval-Agent 将 AI 软硬件评测拆成 Main、Plan、Scheduler、Executor、Report 五个专职 Agent，通过 StructuredRequest、SkillStore、ResultStore 与 TaskDAG 串起规划、调度、执行和报告，适合作为多 Agent 在复杂工程流程自动化中的垂直落地案例。 | https://zhuanlan.zhihu.com/p/2053854729394993086 |
 | peaks-loop 用 PRD、RD 蜂群、QA、UI、配置、Review、Final Review、Memory 等多 Agent 角色在两周内完成企业级 Agent 监控系统，并用阶段门禁与经验沉淀控制质量，适合分享多 Agent AI Coding 团队怎样围绕真实软件交付形成可追溯流水线。 | https://zhuanlan.zhihu.com/p/2066474435603854781 |
+| 从单智能体扩展到企业复杂任务，系统梳理多智能体协调与协作架构模式，适合用来建立 Supervisor、角色分工和协作拓扑的模式地图，并讨论不同模式的工程取舍。 | https://juejin.cn/post/7603677143214948367 |
+| 百度 Geek 说从广告营销场景给出从 0 到 1 的多智能体架构落地方案，业务目标明确、角色分工和流程完整，适合作为“多 Agent 如何进入真实业务链路”的行业案例。 | https://juejin.cn/post/7371011013431967782 |
+| 作者基于数月多智能体工作流经验对比 Subagent 与 Agent Teams，既展示一个会话内团队协作带来的简化，也直面其限制，适合分享从自定义调度升级到原生 Agent Team 的收益与边界。 | https://juejin.cn/post/7607082524308733992 |
+| 从组织结构、共享任务、Agent 间通信到团队生命周期拆解 Claude Code Agent Teams，重点解释多 Agent 为什么不只是并行启动实例，适合讲团队式协作需要哪些运行机制。 | https://juejin.cn/post/7639733278733418546 |
+| 把 Claude Agent Teams、Cognition/Devin 等路线放在同一工程视角比较，讨论多 Agent 架构何时值得使用以及如何避免过度复杂化，适合用作落地选型与架构原则材料。 | https://juejin.cn/post/7642158541734412342 |
+| 用 Claude Skills 改造 AgentTeams，把松散临时团队变成更规范、可复用的复杂工作流，适合展示角色协作如何进一步沉淀为可复用 SOP/Skill，而不是每次靠临时 Prompt 组织。 | https://juejin.cn/post/7614802150371934251 |
+| 从工程体系化角度专门讨论多 Agent 结构化通信，用 Schema、校验、状态机/黑板、trace_id、重试与降级控制级联错误，适合分享“Agent 协作稳定性最终要靠协议与运行时约束”的生产实践。 | https://juejin.cn/post/7643764221012459563 |
