@@ -471,3 +471,9 @@
 | 围绕 Orchestrator Agent + MCP 展示 Agent 驱动自动化，适合说明中央编排器如何借助标准工具协议连接多个执行能力并形成可扩展工作流。 | https://www.youtube.com/watch?v=Ons1Fv3IE4U |
 | 以 OpenClaw 搭建实际多 Agent Team 并做现场演示，适合观察个人或小团队如何组织多个 Agent 协作完成持续工作，而不只是框架概念。 | https://www.youtube.com/watch?v=bzWI3Dil9Ig |
 | SoulSync Demo & Deep Dive 聚焦多 Agent 在 Agentic Automation 中的协作，适合补充业务自动化场景里多个 Agent 如何围绕同一流程分工配合的演示案例。 | https://www.youtube.com/watch?v=arNWaddf-lc |
+| Codex Multi-agent V2 实测把代码探索、方案设计、功能开发、测试验证和代码审查拆给不同 subagent 并行执行，还支持每个 subagent 独立选模型与推理等级、控制并发、任务恢复和动态派生，适合用来讲 Graph Engineering 与多 Agent 编码团队的调度闭环。 | https://www.bilibili.com/video/BV1STg46UEFd |
+| 作者自己做了一个多 Agent 协作 Demo，把路由、协作、交接、执行、追踪串成完整链路，并明确复盘协作稳定性、任务交接质量、状态共享、运行时工具和可视化等后续问题，适合作为“从能跑到可用”最小控制面的实践案例。 | https://www.bilibili.com/video/BV11sdWBUE4Q |
+| 用强模型负责规划和 Review、便宜模型负责执行，并在同一会话复用上下文降低 Token 成本；同时演示 Codex 插件、tmux、Open Agent Teams 与 Orca 等跨工具编排方式，适合分享异构 Agent 分工、成本路由和跨 Runtime 协作。 | https://www.bilibili.com/video/BV1ybKh6LEKJ |
+| 以 LangGraph + MCP + RAG 从零搭建企业级多智能体系统，把图编排、工具协议和知识检索放进同一工程实践，适合用于分享多 Agent 应用从角色协作到工具接入、知识增强和业务落地的一体化实现路径。 | https://www.bilibili.com/video/BV1eFqVBnEQX |
+| 科研场景把文献分析、创新点生成、代码实现和论文写作拆成 4 个 Agent，并结合 CrewAI、RAG 知识库、长期记忆与反思机制，还复盘 Agent 循环、无效代码和幻觉等失败问题，适合作为多 Agent 垂直业务闭环与失败治理案例。 | https://www.bilibili.com/video/BV1kEqnBHEzi |
+| SpringAI 多 Agent 实战覆盖角色划分、消息通信、Skills 调度、RAG 融合和分布式协同，并提供任务完成率/协同效率评估以及消息乱序、任务死锁、调度异常等排障内容，适合补充多 Agent 真正工程化后需要面对的可靠性与评估问题。 | https://www.bilibili.com/video/BV1bEgY6iEah |
