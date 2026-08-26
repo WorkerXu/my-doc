@@ -574,3 +574,8 @@
 | 从让 AI 长时自主工作出发，对比 Ralph 与多智能体方案，重点实战“主 Agent 只协调、子 Agent 分工开发/测试”、任务拆解、验收闭环与经验库，适合分享 Harness 如何把多 Agent 从并行调用推进到可持续交付。 | https://www.bilibili.com/video/BV1t9oZBDENp |
 | 用 WorkBuddy 把出题流程明确拆成“题型/考纲研究→试题编写→审核→输出”的串行 Agent 工作流，并对比单次生成 10 题中 9 题错误的基线，适合用一个小而具体的案例讲清职责拆分、独立审核和可定位失败如何改善质量。 | https://www.bilibili.com/video/BV1wMdFBVEk8 |
 | 以双 Agent 同步调用为切口做 35 分钟 A2A 协议实战，适合把“Agent 如何跨服务发起任务并返回结果”讲成具体调用链，用于补足框架内编排之外的协议化协作视角。 | https://www.bilibili.com/video/BV1GC7hzKEX9 |
+| AgentsCommander 把 Claude Code、Codex、Gemini、OpenCode 等 CLI Coding Agent 组织成多工作组，由 Root Agent 统一调度，并用可审计的文件消息、真实 PTY、本地持久状态和循环任务支撑长期协作，适合分享“异构 Agent 团队如何从并行会话升级为持续运行的研发组织”。 | https://github.com/mblua/AgentsCommander |
+| 该实践研究在 Oracle Fusion Cloud ERP 中为两家纽交所上市企业落地层级式多 Agent 编排，用监督 Agent 串起 Order-to-Cash 与 Procure-to-Pay 端到端业务周期，适合作为“多 Agent 如何进入核心 ERP 流程并承担跨职能协作”的企业案例。 | https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7154558 |
+| AQ 2026 年 8 月的 Coding Agent Harness Directory 按模型厂商 CLI、开源中立 Harness、桌面多 Agent 工作台和云平台梳理当前编排工具，并核对维护与淘汰状态，适合分享中快速建立“多 Agent Coding 控制面有哪些落地形态”的行业地图。 | https://aq.dev/guides/coding-agent-harness-directory/ |
+| multi-agent-coding-system 用 Orchestrator 调度 Explorer/Coder，并强制子 Agent 返回可复用知识产物后持续注入后续任务，项目曾达到 Stanford TerminalBench 第 13 名，适合用量化成绩讨论“显式交付物与上下文复用”如何提升 Agent 团队协作效果。 | https://github.com/Danau5tin/multi-agent-coding-system |
+| Instaclustr 用 Apache Kafka + A2A 系列把跨服务 Agent 协作落到分布式系统设计，本篇用组件、对象、运行时序列和任务状态图把 Agent Card、长任务、流式更新与 Artifact 交付具体化，适合讲协议化协作怎样转成可实现、可测试的工程边界。 | https://www.instaclustr.com/blog/scaling-agent-systems-with-apache-kafka-and-a2a-part-4-visualizing-the-agent2agent-protocol/ |

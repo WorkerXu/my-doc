@@ -704,3 +704,10 @@
 | https://www.bilibili.com/video/BV1C1SfB8Evc |
 | https://www.bilibili.com/video/BV1vRL4zsEb1 |
 | https://www.bilibili.com/video/BV1wMdFBVEk8 |
+| https://github.com/mblua/AgentsCommander |
+| https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7154558 |
+| https://aq.dev/guides/coding-agent-harness-directory/ |
+| https://github.com/Danau5tin/multi-agent-coding-system |
+| https://www.instaclustr.com/blog/scaling-agent-systems-with-apache-kafka-and-a2a-part-4-visualizing-the-agent2agent-protocol/ |
+| https://mikezupper.com/posts/a2a-agent-to-agent-protocol/ |
+| https://www.agentagency.ai/articles/from-proofofconcept-to-production-scaling-governed-multiagen |
