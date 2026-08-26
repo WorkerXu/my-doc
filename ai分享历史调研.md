@@ -519,4 +519,10 @@
 | https://juejin.cn/post/7628251518199365686 |
 | https://juejin.cn/post/7627870163742162994 |
 | https://juejin.cn/post/7618060828449882153 |
-| https://juejin.cn/post/7624100808338210822 |
+| https://juejin.cn/post/7624100808338210822 || https://www.youtube.com/watch?v=ZVPlLaehjLk |
+| https://www.youtube.com/watch?v=j_l-9uNX2SA |
+| https://www.youtube.com/watch?v=fCHe_fOqlYA |
+| https://www.youtube.com/watch?v=EpATeUY30GI |
+| https://www.youtube.com/watch?v=nGjGUCOiXk4 |
+| https://www.youtube.com/watch?v=ClWD8OEYgp8 |
+| https://www.youtube.com/watch?v=WAFUMBLOjHo |

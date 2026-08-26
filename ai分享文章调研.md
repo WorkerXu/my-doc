@@ -414,4 +414,10 @@
 | OpenClaw 多智能体实战从任务分解和专业 Agent 协作入手构建完整工作流，适合作为轻量多 Agent 团队如何从角色划分走到可运行流程的入门案例。 | https://juejin.cn/post/7613796323045883947 |
 | 文章聚焦 Manus 团队的上下文工程经验，专门讨论多智能体协作中的记忆与上下文组织难题，适合补充“协作质量最终受上下文设计约束”的实践视角。 | https://juejin.cn/post/7532995195127676937 |
 | Multica 把 AI 编程 Agent 做成可管理的团队成员，结合 Kanban、技能复用、WebSocket 实时推送和统一运行时，适合展示多 Agent 从脚本编排进一步走向团队协作产品的形态。 | https://juejin.cn/post/7628251518199365686 |
-| 文章把多智能体协同归纳成五种核心架构，并围绕不同 Agent 如何通过代码协调展开，适合在分享中快速建立协作模式地图，再连接具体工程案例。 | https://juejin.cn/post/7627870163742162994 |
+| 文章把多智能体协同归纳成五种核心架构，并围绕不同 Agent 如何通过代码协调展开，适合在分享中快速建立协作模式地图，再连接具体工程案例。 | https://juejin.cn/post/7627870163742162994 || 从 Workflows、Multi-Agent 一直讲到 Production 的框架化视角，适合在分享中先建立单 Agent、工作流与多 Agent 的边界，再讨论为什么生产系统需要更明确的编排与工程约束。 | https://www.youtube.com/watch?v=ZVPlLaehjLk |
+| Google Cloud Tech 从架构层讨论多 Agent 系统，适合用于梳理职责拆分、协作拓扑和系统边界，并作为后续 ADK/A2A 实践案例的架构背景。 | https://www.youtube.com/watch?v=j_l-9uNX2SA |
+| IBM Technology 重点讨论 Agent 系统构建与规模化挑战，适合补充多 Agent 从 Demo 扩展到真实系统后会遇到的复杂度、可靠性与工程治理问题。 | https://www.youtube.com/watch?v=fCHe_fOqlYA |
+| A2A Workshop 直接面向可互操作多 Agent 系统进行实操，适合分享 Agent 发现、跨服务通信与协议化协作如何从概念落到可运行实现。 | https://www.youtube.com/watch?v=EpATeUY30GI |
+| 用 Google ADK 与 A2A 让多个 Agent 协作完成游戏设计，是较具体的端到端案例，适合展示专业 Agent 如何分工、互相调用并共同完成一个可观察的任务。 | https://www.youtube.com/watch?v=nGjGUCOiXk4 |
+| GitHub 场景下“一名开发者、两打 Agent、零对齐”的协作复盘很适合做反例材料，用来讨论 Agent 数量增加后的人类注意力、上下文对齐、任务边界与协作成本为何会成为瓶颈。 | https://www.youtube.com/watch?v=ClWD8OEYgp8 |
+| 通过 CMUX 同时编排 Claude Code 与 Pi Agent 的演示，适合展示异构 Coding Agent 如何进入同一执行控制面，并观察跨 Agent 调度、并行任务与人工监督的实际工作方式。 | https://www.youtube.com/watch?v=WAFUMBLOjHo |
