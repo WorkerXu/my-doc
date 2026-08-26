@@ -158,9 +158,9 @@
 | https://juejin.cn/post/7602824293165170703 |
 | https://juejin.cn/post/7657552382003740715 |
 | https://juejin.cn/post/7629282064849518655 |
-| https://juejin.cn/post/7615915954711855144 |
+| https://juejin.cn/post/7615915954711855134 |
 | https://juejin.cn/post/7619133992287223846 |
-| https://juejin.cn/post/7618109587552501766 |
+| https://juejin.cn/post/7618109587552501666 |
 | https://juejin.cn/post/7628131346834063410 |
 | https://juejin.cn/post/7650825348369088546 |
 | https://juejin.cn/post/7675198241896398898 |
@@ -201,3 +201,15 @@
 | https://devblogs.microsoft.com/foundry/agent-service-build2026/ |
 | https://github.com/SynBioExplorer/Claude_Code_agentic_coding |
 | https://github.com/metraton/gaia |
+| https://github.com/aden-hive/hive |
+| https://github.com/gastownhall/gastown |
+| https://github.com/microsoft/Multi-Agent-Custom-Automation-Engine-Solution-Accelerator |
+| https://github.com/777genius/agent-teams-ai |
+| https://github.com/Gentleman-Programming/agent-teams-lite |
+| https://github.com/Gentleman-Programming/gentle-ai |
+| https://github.com/bradygaster/squad |
+| https://github.com/mims-harvard/AutoScientists |
+| https://github.com/wecode-ai/Wegent |
+| https://github.com/shanraisshan/claude-code-best-practice/blob/main/implementation/claude-agent-teams-implementation.md |
+| https://github.com/edisonzerolam/agent-team-orchestration/blob/main/SKILL.md |
+| https://github.com/tmustier/pi-agent-teams/blob/main/skills/agent-teams/SKILL.md |
