@@ -74,3 +74,11 @@
 | https://aws.amazon.com/blogs/machine-learning/amazon-bedrock-announces-general-availability-of-multi-agent-collaboration/ |
 | https://aws.amazon.com/blogs/machine-learning/build-multi-agent-systems-with-langgraph-and-amazon-bedrock/ |
 | https://aws.amazon.com/blogs/devops/multi-agent-collaboration-with-strands/ |
+| https://engineering.grab.com/from-firefighting-to-building |
+| https://www.uber.com/us/en/blog/solving-the-agent-identity-crisis/ |
+| https://developers.googleblog.com/architecting-efficient-context-aware-multi-agent-framework-for-production/ |
+| https://blog.n8n.io/production-ai-playbook-complex-agent-patterns/ |
+| https://developer.nvidia.com/blog/multi-agent-warehouse-ai-command-layer-enables-operational-excellence-and-supply-chain-intelligence/ |
+| https://www.taskade.com/blog/multi-agent-production |
+| https://www.deeplearning.ai/blog/engineering-multi-agent-systems-a-path-from-prototype-to-production/ |
+| https://developer.salesforce.com/blogs/2026/06/the-salesforce-developers-guide-to-the-summer-26-release |
