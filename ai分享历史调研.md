@@ -355,3 +355,9 @@
 | https://www.sciencedirect.com/science/article/abs/pii/S0278612526001147 |
 | https://developer.microsoft.com/en-us/reactor/events/27154/ |
 | https://github.com/AI-Foundry-Core/ril-agents |
+| https://github.com/nekocode/agent-team |
+| https://github.com/skrabe/codex-teams |
+| https://github.com/aqm-framework/aqm |
+| https://github.com/kdcokenny/opencode-workspace |
+| https://github.com/affaan-m/claude-swarm |
+| https://github.com/jwangkun/Pi-Multi-Agent |
