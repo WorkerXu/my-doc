@@ -730,3 +730,9 @@
 | Agent-Orchestration 提供可视化 DAG 编辑、持久化工作流状态、Human-in-the-Loop 触发以及 SQLite/PostgreSQL 存储，适合展示多 Agent 从代码编排走向可观察、可恢复、可人工介入的产品化运行时。 | https://github.com/Haaziq386/Agent-Orchestration |
 | Maveric Agent Framework 同时支持 low-code/pro-code、多 Agent Group、循环协作与层级 Group，并强调自评估、自批判和策略演进，适合与固定 DAG 对比更具自治性的团队组织与协作方式。 | https://github.com/maveric/agent-framework |
 | Cebus 把 GPT、Claude、Gemini、Copilot、Ollama 等模型放进同一协作空间，提供并行/轮流/角色化模式、动态 Orchestrator、Team Leader、多轮阶段式协作、会话持久化与 MCP 工具，适合展示多模型 Agent 团队怎样从群聊升级为可执行开发环境。 | https://github.com/cebus-ai/cebus |
+| Herdr 用主 Agent 直接拉起 Claude Code、Pi 等异构 Agent 派活，并通过 lifecycle hooks、Skill 操作规范和独立工作区降低状态误判与上下文串扰，适合分享多个现成 Coding Agent 怎样组成可协作团队的轻量落地方式。 | https://zhuanlan.zhihu.com/p/2069738147811009003 |
+| Claude Code 动态工作流把子 Agent 并行执行、交叉审查、构建测试修复循环和断点续跑串成长任务闭环，并以大规模代码迁移为例展示实际工程推进方式，适合讲多 Agent 如何承担跨大量文件的长周期开发任务。 | https://zhuanlan.zhihu.com/p/2061117987466240451 |
+| Codex 桌面端实战用主 Agent 拆解与汇总、多个 Subagent 并行做发布前检查，并明确“读取分析可并行、写入修改要划定边界”、任务独立性和 Token 成本等约束，适合分享 AI Coding 多 Agent 避免并发冲突的实用原则。 | https://zhuanlan.zhihu.com/p/2064058185925894827 |
+| Oh My OpenAgent 把协调、规划、架构、文档、代码探索等 7 个专职 Agent 组织成实际研发流水线，并用 Hooks 与工作流完成复杂功能，适合作为角色化 Agent 团队如何从任务拆解进入并行开发的完整案例。 | https://zhuanlan.zhihu.com/p/2018805068799951843 |
+| FinSight 用 Claude Agent SDK 的 SubAgent-as-tool 构建投研团队，让财务、新闻、风险子代理拥有隔离上下文和专用工具，主代理统一编排，并接入 MCP、Hooks 审计和 OpenTelemetry 链路观测，适合展示垂直业务多 Agent 的治理与可观测落地。 | https://zhuanlan.zhihu.com/p/2066824677708845113 |
+| 从软件研发场景总结多 Agent 的上下文隔离、职责分离、并行加速和错误隔离，并强调单 Agent 能解决时不要强行多 Agent 化，适合分享中建立从任务特征判断是否值得引入协作编排的选型原则。 | https://zhuanlan.zhihu.com/p/2072706491224740986 |

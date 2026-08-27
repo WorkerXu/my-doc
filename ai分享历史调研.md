@@ -873,3 +873,9 @@
 | https://github.com/Haaziq386/Agent-Orchestration |
 | https://github.com/maveric/agent-framework |
 | https://github.com/cebus-ai/cebus |
+| https://zhuanlan.zhihu.com/p/2069738147811009003 |
+| https://zhuanlan.zhihu.com/p/2061117987466240451 |
+| https://zhuanlan.zhihu.com/p/2064058185925894827 |
+| https://zhuanlan.zhihu.com/p/2018805068799951843 |
+| https://zhuanlan.zhihu.com/p/2066824677708845113 |
+| https://zhuanlan.zhihu.com/p/2072706491224740986 |
