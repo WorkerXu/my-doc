@@ -910,3 +910,13 @@
 | https://mcp360.ai/blog/mcp-a2a-multi-agent-workflows |
 | https://www.frenxt.com/research/multi-agent-architecture-guide |
 | https://frisian-mcp.com/tech/test-cases/pre-release/production-consumer-case-study |
+| https://github.com/ashokDevs/multea |
+| https://github.com/cajetzer/cloud-agent-orchestration |
+| https://github.com/rogerchappel/crewcmd |
+| https://github.com/annals-ai/ah-cli |
+| https://github.com/Thulr/pi-flows |
+| https://github.com/ringlochid/oh-my-subagents |
+| https://github.com/regardo911/ship-while-you-sleep |
+| https://github.com/itsvsk/Qualestra |
+| https://github.com/cogghaus/forge-lab |
+| https://github.com/Blackhex/flowgency |
