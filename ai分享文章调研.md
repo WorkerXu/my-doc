@@ -741,3 +741,9 @@
 | 用 Hermes Agent 的 Profile 机制把多个 Agent 做成相互隔离的运行环境，适合展示多 Agent 落地时如何隔离配置、上下文与工作空间，减少角色互相污染。 | https://juejin.cn/post/7631098648844419072 |
 | 用 LangChain.js Supervisor 实现“主管 Agent → 专业子 Agent”的动态路由，能直接作为 JavaScript/TypeScript 技术栈下层级式多 Agent 编排的可复现实操案例。 | https://juejin.cn/post/7554291403235082274 |
 | 从单 Agent 的专业度与职责混杂问题出发，讲多 Agent 的分工、协作与复杂任务处理，适合作为“何时需要拆分 Agent、如何设计专业角色”的入门实践案例。 | https://juejin.cn/post/7653050742081503278 |
+| Google Cloud 最新实操直接讲多 Agent 系统如何部署并扩展到 GKE，适合分享从协作逻辑走向容器化运行、弹性扩缩与生产基础设施时需要补齐哪些能力。 | https://www.youtube.com/watch?v=zI8KUvtHMvU |
+| Google Cloud 从“哪些决策其实不该交给 LLM”切入多 Agent 系统设计，适合用来说明生产编排中确定性控制流与 Agent 自主性如何分工，避免为了多 Agent 而过度模型化。 | https://www.youtube.com/watch?v=Fzd0BWMH65s |
+| Google Cloud Live 专门讨论分布式多 Agent 系统的安全，并结合 Model Armor 展示防护思路，适合补充跨 Agent 调用、输入输出防护与生产安全边界这一常被忽视的落地层。 | https://www.youtube.com/watch?v=P6cyzDDAhMA |
+| Google Cloud 的 ADK + MCP 实操把多 Agent 协作与标准工具协议放到同一系统中，适合分享 Agent 角色编排、工具接入和能力复用怎样组合成可运行应用。 | https://www.youtube.com/watch?v=W54cRxp-bSA |
+| The Agent Factory Podcast 从 GKE 上的 Agent Sandbox 与 Pod snapshot 切入运行时隔离和快速恢复，适合补充并行 Agent 真正上生产后工作空间隔离、启动效率与执行环境治理的基础设施实践。 | https://www.youtube.com/watch?v=5_R_Ixk8ENQ |
+| 以生物信息学的 conversational genomics 为垂直场景构建多 Agent 系统，适合展示专业 Agent 如何围绕真实领域数据与任务分工协作，补充通用 Coding/客服之外的业务落地案例。 | https://www.youtube.com/watch?v=pBm47ImEkTY |
