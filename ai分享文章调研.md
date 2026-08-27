@@ -73,7 +73,7 @@
 | CodeAgents 从真实 AI Coding 实验总结多编程智能体的关键不是“角色多”，而是任务图、状态流转、上下文和工作区隔离、Patch/Review/Test 门禁与恢复机制，适合讲清楚并行开发的边界治理。 | https://zhuanlan.zhihu.com/p/2030309910798391120 |
 | 以 13 个 Agent 从市场研究一路接棒到开发、QA、运营和数据复盘的真实工具站为案例，把每次交接明确成输入、输出、证据和停止条件，并设置 GO/NO-GO 门禁，适合分享大规模串联协作如何避免“交接失真”。 | https://zhuanlan.zhihu.com/p/2043410428491977017 |
 | 8 个 Agent 改进 6900 行 UECLI 模块的实测记录同时给出并行条件、不同模型分工、Token/时间收益，以及连续失败后人工升级和同区域不并行的决策，适合用数据讲“何时并行、何时串行、何时人接管”。 | https://zhuanlan.zhihu.com/p/2022398691491815748 |
-| 9 个 Agent 从 0 到 1 复刻 Claude Code 的项目复盘强调严格角色边界、正式变更流程、QA/PM 权限隔离、依赖链跟踪和多轮 Review，适合展示研发型多 Agent 团队规模扩大后如何靠流程而非模型能力维持秩序。 | https://zhuanlan.zhihu.com/p/2025864547731272052 |
+| 9 个 Agent 从 0 到 1 复刻 Claude Code 的项目复盘强调严格角色边界、正式变更流程、QA/PM 权限隔离、依赖链跟踪和多轮 Review，适合展示研发型多 Agent 团队规模扩大后如何靠流程而非模型能力维持秩序。 | https://zhuan.zhihu.com/p/2025864547731272052 |
 | TeamAgentX 是直接面向多 Agent 协同的软件项目，作者以自己已基本成型的产品为案例，适合分享“协作能力如何从框架概念变成可使用产品”的项目落地路径。 | https://juejin.cn/post/7671865305111691302 |
 | Hermes Kanban 把多 Agent 协作从群聊派活推进到任务化看板，强调任务不丢、依赖关系和流水线式推进，适合作为“共享任务状态比聊天记录更重要”的工程实践案例。 | https://juejin.cn/post/7641571163690139683 |
 | 文章专门讨论多 Agent 扩张后的反效果，用“2 个比 1 个强、10 个反而更差”切入协作成本与规模边界，适合分享如何判断 Agent 数量、并行度和组织复杂度是否过度。 | https://juejin.cn/post/7637823184210870307 |
@@ -502,9 +502,9 @@
 | OpsPilot Zero 把生产故障处置拆成告警归并、根因分析、修复规划、恢复验证 4 个 Agent 的 DAG，并用结构化交付契约、置信度证据链和风险审批控制自动化边界，适合展示高风险运维场景怎样形成可信协作闭环。 | https://zhuanlan.zhihu.com/p/2068110217808700098 |
 | 从 AgentTeams baseline 的实际使用出发，拆解 Manager/TeamLeader/Worker、Matrix 协作、Nacos 注册与 Skill 版本治理、Higress 凭证收敛和 OpenTelemetry 可观测，适合补充多 Agent 真正生产化所需的治理基础设施。 | https://zhuanlan.zhihu.com/p/2068115749751804511 |
 | 昆仑 AI 分布式多 Agent 企业平台采用 DDD 编排 + AutoGen 原子执行，并把知识库、记忆、异步任务、权限、观测和配置热更新放进九层架构，适合分享企业团队如何把多 Agent 从单个流程升级为长期演进的平台能力。 | https://zhuan.zhihu.com/p/2066558348422657228 |
-| 真实搭建“人类 + 5 个独立 Agent 团队”的跨境电商组织，PM、Coding、选品、内容与社媒 Agent 各有独立上下文和工具，并通过项目与委派路由协作，适合展示人机混合组织如何进入日常业务而非只做技术 Demo。 | https://zhuanlan.zhihu.com/p/2035422266629038719 |
+| 真实搭建“人类 + 5 个独立 Agent 团队”的跨境电商组织，PM、Coding、选品、内容与社媒 Agent 各有独立上下文和工具，并通过项目与委派路由协作，适合展示人机混合组织如何进入日常业务而非只做技术 Demo。 | https://zhuan.zhihu.com/p/2035422266629038719 |
 | Routa 把多 Agent 协作做成独立协调平面，用 ACP 管 Agent 进程、MCP 暴露协作动作、A2A 做联邦扩展，并用结构化任务、事件流、持久状态和恢复机制实现可追踪协作，适合讲协议分层与开放编排。 | https://zhuan.zhihu.com/p/2009668693362242633 |
-| 从企业 SOP 运行机制出发，把任务实例、唯一运行时主控、状态载体、执行节点、人工审核、异常处理和恢复明确成工程对象，并给出逐步扩大自动化范围的落地路径，适合分享“企业需要的不是更多 Agent，而是可靠协作机制”。 | https://zhuanlan.zhihu.com/p/2074177077218223659 |
+| 从企业 SOP 运行机制出发，把任务实例、唯一运行时主控、状态载体、执行节点、人工审核、异常处理和恢复明确成工程对象，并给出逐步扩大自动化范围的落地路径，适合分享“企业需要的不是更多 Agent，而是可靠协作机制”。 | https://zhuan.zhihu.com/p/2074177077218223659 |
 | 从 RAG 演进到多智能体协同并进一步接入可观测平台，内容同时覆盖 Agent 架构、开发方案、常见问题与运行观测，适合补充“协作系统上线后如何看见调用链、定位问题并持续优化”的平台视角。 | https://zhuan.zhihu.com/p/2003043815884350644 |
 | 360 数科的智能营销案例把洞察、策略、文案、执行与效果分析拆给不同 Agent，形成从洞察到触达到转化的业务闭环，并结合真实金融营销场景讨论价值与数据成效，适合做非研发类多 Agent 落地案例。 | https://zhuan.zhihu.com/p/1997373801038622880 |
 | 用 AutoGen 的 Coder、Reviewer、Executor 跑通一次自动代码评审，并围绕 Planner-Executor-Critic、GroupChat、终止条件与可执行 Python 代码展开，适合作为现场快速复现“生成—审查—执行”协作闭环的入门实战。 | https://zhuan.zhihu.com/p/2043436947130012438 |
@@ -678,3 +678,9 @@
 | OpenCode Ensemble 把并行 Agent 团队做成可安装插件：每个成员独立 Session/Context，共享带依赖任务板和点对点消息，默认用 Git worktree 隔离写入，并补齐计划审批、原子认领、合并冲突检测、崩溃恢复和实时看板，适合拆解 Coding Agent 团队控制面。 | https://github.com/hueyexe/opencode-ensemble |
 | TAKT 用 YAML 把 plan→implement→review→fix、角色上下文、权限、人工 checkpoint、输出 contract 和跳转规则声明成可重复工作流，并在独立 worktree 运行 Claude/Codex/OpenCode/Cursor 等 Agent、保留可追踪日志，适合分享“Agent 负责产出、流程负责约束”的声明式协作。 | https://github.com/nrslib/takt |
 | Agent Fleet 让专业 Claude Code 子进程既可按 Conductor 并行讨论/综合，也可切到 LangGraph + Postgres 的有状态流程，在崩溃后从 checkpoint 续跑，并用 interrupt() 在高风险节点引入人工决策，适合展示多 Agent 从轻量并行升级到 durable workflow 的实现路径。 | https://github.com/studiomeyer-io/agent-fleet |
+| GitHub 公开 Copilot CLI 的 subagent 委派改造，核心结论是“更多 Agent 并不自动更好”：每次 handoff 都有工具调用、等待和上下文协调成本，因此让 Harness 根据任务收益选择性委派；适合分享如何用实际产品经验判断何时拆 Agent、何时保持单 Agent。 | https://github.blog/ai-and-ml/how-we-made-github-copilot-cli-more-selective-about-delegation/ |
+| GitHub 官方拆解 Squad 如何让协调 Agent 和专业成员直接在代码仓库中协作，把角色、团队记忆、决策与工作状态沉淀为可检查的仓库资产，并接入 Issue/PR 开发流程；适合分享“多 Agent 团队如何嵌入现有软件协作系统而不是另建孤立控制台”。 | https://github.blog/ai-and-ml/github-copilot/how-squad-runs-coordinated-ai-agents-inside-your-repository/ |
+| Agent Orchestrator 把 Claude Code、Codex、Cursor、OpenCode 等 Coding Agent 放进独立工作区并行运行，并把 CI 失败、Review 评论和 merge conflict 自动回流给对应 Agent 继续修复；适合展示“并行执行 + 隔离 + GitHub 反馈闭环”怎样形成可持续研发控制面。 | https://github.com/Untrivial-ai/agent-orchestrator |
+| coordinated-agent-team 用确定性状态机和严格 I/O contract 组织 Spec、架构、计划、编码、Review、QA、安全、集成等角色，Agent 通过版本化 artifact 交接而不是自由群聊；适合分享“可审计产物 + Gate + 角色边界”如何降低多 Agent 协作漂移。 | https://github.com/q3ok/coordinated-agent-team |
+| AgentBus 用 SQLite + MCP 做异构 Agent 的事件总线与协作控制面，提供 pub/sub、SLA 超时、Human-in-the-Loop 拦截、Schema 校验和 RBAC，把消息、状态和治理从 Prompt 中抽离；适合分享多 Agent 上规模后为什么需要独立通信与政策层。 | https://github.com/onicarps/agentbus |
+| Mission Orchestrator 面向跨天长任务，把 Claude Code、Codex、Gemini/OpenCode 等 Worker 作为可恢复执行单元，统一管理任务状态、持久记忆、tmux 会话和 Telegram 远程控制，适合补充“长时多 Agent 如何不中断地持续推进并保留上下文”的运行时案例。 | https://github.com/ankushsrivastava0626/mission-orchestrator |
