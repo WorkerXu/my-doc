@@ -812,3 +812,9 @@
 | https://github.com/hueyexe/opencode-ensemble |
 | https://github.com/nrslib/takt |
 | https://github.com/studiomeyer-io/agent-fleet |
+| https://github.blog/ai-and-ml/how-we-made-github-copilot-cli-more-selective-about-delegation/ |
+| https://github.blog/ai-and-ml/github-copilot/how-squad-runs-coordinated-ai-agents-inside-your-repository/ |
+| https://github.com/Untrivial-ai/agent-orchestrator |
+| https://github.com/q3ok/coordinated-agent-team |
+| https://github.com/onicarps/agentbus |
+| https://github.com/ankushsrivastava0626/mission-orchestrator |
