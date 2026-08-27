@@ -648,3 +648,10 @@
 | 用 Claude Code Hooks 把多 Agent 的工具调用、任务 handoff、Subagent 生命周期、失败与权限事件实时写入 SQLite 并通过 WebSocket 看板追踪，适合补充“协作系统上线后如何定位是哪一个 Agent、哪次交接出了问题”的可观测性实践。 | https://github.com/disler/claude-code-hooks-multi-agent-observability |
 | 以 LangGraph + LangSmith 从两个专业 Subagent、Supervisor 路由一路补齐短/长期记忆、Human-in-the-Loop、Tracing 与 Evaluation，并用真实客服流程逐步实现，适合作为“多 Agent 不只要能协作，还要可调试、可评估”的可复现实操。 | https://github.com/FareedKhan-dev/Multi-Agent-AI-System |
 | GHC Dispatch 的 Agent Teams 文档把 Lead→专业成员→汇总验收定义成异步协作协议，强调有边界任务、可追踪 handoff、Lead 先验证再综合，并明确反对过度并行和模糊目标，适合提炼一套框架无关的团队协作纪律。 | https://github.com/boddev/ghc-dispatch/blob/master/agents/teams.md |
+| 1688 数据中心把 Multi-Agent 研发小队用于真实数据研发，把业务知识、规范与任务编排拆成 K/S/T 三层，并通过 Harness、协作规则和经验沉淀形成“以 Agent 养 Agent”的迭代飞轮，适合分享组织化 Agent 团队如何嵌入日常研发流程。 | https://zhuanlan.zhihu.com/p/2062894829776924859 |
+| 文章从任务可分解性、并行性、信息互补与协调成本讨论 Multi-Agent 的收益边界，强调先建立强 Single-Agent baseline，再用成功率、成本、延迟和单位任务收益共同评估是否值得拆分，适合分享中补充“何时不该上多 Agent”的工程取舍。 | https://zhuanlan.zhihu.com/p/2072961057925157031 |
+| 文章系统梳理多 Agent 协同开发范式与应用实践，并结合 MetaGPT、AutoGen 等框架说明角色分工、协作流程和工程选型，适合作为软件研发场景中多 Agent 从概念走向协同开发的入门实践材料。 | https://zhuanlan.zhihu.com/p/1912013676233355574 |
+| 文章以“别让一个 AI 干所有活”为切入点，从工程实践角度比较多 Agent 的分工与协作方式，并用 AutoGen 等框架展示 GroupChat/管理器式编排链路，适合用来讲清单 Agent 拆分为专业角色后的协作机制。 | https://zhuanlan.zhihu.com/p/2043329925252375861 |
+| 文章把 Agent 与 Workflow 放在自主性和协作性两个维度上讨论技术落地，分析线性流程、状态同步和多 Agent 消息协作之间的差异，适合用于分享中建立“确定性工作流与 Agent 自主协作如何组合”的架构判断框架。 | https://zhuanlan.zhihu.com/p/1962304283606254744 |
+| 作者结合 multi-agent 项目实践提出“知识—编排—门控—治理”四层解耦的 Harness Engineering 架构，强调经验沉淀、持续治理和生产约束，适合展示多 Agent 从提示词与对话层升级到可治理工程系统的设计方法。 | https://zhuanlan.zhihu.com/p/2015575496742679437 |
+| 这篇万字实践文章从 Agent 基础一路延伸到复杂 AI Agent 与多 Agent 协作系统的设计、开发和落地，覆盖架构、工具调用、流程编排与工程化实践，适合作为分享准备时补齐端到端实现脉络的综合参考。 | https://zhuanlan.zhihu.com/p/1919338285160965135 |

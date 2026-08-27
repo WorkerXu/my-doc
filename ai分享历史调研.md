@@ -780,3 +780,10 @@
 | https://github.com/disler/claude-code-hooks-multi-agent-observability |
 | https://github.com/FareedKhan-dev/Multi-Agent-AI-System |
 | https://github.com/boddev/ghc-dispatch/blob/master/agents/teams.md |
+| https://zhuanlan.zhihu.com/p/2062894829776924859 |
+| https://zhuanlan.zhihu.com/p/2072961057925157031 |
+| https://zhuanlan.zhihu.com/p/1912013676233355574 |
+| https://zhuanlan.zhihu.com/p/2043329925252375861 |
+| https://zhuanlan.zhihu.com/p/1962304283606254744 |
+| https://zhuanlan.zhihu.com/p/2015575496742679437 |
+| https://zhuanlan.zhihu.com/p/1919338285160965135 |
