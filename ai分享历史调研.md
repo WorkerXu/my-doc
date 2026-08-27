@@ -827,3 +827,9 @@
 | https://github.com/umputun/revmux |
 | https://github.com/prime-radiant-inc/sprout |
 | https://github.com/dahshanlabs/klypix-mcp |
+| https://zhuanlan.zhihu.com/p/2076235628124051353 |
+| https://zhuanlan.zhihu.com/p/2074397320116975188 |
+| https://zhuanlan.zhihu.com/p/2075477273013233348 |
+| https://zhuanlan.zhihu.com/p/2063161776485692920 |
+| https://zhuanlan.zhihu.com/p/2044802290117235572 |
+| https://zhuanlan.zhihu.com/p/2061205381142127111 |

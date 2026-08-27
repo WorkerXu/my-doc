@@ -690,3 +690,9 @@
 | Open Code Review 把多个 reviewer 的独立发现、相互讨论/质疑、最终综合做成可直接落地的代码审查产品，支持需求上下文、角色与模型搭配、GitHub PR 和多轮反馈，适合展示“独立意见→争辩→收敛”的协作模式。 | https://github.com/spencermarx/open-code-review |
 | Sprout 采用递归委派的专业 Agent 树，并把失败、超时和重试转成学习信号，写入可 Git 审计/回滚的 agent genome，还支持进程级并行与 WebSocket 通信，适合分享团队如何从静态编排走向基于运行反馈的自适应协作。 | https://github.com/prime-radiant-inc/sprout |
 | KLYPIX 不负责启动 Agent，而是给 Claude、Codex、Cursor 等并行 Agent 提供同一个版本化项目 brain，通过 MCP 共享决策、纠错、证据、handoff 与文件重叠预警，适合讲清多 Agent 落地中共享状态和上下文基础设施的重要性。 | https://github.com/dahshanlabs/klypix-mcp |
+| 基于 Dream-SaaS 落地经验拆解串行、并行、条件分支、竞争四种多 Agent 编排模式，并重点总结延迟累积、单点脆弱、错误传播及节点超时/输出校验等工程坑，适合用作“协作拓扑怎么选、每种模式怎么兜底”的实践材料。 | https://zhuanlan.zhihu.com/p/2076235628124051353 |
+| 从源码和 Demo 对比 Eino Host MultiAgent 与 DeepFlux Subagent 两种 Host-Worker 协作：消息式路由 vs 图状态/DAG，并进一步展示子 Agent 工具调用级 HITL 的 suspend/resume，适合分享“对话式协作与工作流式编排”的实现差异和审批边界。 | https://zhuanlan.zhihu.com/p/2074397320116975188 |
+| 以 AgentScope 2.0 + Harness + SDD 构建多 Agent 旅游规划系统，覆盖多 Agent 通信协作、自主决策约束、Skill 封装和生产稳定性，适合补充“框架能力 + Harness + 规范驱动开发”如何组合成可交付项目。 | https://zhuanlan.zhihu.com/p/2075477273013233348 |
+| 用真实失败案例反推 Multi-Agent 的常见失效模式，并建立 Single / Workflow / Multi-Agent 决策框架与拆 Agent 的硬标准，适合分享中加入“什么时候不该上多 Agent”的反例，避免把协作复杂度误当能力提升。 | https://zhuanlan.zhihu.com/p/2063161776485692920 |
+| 蚂蚁数科在金融场景落地 Lead-Expert-Express 三层多智能体，并用路由在“标准流水线”和“探索型多 Agent”之间切换，配合 Mailbox 异步并行降低协作时延，适合展示强业务约束场景如何把灵活性与可控性组合。 | https://zhuanlan.zhihu.com/p/2044802290117235572 |
+| 用 Azure Container Apps Sandbox + OpenClaw + MCP/A2A 串起 5 个专用 Agent，从需求分析、编码、测试到部署形成完整闭环，并加入真实测试、受控重试、托管身份、人工审批和健康检查，适合分享“多 Agent 如何进入安全可控的云端交付流水线”。 | https://zhuanlan.zhihu.com/p/2061205381142127111 |
