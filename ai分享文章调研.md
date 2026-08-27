@@ -709,3 +709,9 @@
 | knowflowai 展示产品和开发分别使用自己的 AI，却把验收、方案和执行结论回写到同一条任务中，不绑定单一 IDE，适合分享“多人 + 多 Agent + 多工具”场景下如何用共享任务上下文形成可追踪协作闭环。 | https://www.bilibili.com/video/BV1Sbhc6cEMf |
 | TRAE SOLO Coder 的实测把多任务与 SubAgent 用在真实协同开发流程里，适合用来讲 Coding Agent 场景中的任务拆分、并行执行与主 Agent 汇总，以及多 Agent 相比单线程开发的实际工作方式。 | https://www.bilibili.com/video/BV1Y7CbB1EpP |
 | Codex 子 Agent 的 A/B 实测在同一迷宫项目中给出质量 96/97、实现会话 Token 降低 30.23%、耗时降低 17.76% 的结果，并明确计量边界与适用条件，适合为分享补充“多 Agent 是否值得”的量化成本收益案例。 | https://www.bilibili.com/video/BV1biuq61EcA |
+| 基于 18 个生产看板、367 张卡、566 次 Agent 派发沉淀出的真实多 Coding Agent 编排经验，覆盖 controller-only、worktree 隔离、证据化验收、依赖推进和故障恢复；特别适合分享多 Agent 从并行 Demo 走向长期稳定生产时必须补齐的工程纪律。 | https://github.com/forcewake/hermes-conductor |
+| Maestro 将 39 个专业 Agent、Express/四阶段工作流、持久会话状态、审批与 Review Gate 做成统一编排平台，并同时支持 Gemini CLI、Claude Code、Codex、Qwen Code；适合展示跨 Runtime Agent 团队怎样把角色分工、并行控制和质量门禁产品化。 | https://github.com/josstei/maestro-orchestrate |
+| 项目基于 Codex Multi-Agent V2 把父 Agent、快速叶子 Agent、默认执行叶子 Agent 和协作型分支负责人做成明确路由层级，并用风险、歧义、验证方式决定是否委派；适合讲角色/模型分层、递归委派边界和证据化验收。 | https://github.com/augiefra/codex-sol-terra-orchestration |
+| 2026 年 8 月的实战指南把多 Coding Agent 并行视为排队与集成问题，系统覆盖任务切分、Git worktree 隔离、共享状态、安全、proof bundle、Review、merge queue、失败模式和指标；适合整理成可直接落地的研发协作清单。 | https://continuumcode.ai/guides/multi-agent-development/ |
+| 从生产架构角度把多 Agent 协作拆成 coordinator、隔离 worker、类型化消息、MCP/A2A 协议与持续可观测，并强调可治理、可审计；适合分享多 Agent 编排层在通信、边界和运行治理上的完整职责。 | https://www.agent-swarm.dev/blog/multi-agent-orchestration |
+| 用真实 Coding 工作流展示多个 Agent 如何在独立 Git worktree 中并行修改，再把终端、浏览器、Diff 与 Review 汇聚到同一 Workspace，由人统一判断与合并；适合讲“隔离执行 + 共享控制面 + 人工验收”的协作落地形态。 | https://codius.ai/blog/orchestrating-multiple-coding-agents-in-one-workspace |

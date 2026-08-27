@@ -848,3 +848,9 @@
 | https://www.bilibili.com/video/BV1Sbhc6cEMf |
 | https://www.bilibili.com/video/BV1Y7CbB1EpP |
 | https://www.bilibili.com/video/BV1biuq61EcA |
+| https://github.com/forcewake/hermes-conductor |
+| https://github.com/josstei/maestro-orchestrate |
+| https://github.com/augiefra/codex-sol-terra-orchestration |
+| https://continuumcode.ai/guides/multi-agent-development/ |
+| https://www.agent-swarm.dev/blog/multi-agent-orchestration |
+| https://codius.ai/blog/orchestrating-multiple-coding-agents-in-one-workspace |
