@@ -26,8 +26,8 @@
 | https://zhuanlan.zhihu.com/p/1991186674080837925 |
 | https://www.zhihu.com/question/15525476717/answer/2015800592325452491 |
 | https://zhuanlan.zhihu.com/p/2022259323544281560 |
-| https://zhuanlan.zhihu.com/p/2015734693086131605 |
-| https://zhuanlan.zhihu.com/p/2036090725960504167 |
+| https://zhuan.zhihu.com/p/2015734693086131605 |
+| https://zhuan.zhihu.com/p/2036090725960504167 |
 | https://zhuan.zhihu.com/p/2001655301850539502 |
 | https://zhuan.zhihu.com/p/2059951663834781667 |
 | https://zhuan.zhihu.com/p/2015796905158923426 |
@@ -768,3 +768,11 @@
 | https://arxiv.org/abs/2608.23145 |
 | https://arxiv.org/abs/2608.23541 |
 | https://arxiv.org/abs/2608.23691 |
+| https://github.com/PaperclipAI/paperclip |
+| https://github.com/jonwiggins/optio |
+| https://github.com/chorus-aidlc/chorus |
+| https://github.com/omkarsm/agent-fleet |
+| https://github.com/nikhilch98/taskbrew |
+| https://github.com/jayminwest/mycelium |
+| https://www.mongodb.com/company/blog/technical/agent-orchestration-tool-use-machinery-underneath |
+| https://wavemaker.ai/blogs/from-demo-to-production-why-agentic-ai-systems-fail-and-how-to-fix-them/ |
