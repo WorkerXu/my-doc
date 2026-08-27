@@ -1,0 +1,87 @@
+name: Append AI share research a 20260827 1125
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/append-ai-share-research-a-20260827-1125.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append-research:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Append unique research rows
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          ARTICLE='ai分享文章调研.md'
+          HISTORY='ai分享历史调研.md'
+
+          append_selected() {
+            local reason="$1"
+            local url="$2"
+            if ! grep -Fq "$url" "$HISTORY"; then
+              printf '| %s | %s |\n' "$reason" "$url" >> "$ARTICLE"
+              printf '| %s |\n' "$url" >> "$HISTORY"
+            fi
+          }
+
+          append_history_only() {
+            local url="$1"
+            if ! grep -Fq "$url" "$HISTORY"; then
+              printf '| %s |\n' "$url" >> "$HISTORY"
+            fi
+          }
+
+          apply_entries() {
+            append_selected 'Google Developers 用 Python ADK 提取 Agent 与 Go 确定性校验 Agent，通过 A2A 串成合同合规流水线，直接展示跨语言、跨团队服务如何不重写既有组件完成多 Agent 协作，适合分享协议化互操作的落地方式。' 'https://developers.googleblog.com/build-cross-language-multi-agent-team-with-google-agent-development-kit-and-a2a/'
+            append_selected 'Google 用 10 组自主电影 Agent 做真实协作实验，验证共享文件比纯消息更利于崩溃恢复、角色分工与验收门禁；很适合用非编码场景讲持久共享状态、检查点和 Coach 角色为什么重要。' 'https://cloud.google.com/blog/topics/developers-practitioners/what-we-learned-about-agent-teamwork'
+            append_selected 'GoogleCloudPlatform Scion 是开源多 Agent 编排试验台，把不同 Agent Harness 放进独立容器和 Git worktree 并行运行，并支持消息、共享文件、Kubernetes 与 OTEL，可直接演示隔离、并发、观测和人机介入的工程底座。' 'https://github.com/GoogleCloudPlatform/scion'
+            append_selected 'Google Cloud 给出 ADK 的可扩展多 Agent 方案，重点解决生产环境大量异构 schema 和 tool 静态塞入上下文导致的膨胀、成本与准确率下降，适合分享按需能力装载与多 Agent 扩展的工程取舍。' 'https://cloud.google.com/blog/topics/developers-practitioners/beyond-static-prompts-with-google-adk'
+            append_selected 'Google Cloud 与 DeepMind 从智能委派出发，把任务拆分、能力匹配、协商、合同与安全边界纳入 Agent 协作设计，适合补充编排并非简单路由、委派本身也需要可验证协议的设计视角。' 'https://cloud.google.com/blog/products/ai-machine-learning/how-agents-can-delegate-better'
+            append_selected 'AWS 用 Lambda Durable Functions 实现可暂停数天的多 Agent 流程，覆盖 checkpoint、重试、幂等、人审门禁和长任务恢复，适合讲生产多 Agent 最难的往往是耐久状态与副作用控制。' 'https://aws.amazon.com/blogs/compute/building-fault-tolerant-multi-agent-ai-workflows-with-aws-lambda-durable-functions/'
+            append_selected 'AWS 以市场监控为例，把 LangGraph 状态驱动编排、checkpoint 恢复、Strands 专业 Agent 与 AgentCore 的部署、Memory、Observability 组合成完整生产方案，适合做端到端落地案例。' 'https://aws.amazon.com/blogs/machine-learning/market-surveillance-agent-with-langgraph-and-strands-on-agentcore/'
+            append_selected 'AWS 在医疗多模态数据场景用 Supervisor 协调临床、影像、基因等专业 Agent，再接预测模型，展示跨数据域 Agent 的路由、结果汇总和治理，适合分享垂直领域多 Agent 的职责拆分。' 'https://aws.amazon.com/blogs/industries/multi-agent-multimodal-data-analysis-on-aws-part-2-multi-agent-orchestration-and-predictive-analytics/'
+            append_selected 'Hyundai AutoEver 与 AWS 公开两个生产级多 Agent AIOps 系统，包含多租户隔离、成本控制、LangGraph 状态、并行 RCA、自证伪与 HITL 安全恢复，是少见同时覆盖平台治理和业务落地的企业案例。' 'https://aws.amazon.com/blogs/industries/hyundai-autoever-building-a-multi-tenant-generative-ai-sandbox-and-production-aiops-on-amazon-bedrock/'
+
+            append_history_only 'https://sociofitechnology.com/labs/blog/multi-agent-orchestration-patterns'
+            append_history_only 'https://www.fallbrookresearch.com/2026/05/08/multi-agent-workflows-in-production.html'
+            append_history_only 'https://codeforges.com/case-studies/autonomous-agent-orchestration'
+            append_history_only 'https://mcp360.ai/blog/mcp-a2a-multi-agent-workflows'
+            append_history_only 'https://www.tembo.io/blog/multi-agent-orchestration'
+            append_history_only 'https://www.frenxt.com/research/multi-agent-architecture-guide'
+            append_history_only 'https://github.com/win4r/team-tasks'
+            append_history_only 'https://frisian-mcp.com/tech/test-cases/pre-release/production-consumer-case-study'
+            append_history_only 'https://doi.org/10.1016/j.cirp.2026.04.027'
+            append_history_only 'https://www.kunalganglani.com/blog/multi-agent-ai-systems-production'
+          }
+
+          for attempt in 1 2 3; do
+            git fetch origin main
+            git reset --hard origin/main
+            apply_entries
+
+            if git diff --quiet -- "$ARTICLE" "$HISTORY"; then
+              echo 'No new entries to append.'
+              exit 0
+            fi
+
+            git add "$ARTICLE" "$HISTORY"
+            git commit -m 'docs: add fresh multi-agent collaboration research'
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            echo "Push conflict on attempt $attempt; retrying from latest main"
+          done
+
+          echo 'Failed to push after retries' >&2
+          exit 1
