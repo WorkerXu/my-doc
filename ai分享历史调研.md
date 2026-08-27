@@ -818,3 +818,12 @@
 | https://github.com/q3ok/coordinated-agent-team |
 | https://github.com/onicarps/agentbus |
 | https://github.com/ankushsrivastava0626/mission-orchestrator |
+| https://github.com/yohey-w/multi-agent-shogun |
+| https://github.com/chaitanyagiri/munder-difflin |
+| https://github.com/Peiiii/AgentVerse |
+| https://github.com/johnson7788/MultiAgentPPT |
+| https://github.com/johnson7788/TrainPPTAgent |
+| https://github.com/spencermarx/open-code-review |
+| https://github.com/umputun/revmux |
+| https://github.com/prime-radiant-inc/sprout |
+| https://github.com/dahshanlabs/klypix-mcp |

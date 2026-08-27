@@ -684,3 +684,9 @@
 | coordinated-agent-team 用确定性状态机和严格 I/O contract 组织 Spec、架构、计划、编码、Review、QA、安全、集成等角色，Agent 通过版本化 artifact 交接而不是自由群聊；适合分享“可审计产物 + Gate + 角色边界”如何降低多 Agent 协作漂移。 | https://github.com/q3ok/coordinated-agent-team |
 | AgentBus 用 SQLite + MCP 做异构 Agent 的事件总线与协作控制面，提供 pub/sub、SLA 超时、Human-in-the-Loop 拦截、Schema 校验和 RBAC，把消息、状态和治理从 Prompt 中抽离；适合分享多 Agent 上规模后为什么需要独立通信与政策层。 | https://github.com/onicarps/agentbus |
 | Mission Orchestrator 面向跨天长任务，把 Claude Code、Codex、Gemini/OpenCode 等 Worker 作为可恢复执行单元，统一管理任务状态、持久记忆、tmux 会话和 Telegram 远程控制，适合补充“长时多 Agent 如何不中断地持续推进并保留上下文”的运行时案例。 | https://github.com/ankushsrivastava0626/mission-orchestrator |
+| multi-agent-shogun 用 Shogun→Karo→Ashigaru/Gunshi 层级在 tmux 中并行调度 Claude Code、Codex、Copilot 等 Coding CLI，以 YAML/文件通信降低协调开销；作者还公开记录后来把自用 10 Agent 缩回单 Agent，适合同时分享多 Agent 的收益、复杂度与适用边界。 | https://github.com/yohey-w/multi-agent-shogun |
+| Munder Difflin 把 Claude、Codex、Gemini 等真实 CLI Agent 变成可协作“办公室”，用 mailbox、共享黑板/记忆、单提交者 Git、worktree、HITL、熔断、预算与 OTel 处理并行冲突、恢复和治理，适合展示生产级 Agent Harness 的完整控制面。 | https://github.com/chaitanyagiri/munder-difflin |
+| revmux 把多 Agent 代码审查固化为并行发现→综合去重→独立验证三阶段，并支持多模型角色、watchdog、自动重试/降级、完整运行档案和多轮复审，适合用窄场景讲“可靠协作协议”怎样工程化。 | https://github.com/umputun/revmux |
+| Open Code Review 把多个 reviewer 的独立发现、相互讨论/质疑、最终综合做成可直接落地的代码审查产品，支持需求上下文、角色与模型搭配、GitHub PR 和多轮反馈，适合展示“独立意见→争辩→收敛”的协作模式。 | https://github.com/spencermarx/open-code-review |
+| Sprout 采用递归委派的专业 Agent 树，并把失败、超时和重试转成学习信号，写入可 Git 审计/回滚的 agent genome，还支持进程级并行与 WebSocket 通信，适合分享团队如何从静态编排走向基于运行反馈的自适应协作。 | https://github.com/prime-radiant-inc/sprout |
+| KLYPIX 不负责启动 Agent，而是给 Claude、Codex、Cursor 等并行 Agent 提供同一个版本化项目 brain，通过 MCP 共享决策、纠错、证据、handoff 与文件重叠预警，适合讲清多 Agent 落地中共享状态和上下文基础设施的重要性。 | https://github.com/dahshanlabs/klypix-mcp |
