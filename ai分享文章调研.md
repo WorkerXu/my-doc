@@ -666,3 +666,10 @@
 | 专门聚焦 Evaluating Multi Agent Systems，适合补充多 Agent 落地后如何从只看最终答案转向评估团队协作质量、系统行为与整体效果这一关键环节。 | https://www.youtube.com/watch?v=PvdaIqIUpnQ |
 | “Agents of Chaos”直接讨论 Multi-Agent LLM 部署中的安全风险，适合分享多个 Agent 获得工具与互相协作能力后带来的攻击面、信任边界和生产治理问题。 | https://www.youtube.com/watch?v=G4u-aFmnUDo |
 | Claude Code 多 Agent 编排实践把 Opus 4.6、Tmux 与 Agent Sandboxes 组合起来，适合展示 Coding Agent 并行执行时如何通过独立运行环境和编排层降低工作区冲突。 | https://www.youtube.com/watch?v=RpUTF_U4kiw |
+| 该案例让多 Agent 无人值守连续运行 4 天并产出约 14 万行代码，直接展示长时 Coding Agent 团队在任务拆解、编排、持续推进与大规模交付中的真实运行形态，适合分享“多 Agent 真正跑几天以后会遇到什么”。 | https://www.bilibili.com/video/BV1cuJH6LEvU |
+| 作者基于 DeepSeek Harness 实际做出多模型协作插件，并提供对应开源项目，适合展示多模型 Agent 如何从大量实验走向可复用工程组件，以及不同模型怎样进入同一协作链。 | https://www.bilibili.com/video/BV1ocbD61E9A |
+| Herdr 实操让 Claude Code、Codex、OMP 等 Agent 直接通信，并用“强模型规划—低成本模型执行—强模型验收”做角色与成本路由，适合分享异构 Agent 协作和模型分层的落地方式。 | https://www.bilibili.com/video/BV1yPuq6qEHE |
+| 以 Anthropic Managed Agents 为核心，从实际实现角度拆解为什么要解耦、Agent 怎样协作以及 SessionStore 的作用，且作者已有自建实现，适合讲多 Agent 从架构概念到运行时状态管理的工程路径。 | https://www.bilibili.com/video/BV1DB546wEb8 |
+| 围绕 Claude 的五种 multi-agent coordination pattern 及选择标准展开，适合把不同协作拓扑、适用边界和选型依据整理成分享中的架构地图，避免“为了多 Agent 而多 Agent”。 | https://www.bilibili.com/video/BV19LdqBAErd |
+| Claude Code Agent Teams 的实际体验同时讨论理想能力与现实限制，适合补充团队协作中的成本、约束和使用边界，让分享不只展示成功 Demo，也覆盖真实落地后的取舍。 | https://www.bilibili.com/video/BV1c3Tw6FEQs |
+| 用一个自动生成深度长文的 Agent Teams 团队完整演示多 Agent 从角色拆分到协同执行，适合作为分享现场可快速理解和复现的端到端实操案例。 | https://www.bilibili.com/video/BV1Q3cnzbE4P |
