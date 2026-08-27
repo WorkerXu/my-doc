@@ -1,0 +1,84 @@
+name: Append AI sharing research d 20260827 0830
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/append-ai-share-research-d-20260827-0830.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Append new multi-agent research rows safely
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+
+            python - <<'PY'
+          from pathlib import Path
+
+          article = Path('ai分享文章调研.md')
+          history = Path('ai分享历史调研.md')
+
+          rows = [
+              ('1688 数据中心把 Multi-Agent 研发小队用于真实数据研发，把业务知识、规范与任务编排拆成 K/S/T 三层，并通过 Harness、协作规则和经验沉淀形成“以 Agent 养 Agent”的迭代飞轮，适合分享组织化 Agent 团队如何嵌入日常研发流程。', 'https://zhuanlan.zhihu.com/p/2062894829776924859'),
+              ('文章从任务可分解性、并行性、信息互补与协调成本讨论 Multi-Agent 的收益边界，强调先建立强 Single-Agent baseline，再用成功率、成本、延迟和单位任务收益共同评估是否值得拆分，适合分享中补充“何时不该上多 Agent”的工程取舍。', 'https://zhuanlan.zhihu.com/p/2072961057925157031'),
+              ('文章系统梳理多 Agent 协同开发范式与应用实践，并结合 MetaGPT、AutoGen 等框架说明角色分工、协作流程和工程选型，适合作为软件研发场景中多 Agent 从概念走向协同开发的入门实践材料。', 'https://zhuanlan.zhihu.com/p/1912013676233355574'),
+              ('文章以“别让一个 AI 干所有活”为切入点，从工程实践角度比较多 Agent 的分工与协作方式，并用 AutoGen 等框架展示 GroupChat/管理器式编排链路，适合用来讲清单 Agent 拆分为专业角色后的协作机制。', 'https://zhuanlan.zhihu.com/p/2043329925252375861'),
+              ('文章把 Agent 与 Workflow 放在自主性和协作性两个维度上讨论技术落地，分析线性流程、状态同步和多 Agent 消息协作之间的差异，适合用于分享中建立“确定性工作流与 Agent 自主协作如何组合”的架构判断框架。', 'https://zhuanlan.zhihu.com/p/1962304283606254744'),
+              ('作者结合 multi-agent 项目实践提出“知识—编排—门控—治理”四层解耦的 Harness Engineering 架构，强调经验沉淀、持续治理和生产约束，适合展示多 Agent 从提示词与对话层升级到可治理工程系统的设计方法。', 'https://zhuanlan.zhihu.com/p/2015575496742679437'),
+              ('这篇万字实践文章从 Agent 基础一路延伸到复杂 AI Agent 与多 Agent 协作系统的设计、开发和落地，覆盖架构、工具调用、流程编排与工程化实践，适合作为分享准备时补齐端到端实现脉络的综合参考。', 'https://zhuanlan.zhihu.com/p/1919338285160965135'),
+          ]
+
+          article_text = article.read_text(encoding='utf-8')
+          history_text = history.read_text(encoding='utf-8')
+
+          added = []
+          for reason, url in rows:
+              if url in article_text or url in history_text:
+                  continue
+              if article_text and not article_text.endswith('\n'):
+                  article_text += '\n'
+              article_text += f'| {reason} | {url} |\n'
+              if history_text and not history_text.endswith('\n'):
+                  history_text += '\n'
+              history_text += f'| {url} |\n'
+              added.append(url)
+
+          if added:
+              article.write_text(article_text, encoding='utf-8')
+              history.write_text(history_text, encoding='utf-8')
+              print(f'added {len(added)} rows')
+          else:
+              print('no new rows')
+          PY
+
+            if git diff --quiet -- 'ai分享文章调研.md' 'ai分享历史调研.md'; then
+              echo 'no new rows to commit'
+              exit 0
+            fi
+
+            git add -- 'ai分享文章调研.md' 'ai分享历史调研.md'
+            git commit -m 'docs: append ai sharing research d 20260827 0830'
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+
+            echo "push failed on attempt ${attempt}; retrying on latest main"
+          done
+
+          exit 1
