@@ -655,3 +655,7 @@
 | 文章把 Agent 与 Workflow 放在自主性和协作性两个维度上讨论技术落地，分析线性流程、状态同步和多 Agent 消息协作之间的差异，适合用于分享中建立“确定性工作流与 Agent 自主协作如何组合”的架构判断框架。 | https://zhuanlan.zhihu.com/p/1962304283606254744 |
 | 作者结合 multi-agent 项目实践提出“知识—编排—门控—治理”四层解耦的 Harness Engineering 架构，强调经验沉淀、持续治理和生产约束，适合展示多 Agent 从提示词与对话层升级到可治理工程系统的设计方法。 | https://zhuanlan.zhihu.com/p/2015575496742679437 |
 | 这篇万字实践文章从 Agent 基础一路延伸到复杂 AI Agent 与多 Agent 协作系统的设计、开发和落地，覆盖架构、工具调用、流程编排与工程化实践，适合作为分享准备时补齐端到端实现脉络的综合参考。 | https://zhuanlan.zhihu.com/p/1919338285160965135 |
+| 用自动修 GitHub Issue 并提 PR 的真实工作流演示主 Agent + Subagent 协作，覆盖并行、Pipeline、Map-Reduce，以及 workdir 隔离、push 回传、上下文自包含和成本控制等坑，适合分享“任务拆分后怎样把多 Agent 稳定跑起来”。 | https://juejin.cn/post/7616650313060155443 |
+| 用 Spring AI + Java 从业务场景搭出可运行 Multi-Agent 系统并附完整源码，适合补充非 Python 团队如何把角色拆分、Agent 协作和现有 Spring 技术栈真正接起来。 | https://juejin.cn/post/7633258779409252395 |
+| 基于 Spring AI Alibaba 1.1.2 实操 5 种多 Agent 编排模式，适合在分享中用 Java 生态对照不同协作拓扑的实现方式、适用边界与任务分工，而不是只讲单一 Supervisor 模式。 | https://juejin.cn/post/7643288575245746185 |
+| 从“改 tasks.md 就让 Agent 自动接活写代码”出发自建多 Agent 研发工作流，适合展示需求文件如何变成任务触发器，以及多 Agent 怎样嵌入真实开发流水线而不是停留在聊天式 Demo。 | https://juejin.cn/post/7623974008200347675 |
