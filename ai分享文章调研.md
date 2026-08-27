@@ -673,3 +673,8 @@
 | 围绕 Claude 的五种 multi-agent coordination pattern 及选择标准展开，适合把不同协作拓扑、适用边界和选型依据整理成分享中的架构地图，避免“为了多 Agent 而多 Agent”。 | https://www.bilibili.com/video/BV19LdqBAErd |
 | Claude Code Agent Teams 的实际体验同时讨论理想能力与现实限制，适合补充团队协作中的成本、约束和使用边界，让分享不只展示成功 Demo，也覆盖真实落地后的取舍。 | https://www.bilibili.com/video/BV1c3Tw6FEQs |
 | 用一个自动生成深度长文的 Agent Teams 团队完整演示多 Agent 从角色拆分到协同执行，适合作为分享现场可快速理解和复现的端到端实操案例。 | https://www.bilibili.com/video/BV1Q3cnzbE4P |
+| Google Research 基于 180 种 Agent 配置量化多 Agent 扩展规律：并行任务受益、顺序任务反而退化 39–70%，并比较集中式/去中心化/混合架构的错误放大与通信成本，还能预测 87% 未见任务的最优拓扑，适合用数据讲清“什么时候多 Agent 真有用、架构怎么选”。 | https://research.google/blog/towards-a-science-of-scaling-agent-systems-when-and-why-agent-systems-work/ |
+| Google Research 与 Google Cloud 的 Agentic RAG 用 Orchestrator、Planner、Query Rewriter、Search Fanout 与 Sufficient Context Agent 迭代补齐跨数据源证据，事实性评测准确率相对标准 RAG 提升最高 34%，适合展示“多 Agent + 检索”如何做成可验证的企业查询闭环。 | https://research.google/blog/unlocking-dependable-responses-with-gemini-enterprise-agent-platforms-agentic-rag/ |
+| OpenCode Ensemble 把并行 Agent 团队做成可安装插件：每个成员独立 Session/Context，共享带依赖任务板和点对点消息，默认用 Git worktree 隔离写入，并补齐计划审批、原子认领、合并冲突检测、崩溃恢复和实时看板，适合拆解 Coding Agent 团队控制面。 | https://github.com/hueyexe/opencode-ensemble |
+| TAKT 用 YAML 把 plan→implement→review→fix、角色上下文、权限、人工 checkpoint、输出 contract 和跳转规则声明成可重复工作流，并在独立 worktree 运行 Claude/Codex/OpenCode/Cursor 等 Agent、保留可追踪日志，适合分享“Agent 负责产出、流程负责约束”的声明式协作。 | https://github.com/nrslib/takt |
+| Agent Fleet 让专业 Claude Code 子进程既可按 Conductor 并行讨论/综合，也可切到 LangGraph + Postgres 的有状态流程，在崩溃后从 checkpoint 续跑，并用 interrupt() 在高风险节点引入人工决策，适合展示多 Agent 从轻量并行升级到 durable workflow 的实现路径。 | https://github.com/studiomeyer-io/agent-fleet |

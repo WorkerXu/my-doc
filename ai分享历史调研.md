@@ -807,3 +807,8 @@
 | https://www.bilibili.com/video/BV1oQ876xEHJ |
 | https://www.bilibili.com/video/BV1c3Tw6FEQs |
 | https://www.bilibili.com/video/BV1Q3cnzbE4P |
+| https://research.google/blog/towards-a-science-of-scaling-agent-systems-when-and-why-agent-systems-work/ |
+| https://research.google/blog/unlocking-dependable-responses-with-gemini-enterprise-agent-platforms-agentic-rag/ |
+| https://github.com/hueyexe/opencode-ensemble |
+| https://github.com/nrslib/takt |
+| https://github.com/studiomeyer-io/agent-fleet |
