@@ -705,3 +705,7 @@
 | Microsoft 365 Copilot 官方展示 collaborative agents 在企业协作中的落地形态，适合补充多 Agent 如何嵌入现有办公平台并服务团队工作流。 | https://www.youtube.com/watch?v=biWymgItJ_I |
 | IBM Technology 用 A2A 协议解释 Agent 间协作，适合分享跨 Agent、跨服务互操作的协议层基础，以及为什么生产系统需要标准化通信。 | https://www.youtube.com/watch?v=Tud9HLTk8hg |
 | 以 Mac Mini 上搭建 Multi-Agent Team 的实操展示本地化团队部署思路，适合作为低成本运行多个 Agent 并组织协作的实践案例。 | https://www.youtube.com/watch?v=_ZehNseg0Qg |
+| 4torm 把长期存在的 Agent 统一放进独立对话、多人会议、固定团队工作室、可视化工作流和定时任务五类协作空间，并支持 Tools、Skills 与 MCP，适合展示多 Agent 如何从临时对话升级为可持续复用的协作平台。 | https://github.com/ccde141/4torm |
+| knowflowai 展示产品和开发分别使用自己的 AI，却把验收、方案和执行结论回写到同一条任务中，不绑定单一 IDE，适合分享“多人 + 多 Agent + 多工具”场景下如何用共享任务上下文形成可追踪协作闭环。 | https://www.bilibili.com/video/BV1Sbhc6cEMf |
+| TRAE SOLO Coder 的实测把多任务与 SubAgent 用在真实协同开发流程里，适合用来讲 Coding Agent 场景中的任务拆分、并行执行与主 Agent 汇总，以及多 Agent 相比单线程开发的实际工作方式。 | https://www.bilibili.com/video/BV1Y7CbB1EpP |
+| Codex 子 Agent 的 A/B 实测在同一迷宫项目中给出质量 96/97、实现会话 Token 降低 30.23%、耗时降低 17.76% 的结果，并明确计量边界与适用条件，适合为分享补充“多 Agent 是否值得”的量化成本收益案例。 | https://www.bilibili.com/video/BV1biuq61EcA |
