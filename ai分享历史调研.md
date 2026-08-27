@@ -906,3 +906,7 @@
 | https://link.springer.com/article/10.1007/s12559-026-10619-1 |
 | https://github.com/jnmetacode/agency-orchestrator |
 | https://github.com/Orkas-AI/Orkas |
+| https://github.com/GoogleCloudPlatform/scion |
+| https://mcp360.ai/blog/mcp-a2a-multi-agent-workflows |
+| https://www.frenxt.com/research/multi-agent-architecture-guide |
+| https://frisian-mcp.com/tech/test-cases/pre-release/production-consumer-case-study |

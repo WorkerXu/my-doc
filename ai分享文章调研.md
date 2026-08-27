@@ -759,3 +759,4 @@
 | 这篇 2026-08-24 开放获取综述用“自主性、工具使用、协作、安全治理”四维分类统一 Agentic AI，并同时覆盖多 Agent 架构、评估、鲁棒性、成本、访问控制与 HITL，适合给分享建立从协作机制到生产部署的理论与工程全景图。 | https://link.springer.com/article/10.1007/s12559-026-10619-1 |
 | Agency Orchestrator 把多 Agent 团队做成零代码 YAML + 动态 DAG 的可运行产品，提供海量专业角色、条件/循环、人工审批、断点续跑、步骤级模型覆盖、MCP、Web Studio 与自动验收，适合展示“自然语言组队 + 显式流程约束 + 机器验收”如何产品化。 | https://github.com/jnmetacode/agency-orchestrator |
 | Orkas 用本地优先桌面工作台把 Commander 与专业 Agent 的并行/串行协作产品化，并通过上下文可见性切片、结构化 dispatch、延迟唤醒、共享 plan.md、私有技能/记忆和自反思演进控制协作，适合分享“面向人的多 Agent 工作台怎样处理上下文隔离、调度与长期成长”。 | https://github.com/Orkas-AI/Orkas |
+| GoogleCloudPlatform Scion 是开源多 Agent 编排试验台，把不同 Agent Harness 放进独立容器和 Git worktree 并行运行，并支持消息、共享文件、Kubernetes 与 OTEL，可直接演示隔离、并发、观测和人机介入的工程底座。 | https://github.com/GoogleCloudPlatform/scion |
