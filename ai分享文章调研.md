@@ -736,3 +736,8 @@
 | Oh My OpenAgent 把协调、规划、架构、文档、代码探索等 7 个专职 Agent 组织成实际研发流水线，并用 Hooks 与工作流完成复杂功能，适合作为角色化 Agent 团队如何从任务拆解进入并行开发的完整案例。 | https://zhuanlan.zhihu.com/p/2018805068799951843 |
 | FinSight 用 Claude Agent SDK 的 SubAgent-as-tool 构建投研团队，让财务、新闻、风险子代理拥有隔离上下文和专用工具，主代理统一编排，并接入 MCP、Hooks 审计和 OpenTelemetry 链路观测，适合展示垂直业务多 Agent 的治理与可观测落地。 | https://zhuanlan.zhihu.com/p/2066824677708845113 |
 | 从软件研发场景总结多 Agent 的上下文隔离、职责分离、并行加速和错误隔离，并强调单 Agent 能解决时不要强行多 Agent 化，适合分享中建立从任务特征判断是否值得引入协作编排的选型原则。 | https://zhuanlan.zhihu.com/p/2072706491224740986 |
+| 皮皮虾把多 Agent 做成“独立角色 + 独立记忆/工具链 + 共享消息总线”的实际系统架构，适合分享如何用通信层和职责隔离把多个 Agent 组织成可协作的项目组。 | https://juejin.cn/post/7624422672950362150 |
+| 从 Claude 官方多 Agent 模式进一步落到动态工作流、上下文隔离和交叉验证，适合分享任务如何按需拆解并由多个 Agent 并行协作，同时通过验证机制控制质量。 | https://juejin.cn/post/7662679072745111567 |
+| 用 Hermes Agent 的 Profile 机制把多个 Agent 做成相互隔离的运行环境，适合展示多 Agent 落地时如何隔离配置、上下文与工作空间，减少角色互相污染。 | https://juejin.cn/post/7631098648844419072 |
+| 用 LangChain.js Supervisor 实现“主管 Agent → 专业子 Agent”的动态路由，能直接作为 JavaScript/TypeScript 技术栈下层级式多 Agent 编排的可复现实操案例。 | https://juejin.cn/post/7554291403235082274 |
+| 从单 Agent 的专业度与职责混杂问题出发，讲多 Agent 的分工、协作与复杂任务处理，适合作为“何时需要拆分 Agent、如何设计专业角色”的入门实践案例。 | https://juejin.cn/post/7653050742081503278 |
