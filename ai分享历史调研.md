@@ -756,3 +756,15 @@
 | https://www.bilibili.com/video/BV1KPwrzUEdB |
 | https://www.bilibili.com/video/BV1ovKBzeEcz |
 | https://www.bilibili.com/video/BV1P1L96KE6Z |
+| https://www.thomsonreuters.com/en/institute/articles/flag-game-building-better-agent-teams |
+| https://about.gitlab.com/blog/gitlab-next-gen-scm/ |
+| https://arxiv.org/abs/2608.21156 |
+| https://github.com/DEEP-JLU/Awesome-Graph-Engineering |
+| https://arxiv.org/abs/2608.23552 |
+| https://github.com/PrimeIntellect-ai/prime-agent |
+| https://arxiv.org/abs/2608.23740 |
+| https://github.com/agent-room-alkl/agent-room |
+| https://arxiv.org/abs/2608.22077 |
+| https://arxiv.org/abs/2608.23145 |
+| https://arxiv.org/abs/2608.23541 |
+| https://arxiv.org/abs/2608.23691 |

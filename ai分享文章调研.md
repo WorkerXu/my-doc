@@ -624,3 +624,15 @@
 | 基于 Codex App 的 Subagents 功能做完整上手实践，并结合官方文档介绍子代理使用方式，适合展示主 Agent 如何调用专业子 Agent 分工执行真实开发任务。 | https://www.bilibili.com/video/BV1KPwrzUEdB |
 | 用 AutoGen Studio 调用本地大模型搭建可运行的多 Agent 应用，覆盖较完整的实操流程，适合展示可视化编排、本地模型与多智能体应用结合的落地路径。 | https://www.bilibili.com/video/BV1ovKBzeEcz |
 | 让 Claude 负责规划和审核、Codex 负责编程，以跨模型角色分工提升代码质量，适合展示异构 Agent 通过明确责任边界形成“规划—实现—审查”的开发协作闭环。 | https://www.bilibili.com/video/BV1P1L96KE6Z |
+| Thomson Reuters 用“旗帜游戏”实测 Agent 团队规模、通信与模型异质性，发现 Agent 增加到一定规模后准确率反而下降、团队会分裂，而混合模型团队可能更强，适合分享“多 Agent 不是越多越好，组织与信息拓扑才是关键”的量化案例。 | https://www.thomsonreuters.com/en/institute/articles/flag-game-building-better-agent-teams |
+| GitLab 从同时运行大量 Coding Agent 的真实基础设施压力出发，指出传统 Git 在重复 clone、并发、来源追踪和 Agent 生命周期上会成为瓶颈，适合分享多 Agent Coding 从“会并行”走向“基础设施也为 Agent 重构”的落地趋势。 | https://about.gitlab.com/blog/gitlab-next-gen-scm/ |
+| Graph Engineering 将多 Agent 协作提升为“系统智能”问题，用显式、动态演化的图组织任务、Agent 与运行状态，覆盖异构专业分工、并行执行、独立验证和持久状态，适合建立下一代多 Agent 协作的系统化架构框架。 | https://arxiv.org/abs/2608.21156 |
+| Awesome Graph Engineering 是上述 Graph Engineering 论文的配套开源资料库，持续汇总多 Agent 图式组织、任务/状态图、基准和项目，适合分享时快速扩展案例并作为后续技术选型索引。 | https://github.com/DEEP-JLU/Awesome-Graph-Engineering |
+| Prime Agent 把递归子 Agent、Agent-to-Agent 直接通信、持久计算环境、跨轨迹记忆/Skills 与恢复、验证、资源统计整合进同一 Harness，适合展示长任务多 Agent 协作需要的不只是委派，还包括持久状态与运行控制面。 | https://arxiv.org/abs/2608.23552 |
+| Prime Agent 的开源实现可直接研究递归子 Agent、持续 Harness、会话管理与并行工作机制，适合作为“论文架构如何落成可运行 Coding Agent 系统”的项目型案例。 | https://github.com/PrimeIntellect-ai/prime-agent |
+| AgentRoom 论文把多 Coding Agent 放进 CRDT 共享工作区，通过文件 claim、status、broadcast 等 MCP 原语协调并发修改，实验说明真正带来收益的是协作协议而非单纯并行，适合讲共享工作区与冲突治理。 | https://arxiv.org/abs/2608.23740 |
+| Agent Room 开源项目让 Claude Code、Cursor、Codex、Gemini 等异构 Agent 进入同一实时协作房间，并提供结构化决策、证据门禁任务板、回合纪律、项目记忆和 webhook 唤醒，适合展示多 Agent 协作产品层如何落地。 | https://github.com/agent-room-alkl/agent-room |
+| Spine-Branch Coordination 针对多 Agent Computer Use 中“并行 VM 状态无法合并”的真实约束，用主干保持连续状态、分支并行搜集信息，在 200 个长任务上提升成功率且显著降成本，适合分享物理执行环境如何反向塑造协作拓扑。 | https://arxiv.org/abs/2608.22077 |
+| 该论文报告了面向全球生产 AIDC 百万级光链路的多 Agent LLM 故障管理系统，在十周真实现场数据上达到 97.7% F1 并将故障事件降低 60% 以上，是“多 Agent 进入大规模生产运维”的强量化案例。 | https://arxiv.org/abs/2608.23145 |
+| Interaction Tax 用匹配预算实验发现，Agent 互相读取完整方案会快速抹平多样性，独立提案往往是更好的默认策略；适合分享 Agent 间“共享什么、何时共享”比“有多少 Agent”更重要。 | https://arxiv.org/abs/2608.23541 |
+| Station 在没有中央协调器的开放环境中让不同模型 Agent 自主选题、实验、协作并维护共享科研文献，最终产生多项新数学结果且公开对话、证明与验证代码，适合展示去中心化自组织多 Agent 协作的前沿实践。 | https://arxiv.org/abs/2608.23691 |
