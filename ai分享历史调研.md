@@ -854,3 +854,16 @@
 | https://continuumcode.ai/guides/multi-agent-development/ |
 | https://www.agent-swarm.dev/blog/multi-agent-orchestration |
 | https://codius.ai/blog/orchestrating-multiple-coding-agents-in-one-workspace |
+| https://www.atlassian.com/blog/how-we-build/rovo-long-horizon-reasoning-engine |
+| https://www.atlassian.com/blog/development/specialist-agent-orchestration-jira |
+| https://www.linkedin.com/blog/engineering/generative-ai/the-linkedin-generative-ai-application-tech-stack-extending-to-build-ai-agents |
+| https://www.snowflake.com/en/blog/engineering/arcticswarm-multi-agent-system-architecture/ |
+| https://www.confluent.io/blog/agent-taskflow-ai-agents-confluent-aws-architecture/ |
+| https://www.datadoghq.com/state-of-ai-engineering/ |
+| https://github.com/golutra/golutra |
+| https://github.com/sbhavani/speckit-agents |
+| https://github.com/shuaige121/codex-orchestrator |
+| https://www.snowflake.com/en/blog/engineering/arcticswarm-hybrid-deep-research/ |
+| https://github.com/B0Qi/skill-multi-agent |
+| https://openclaw.academy/blog/how-sharbel-runs-business-four-openclaw-ai-agents/ |
+| https://www.atlassian.com/blog/rovo/how-rovo-embraces-multi-agent-orchestration |
