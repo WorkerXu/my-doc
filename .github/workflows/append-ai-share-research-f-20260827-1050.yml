@@ -1,0 +1,83 @@
+name: Append AI sharing research f 20260827 1050
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/append-ai-share-research-f-20260827-1050.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Append new research rows safely
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+
+            python - <<'PY'
+          from pathlib import Path
+
+          article = Path('ai分享文章调研.md')
+          history = Path('ai分享历史调研.md')
+
+          rows = [
+              ('Google Cloud 最新实操直接讲多 Agent 系统如何部署并扩展到 GKE，适合分享从协作逻辑走向容器化运行、弹性扩缩与生产基础设施时需要补齐哪些能力。', 'https://www.youtube.com/watch?v=zI8KUvtHMvU'),
+              ('Google Cloud 从“哪些决策其实不该交给 LLM”切入多 Agent 系统设计，适合用来说明生产编排中确定性控制流与 Agent 自主性如何分工，避免为了多 Agent 而过度模型化。', 'https://www.youtube.com/watch?v=Fzd0BWMH65s'),
+              ('Google Cloud Live 专门讨论分布式多 Agent 系统的安全，并结合 Model Armor 展示防护思路，适合补充跨 Agent 调用、输入输出防护与生产安全边界这一常被忽视的落地层。', 'https://www.youtube.com/watch?v=P6cyzDDAhMA'),
+              ('Google Cloud 的 ADK + MCP 实操把多 Agent 协作与标准工具协议放到同一系统中，适合分享 Agent 角色编排、工具接入和能力复用怎样组合成可运行应用。', 'https://www.youtube.com/watch?v=W54cRxp-bSA'),
+              ('The Agent Factory Podcast 从 GKE 上的 Agent Sandbox 与 Pod snapshot 切入运行时隔离和快速恢复，适合补充并行 Agent 真正上生产后工作空间隔离、启动效率与执行环境治理的基础设施实践。', 'https://www.youtube.com/watch?v=5_R_Ixk8ENQ'),
+              ('以生物信息学的 conversational genomics 为垂直场景构建多 Agent 系统，适合展示专业 Agent 如何围绕真实领域数据与任务分工协作，补充通用 Coding/客服之外的业务落地案例。', 'https://www.youtube.com/watch?v=pBm47ImEkTY'),
+          ]
+
+          article_text = article.read_text(encoding='utf-8')
+          history_text = history.read_text(encoding='utf-8')
+
+          added = []
+          for reason, url in rows:
+              if url in article_text or url in history_text:
+                  continue
+              if article_text and not article_text.endswith('\n'):
+                  article_text += '\n'
+              article_text += f'| {reason} | {url} |\n'
+              if history_text and not history_text.endswith('\n'):
+                  history_text += '\n'
+              history_text += f'| {url} |\n'
+              added.append(url)
+
+          if added:
+              article.write_text(article_text, encoding='utf-8')
+              history.write_text(history_text, encoding='utf-8')
+              print(f'added {len(added)} rows')
+          else:
+              print('no new rows')
+          PY
+
+            if git diff --quiet -- 'ai分享文章调研.md' 'ai分享历史调研.md'; then
+              echo 'no new rows to commit'
+              exit 0
+            fi
+
+            git add -- 'ai分享文章调研.md' 'ai分享历史调研.md'
+            git commit -m 'docs: append ai sharing research f 20260827 1050'
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+
+            echo "push failed on attempt ${attempt}; retrying on latest main"
+          done
+
+          exit 1
