@@ -91,7 +91,7 @@
 | VS Code 官方演示统一管理本地、后台、云端以及 Claude、Codex 等多种 Coding Agent，并支持并行子 Agent 与独立上下文，适合分享 IDE 如何演进成多 Agent 研发控制台。 | https://www.youtube.com/watch?v=BsAHunfVwNs |
 | 以 PR Review 为目标从零搭建生产导向的多 Agent 系统，覆盖安全/质量/测试/文档专业 Agent 的 fan-out/fan-in、结构化输出、RAG、置信度与 HITL、超时重试、幂等和可观测性，适合做“可靠性优先”的完整工程案例。 | https://www.youtube.com/watch?v=RiN02OXjeeQ |
 | Google Cloud ADK 的实操型多 Agent 编排分享围绕任务拆解、Agent 通信、工作流协同与治理展开，并强调可扩展的协作系统设计，适合作为 ADK 体系下从概念到实践的案例素材。 | https://www.youtube.com/watch?v=Y3IFeghhT9Y |
-| WorkBuddy 把多人和多 Agent 放进同一团队空间，直接涉及权限、评论与版本管理，适合分享“多 Agent 落地不只是编排，还需要人/Agent 协作治理与协作资产管理”的产品化实践。 | https://www.bilibili.com/video/BV1yQgP6JEfX |
+| WorkBuddy 把多人和多 Agent 放进同一团队空间，直接涉及权限、评论与版本管理，适合作为“多 Agent 落地不只是编排，还需要人/Agent 协作治理与协作资产管理”的产品化实践。 | https://www.bilibili.com/video/BV1yQgP6JEfX |
 | TabTin 以开源、可一键部署的团队 Agent 工作台为切入点，适合展示多 Agent 能力如何从脚本或 CLI 走向团队共享入口和可部署产品。 | https://www.bilibili.com/video/BV1fk8i65EUt |
 | 4TORM 围绕长期 Agent 设计独立对话、会议、工作室、工作流和自动任务，让同一批 Agent 能按任务重新组合，同时保留人类掌控方向，适合讲“长期 Agent 团队”如何从聊天窗口演进成协作系统。 | https://www.bilibili.com/video/BV1ae8A6rE7z |
 | Nexent 是开源多 Agent SDK 与平台，可自主规划 Agent 和工具，并把模型配置、数据处理、知识库、互联网查询、多模态、MCP 扩展及 Docker 部署串到一起，适合分享平台化 Agent 编排如何真正落地。 | https://www.bilibili.com/video/BV1ZejSzcEEk |
@@ -502,9 +502,9 @@
 | OpsPilot Zero 把生产故障处置拆成告警归并、根因分析、修复规划、恢复验证 4 个 Agent 的 DAG，并用结构化交付契约、置信度证据链和风险审批控制自动化边界，适合展示高风险运维场景怎样形成可信协作闭环。 | https://zhuanlan.zhihu.com/p/2068110217808700098 |
 | 从 AgentTeams baseline 的实际使用出发，拆解 Manager/TeamLeader/Worker、Matrix 协作、Nacos 注册与 Skill 版本治理、Higress 凭证收敛和 OpenTelemetry 可观测，适合补充多 Agent 真正生产化所需的治理基础设施。 | https://zhuanlan.zhihu.com/p/2068115749751804511 |
 | 昆仑 AI 分布式多 Agent 企业平台采用 DDD 编排 + AutoGen 原子执行，并把知识库、记忆、异步任务、权限、观测和配置热更新放进九层架构，适合分享企业团队如何把多 Agent 从单个流程升级为长期演进的平台能力。 | https://zhuan.zhihu.com/p/2066558348422657228 |
-| 真实搭建“人类 + 5 个独立 Agent 团队”的跨境电商组织，PM、Coding、选品、内容与社媒 Agent 各有独立上下文和工具，并通过项目与委派路由协作，适合展示人机混合组织如何进入日常业务而非只做技术 Demo。 | https://zhuan.zhihu.com/p/2035422266629038719 |
+| 真实搭建“人类 + 5 个独立 Agent 团队”的跨境电商组织，PM、Coding、选品、内容与社媒 Agent 各有独立上下文和工具，并通过项目与委派路由协作，适合展示人机混合组织如何进入日常业务而非只做技术 Demo。 | https://zhuanlan.zhihu.com/p/2035422266629038719 |
 | Routa 把多 Agent 协作做成独立协调平面，用 ACP 管 Agent 进程、MCP 暴露协作动作、A2A 做联邦扩展，并用结构化任务、事件流、持久状态和恢复机制实现可追踪协作，适合讲协议分层与开放编排。 | https://zhuan.zhihu.com/p/2009668693362242633 |
-| 从企业 SOP 运行机制出发，把任务实例、唯一运行时主控、状态载体、执行节点、人工审核、异常处理和恢复明确成工程对象，并给出逐步扩大自动化范围的落地路径，适合分享“企业需要的不是更多 Agent，而是可靠协作机制”。 | https://zhuan.zhihu.com/p/2074177077218223659 |
+| 从企业 SOP 运行机制出发，把任务实例、唯一运行时主控、状态载体、执行节点、人工审核、异常处理和恢复明确成工程对象，并给出逐步扩大自动化范围的落地路径，适合分享“企业需要的不是更多 Agent，而是可靠协作机制”。 | https://zhuanlan.zhihu.com/p/2074177077218223659 |
 | 从 RAG 演进到多智能体协同并进一步接入可观测平台，内容同时覆盖 Agent 架构、开发方案、常见问题与运行观测，适合补充“协作系统上线后如何看见调用链、定位问题并持续优化”的平台视角。 | https://zhuan.zhihu.com/p/2003043815884350644 |
 | 360 数科的智能营销案例把洞察、策略、文案、执行与效果分析拆给不同 Agent，形成从洞察到触达到转化的业务闭环，并结合真实金融营销场景讨论价值与数据成效，适合做非研发类多 Agent 落地案例。 | https://zhuan.zhihu.com/p/1997373801038622880 |
 | 用 AutoGen 的 Coder、Reviewer、Executor 跑通一次自动代码评审，并围绕 Planner-Executor-Critic、GroupChat、终止条件与可执行 Python 代码展开，适合作为现场快速复现“生成—审查—执行”协作闭环的入门实战。 | https://zhuan.zhihu.com/p/2043436947130012438 |
@@ -636,3 +636,11 @@
 | 该论文报告了面向全球生产 AIDC 百万级光链路的多 Agent LLM 故障管理系统，在十周真实现场数据上达到 97.7% F1 并将故障事件降低 60% 以上，是“多 Agent 进入大规模生产运维”的强量化案例。 | https://arxiv.org/abs/2608.23145 |
 | Interaction Tax 用匹配预算实验发现，Agent 互相读取完整方案会快速抹平多样性，独立提案往往是更好的默认策略；适合分享 Agent 间“共享什么、何时共享”比“有多少 Agent”更重要。 | https://arxiv.org/abs/2608.23541 |
 | Station 在没有中央协调器的开放环境中让不同模型 Agent 自主选题、实验、协作并维护共享科研文献，最终产生多项新数学结果且公开对话、证明与验证代码，适合展示去中心化自组织多 Agent 协作的前沿实践。 | https://arxiv.org/abs/2608.23691 |
+| Paperclip 把多 Agent 团队管理提升到“公司控制面”：用组织关系、目标继承、原子任务领取、预算、审批/回滚、持久状态和多租户隔离统一协调 Claude Code、Codex、Cursor 等异构 Agent，适合分享长期自治团队如何同时解决重复劳动、成本和治理。 | https://github.com/PaperclipAI/paperclip |
+| Optio 用 Kubernetes 隔离环境 + Git worktree 把 Coding Agent 从工单一路自动推进到 PR、CI、Review 修复和合并，并支持长期 Agent 之间直接消息与 K8s 风格 reconciliation，适合展示多 Agent 研发怎样做成可恢复、自托管的交付平台。 | https://github.com/jonwiggins/optio |
+| Chorus 把需求、任务 DAG、执行、验证与完成做成 AI-DLC Harness，并统一管理多 Agent/人的权限、Session、任务状态、可观测和失败恢复，适合分享 Human-in-the-Loop 如何从“人工兜底”升级为明确权限与验收流程。 | https://github.com/chorus-aidlc/chorus |
+| apra-fleet 面向跨设备、跨模型的大规模 Agent fleet 提供调度、凭证、隔离和可观测，并用自身多小时自治工作流持续规划、编码、评审、测试和修复该仓库，适合展示多 Agent 从单机团队扩到“Agent 基础设施运营”的形态。 | https://github.com/omkarsm/agent-fleet |
+| TaskBrew 用 SQLite 共享任务板把 PM→架构→Coder→Verifier 的依赖、并行执行、worktree 隔离、Review 与验证串成配置驱动流水线，适合用一个轻量项目讲清专业角色、共享状态和机器验收怎样共同约束 Coding Agent 团队。 | https://github.com/nikhilch98/taskbrew |
+| Mycelium 采用“Agent 不直接互聊”的反向设计：Decomposer 持续写入共享任务池，无状态 Worker 原子认领、独立 worktree 执行，再经 merge queue 回流状态并触发新的分解，适合对比消息式协作与共享状态驱动的反应式 swarm。 | https://github.com/jayminwest/mycelium |
+| MongoDB 2026 年 8 月从生产架构角度明确区分 agent loop、Harness、Orchestration 与 Platform，并聚焦运行时循环、控制机制和工具调用如何在故障与长流程下保持可控，适合给分享补一层“编排不是框架别名，而是独立生产运行层”的架构视角。 | https://www.mongodb.com/company/blog/technical/agent-orchestration-tool-use-machinery-underneath |
+| WaveMaker 基于 QCon AI Boston 的真实生产复盘，讨论多 Agent、200+ 工具和数千条指令规模后出现的 Context overload、Tool explosion、编排与可观测问题，适合用“Demo 能跑但生产会坏”的案例说明规模化协作为什么需要架构约束。 | https://wavemaker.ai/blogs/from-demo-to-production-why-agentic-ai-systems-fail-and-how-to-fix-them/ |
