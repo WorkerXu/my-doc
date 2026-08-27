@@ -696,3 +696,8 @@
 | 用真实失败案例反推 Multi-Agent 的常见失效模式，并建立 Single / Workflow / Multi-Agent 决策框架与拆 Agent 的硬标准，适合分享中加入“什么时候不该上多 Agent”的反例，避免把协作复杂度误当能力提升。 | https://zhuanlan.zhihu.com/p/2063161776485692920 |
 | 蚂蚁数科在金融场景落地 Lead-Expert-Express 三层多智能体，并用路由在“标准流水线”和“探索型多 Agent”之间切换，配合 Mailbox 异步并行降低协作时延，适合展示强业务约束场景如何把灵活性与可控性组合。 | https://zhuanlan.zhihu.com/p/2044802290117235572 |
 | 用 Azure Container Apps Sandbox + OpenClaw + MCP/A2A 串起 5 个专用 Agent，从需求分析、编码、测试到部署形成完整闭环，并加入真实测试、受控重试、托管身份、人工审批和健康检查，适合分享“多 Agent 如何进入安全可控的云端交付流水线”。 | https://zhuanlan.zhihu.com/p/2061205381142127111 |
+| 把 Agent 编排比作“包工头”，并对比不同平台的编排思路，再用市场调研小分队、内容创作、代码审查等场景串起任务分工与落地避坑，适合分享“为什么需要编排、如何把多 Agent 变成可工作的团队”。 | https://juejin.cn/post/7612230459758493750 |
+| 从 Claude Code 的 Skill、Subagent 一路实操到 Agent Team，直接给出安全、性能、测试三角色并行审查示例，并建议用 tmux 分屏实时观察和纠偏，适合展示 Coding 场景下多 Agent 团队怎样真正进入开发流程。 | https://juejin.cn/post/7618525714799034378 |
+| ClawTeam 教程从安装配置做到真实产出，覆盖自动拆分、并行执行、上下文共享、结果聚合、run/session 模式、超时与冲突处理，适合用作 OpenClaw 多 Agent 从“能组队”到“能稳定执行”的可复现实操案例。 | https://juejin.cn/post/7619214301321035839 |
+| 文章以“真正让 Agent 发挥价值的是多个 Agent 协同编排”为主线，从工作流概念推进到协作执行，适合在分享中承接单 Agent 与多 Agent 的架构边界，并讲清为什么复杂业务需要显式编排。 | https://juejin.cn/post/7642933445874188334 |
+| 从提示词工程进一步推进到多 Agent 分工协作，适合用来解释 Agent 应用从“把一个角色提示写好”演进为“按职责拆团队、按任务做协作”的思路变化，作为分享中的架构演进过渡材料。 | https://juejin.cn/post/7508355099828207643 |
