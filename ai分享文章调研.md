@@ -659,3 +659,10 @@
 | 用 Spring AI + Java 从业务场景搭出可运行 Multi-Agent 系统并附完整源码，适合补充非 Python 团队如何把角色拆分、Agent 协作和现有 Spring 技术栈真正接起来。 | https://juejin.cn/post/7633258779409252395 |
 | 基于 Spring AI Alibaba 1.1.2 实操 5 种多 Agent 编排模式，适合在分享中用 Java 生态对照不同协作拓扑的实现方式、适用边界与任务分工，而不是只讲单一 Supervisor 模式。 | https://juejin.cn/post/7643288575245746185 |
 | 从“改 tasks.md 就让 Agent 自动接活写代码”出发自建多 Agent 研发工作流，适合展示需求文件如何变成任务触发器，以及多 Agent 怎样嵌入真实开发流水线而不是停留在聊天式 Demo。 | https://juejin.cn/post/7623974008200347675 |
+| AWS 官方围绕 Amazon Bedrock 的 Multi-Agent Collaboration 展示托管式 Agent 团队协作能力，适合补充云平台如何把专业 Agent 分工与统一协调落成企业可用服务，并与自建编排方案做对照。 | https://www.youtube.com/watch?v=tMqTy1HR974 |
+| Google Cloud 官方以“Creating multi-agent systems”为主题介绍多 Agent 系统构建路径，适合作为分享中连接协作架构概念与 Google Cloud 实际开发栈的官方实践素材。 | https://www.youtube.com/watch?v=c7yL_EduH9o |
+| Databricks 的 Production AI Playbook 从企业规模部署 Agent 出发讨论生产化问题，适合补充多 Agent 上线后必须共同面对的编排、可靠性、评估与规模化运营约束。 | https://www.youtube.com/watch?v=ObTPqBGsEbA |
+| 以 3 小时完整构建 PR Review Multi-Agent System 为主线，把代码评审任务拆给多个 Agent 并落到真实工程实现，适合现场分享“专业角色拆分—协作—汇总”的可复现实战。 | https://www.youtube.com/watch?v=RiN02OXjeeQ |
+| 专门聚焦 Evaluating Multi Agent Systems，适合补充多 Agent 落地后如何从只看最终答案转向评估团队协作质量、系统行为与整体效果这一关键环节。 | https://www.youtube.com/watch?v=PvdaIqIUpnQ |
+| “Agents of Chaos”直接讨论 Multi-Agent LLM 部署中的安全风险，适合分享多个 Agent 获得工具与互相协作能力后带来的攻击面、信任边界和生产治理问题。 | https://www.youtube.com/watch?v=G4u-aFmnUDo |
+| Claude Code 多 Agent 编排实践把 Opus 4.6、Tmux 与 Agent Sandboxes 组合起来，适合展示 Coding Agent 并行执行时如何通过独立运行环境和编排层降低工作区冲突。 | https://www.youtube.com/watch?v=RpUTF_U4kiw |
