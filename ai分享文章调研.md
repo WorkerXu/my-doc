@@ -747,3 +747,10 @@
 | Google Cloud 的 ADK + MCP 实操把多 Agent 协作与标准工具协议放到同一系统中，适合分享 Agent 角色编排、工具接入和能力复用怎样组合成可运行应用。 | https://www.youtube.com/watch?v=W54cRxp-bSA |
 | The Agent Factory Podcast 从 GKE 上的 Agent Sandbox 与 Pod snapshot 切入运行时隔离和快速恢复，适合补充并行 Agent 真正上生产后工作空间隔离、启动效率与执行环境治理的基础设施实践。 | https://www.youtube.com/watch?v=5_R_Ixk8ENQ |
 | 以生物信息学的 conversational genomics 为垂直场景构建多 Agent 系统，适合展示专业 Agent 如何围绕真实领域数据与任务分工协作，补充通用 Coding/客服之外的业务落地案例。 | https://www.youtube.com/watch?v=pBm47ImEkTY |
+| 从 Agent Teams 概念、与 SubAgent 的边界一路做到实际使用，并专门总结缺点与使用建议，适合分享中讲清什么时候该用真正团队式协作、什么时候轻量子代理就够。 | https://www.bilibili.com/video/BV1fjcgzLE43 |
+| 用脚本化 Workflow 演示多个 Agent 的可复用协同，把临场模型决策转成可观察、可验证、可复跑的执行流程，适合对比自由式 Agent Teams 与确定性工作流编排的工程边界。 | https://www.bilibili.com/video/BV1KoGE6cE53 |
+| Specflow 把多 Agent、多 Session 协作做成 workflow-as-code，提供可视化图、节点/关卡、跨 Session 上下文、运行日志和可审查流程定义，适合分享长流程协作如何从对话升级为可维护基础设施。 | https://www.bilibili.com/video/BV19YVR6LE1d |
+| 围绕 Symphony 拆解由 Jira/Linear Issue 驱动多个 Coding Agent 并行协作的极简调度架构，覆盖 Scheduler、Workspace、Agent Runner 与状态观测，适合讲任务系统怎样成为多 Agent 研发控制面。 | https://www.bilibili.com/video/BV12rJA66EBW |
+| FemWA 用专用 DSL 定义 Agent、作用域、外部函数和主流程，并配套可视化界面与开源实现，适合展示多 Agent 编排如何从代码胶水进一步抽象成可读、可配置的工作流语言。 | https://www.bilibili.com/video/BV1c8Et6wEvw |
+| 把 Supervisor、Swarm、Hierarchical、Pipeline、Blackboard 五类编排与评估集、LLM-as-Judge、在线监控和质量漂移放到同一套生产视角里，适合分享“多 Agent 能跑之后怎样评估和运营”。 | https://www.bilibili.com/video/BV13iV36sE9C |
+| 在飞书中把不同职责拆给独立 OpenClaw Agent，并分别隔离上下文、工作区、状态目录和模型，直接针对真实使用中的记忆污染问题，适合分享协作工具里的多 Agent 隔离与长期团队化落地。 | https://www.bilibili.com/video/BV1zWc2zjEpo |
