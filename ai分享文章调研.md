@@ -73,7 +73,7 @@
 | CodeAgents 从真实 AI Coding 实验总结多编程智能体的关键不是“角色多”，而是任务图、状态流转、上下文和工作区隔离、Patch/Review/Test 门禁与恢复机制，适合讲清楚并行开发的边界治理。 | https://zhuanlan.zhihu.com/p/2030309910798391120 |
 | 以 13 个 Agent 从市场研究一路接棒到开发、QA、运营和数据复盘的真实工具站为案例，把每次交接明确成输入、输出、证据和停止条件，并设置 GO/NO-GO 门禁，适合分享大规模串联协作如何避免“交接失真”。 | https://zhuanlan.zhihu.com/p/2043410428491977017 |
 | 8 个 Agent 改进 6900 行 UECLI 模块的实测记录同时给出并行条件、不同模型分工、Token/时间收益，以及连续失败后人工升级和同区域不并行的决策，适合用数据讲“何时并行、何时串行、何时人接管”。 | https://zhuanlan.zhihu.com/p/2022398691491815748 |
-| 9 个 Agent 从 0 到 1 复刻 Claude Code 的项目复盘强调严格角色边界、正式变更流程、QA/PM 权限隔离、依赖链跟踪和多轮 Review，适合展示研发型多 Agent 团队规模扩大后如何靠流程而非模型能力维持秩序。 | https://zhuan.zhihu.com/p/2025864547731272052 |
+| 9 个 Agent 从 0 到 1 复刻 Claude Code 的项目复盘强调严格角色边界、正式变更流程、QA/PM 权限隔离、依赖链跟踪和多轮 Review，适合展示研发型多 Agent 团队规模扩大后如何靠流程而非模型能力维持秩序。 | https://zhuanlan.zhihu.com/p/2025864547731272052 |
 | TeamAgentX 是直接面向多 Agent 协同的软件项目，作者以自己已基本成型的产品为案例，适合分享“协作能力如何从框架概念变成可使用产品”的项目落地路径。 | https://juejin.cn/post/7671865305111691302 |
 | Hermes Kanban 把多 Agent 协作从群聊派活推进到任务化看板，强调任务不丢、依赖关系和流水线式推进，适合作为“共享任务状态比聊天记录更重要”的工程实践案例。 | https://juejin.cn/post/7641571163690139683 |
 | 文章专门讨论多 Agent 扩张后的反效果，用“2 个比 1 个强、10 个反而更差”切入协作成本与规模边界，适合分享如何判断 Agent 数量、并行度和组织复杂度是否过度。 | https://juejin.cn/post/7637823184210870307 |
@@ -754,3 +754,8 @@
 | FemWA 用专用 DSL 定义 Agent、作用域、外部函数和主流程，并配套可视化界面与开源实现，适合展示多 Agent 编排如何从代码胶水进一步抽象成可读、可配置的工作流语言。 | https://www.bilibili.com/video/BV1c8Et6wEvw |
 | 把 Supervisor、Swarm、Hierarchical、Pipeline、Blackboard 五类编排与评估集、LLM-as-Judge、在线监控和质量漂移放到同一套生产视角里，适合分享“多 Agent 能跑之后怎样评估和运营”。 | https://www.bilibili.com/video/BV13iV36sE9C |
 | 在飞书中把不同职责拆给独立 OpenClaw Agent，并分别隔离上下文、工作区、状态目录和模型，直接针对真实使用中的记忆污染问题，适合分享协作工具里的多 Agent 隔离与长期团队化落地。 | https://www.bilibili.com/video/BV1zWc2zjEpo |
+| DeepSeek Harness 最新讨论把“临时任务分解”与“长期存在的 Agent 组织”明确区分，围绕稳定身份、持久记忆、冷启动唤醒、能力目录、按知识路由和每成员独立模型/工具权限拆解现有 Agent Teams 的缺口，适合分享“多 Agent 团队怎样从一次性 DAG 演进为可长期运营组织”。 | https://github.com/deepseek-ai/deepseek-harness/discussions/4642 |
+| Nature 旗下 Communications Earth & Environment 将多 Agent AI 用于野火应急的跨机构协调问题，直接讨论碎片化指挥、激励错配与协同失效，适合用高风险公共安全场景说明多 Agent 的价值不只是并行执行，更在跨组织决策与治理。 | https://www.nature.com/articles/s43247-026-03962-6 |
+| 这篇 2026-08-24 开放获取综述用“自主性、工具使用、协作、安全治理”四维分类统一 Agentic AI，并同时覆盖多 Agent 架构、评估、鲁棒性、成本、访问控制与 HITL，适合给分享建立从协作机制到生产部署的理论与工程全景图。 | https://link.springer.com/article/10.1007/s12559-026-10619-1 |
+| Agency Orchestrator 把多 Agent 团队做成零代码 YAML + 动态 DAG 的可运行产品，提供海量专业角色、条件/循环、人工审批、断点续跑、步骤级模型覆盖、MCP、Web Studio 与自动验收，适合展示“自然语言组队 + 显式流程约束 + 机器验收”如何产品化。 | https://github.com/jnmetacode/agency-orchestrator |
+| Orkas 用本地优先桌面工作台把 Commander 与专业 Agent 的并行/串行协作产品化，并通过上下文可见性切片、结构化 dispatch、延迟唤醒、共享 plan.md、私有技能/记忆和自反思演进控制协作，适合分享“面向人的多 Agent 工作台怎样处理上下文隔离、调度与长期成长”。 | https://github.com/Orkas-AI/Orkas |
