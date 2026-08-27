@@ -776,3 +776,7 @@
 | https://github.com/jayminwest/mycelium |
 | https://www.mongodb.com/company/blog/technical/agent-orchestration-tool-use-machinery-underneath |
 | https://wavemaker.ai/blogs/from-demo-to-production-why-agentic-ai-systems-fail-and-how-to-fix-them/ |
+| https://github.com/raulvidis/openclaw-multi-agent-kit |
+| https://github.com/disler/claude-code-hooks-multi-agent-observability |
+| https://github.com/FareedKhan-dev/Multi-Agent-AI-System |
+| https://github.com/boddev/ghc-dispatch/blob/master/agents/teams.md |

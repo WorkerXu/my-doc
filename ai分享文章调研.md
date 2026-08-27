@@ -644,3 +644,7 @@
 | Mycelium 采用“Agent 不直接互聊”的反向设计：Decomposer 持续写入共享任务池，无状态 Worker 原子认领、独立 worktree 执行，再经 merge queue 回流状态并触发新的分解，适合对比消息式协作与共享状态驱动的反应式 swarm。 | https://github.com/jayminwest/mycelium |
 | MongoDB 2026 年 8 月从生产架构角度明确区分 agent loop、Harness、Orchestration 与 Platform，并聚焦运行时循环、控制机制和工具调用如何在故障与长流程下保持可控，适合给分享补一层“编排不是框架别名，而是独立生产运行层”的架构视角。 | https://www.mongodb.com/company/blog/technical/agent-orchestration-tool-use-machinery-underneath |
 | WaveMaker 基于 QCon AI Boston 的真实生产复盘，讨论多 Agent、200+ 工具和数千条指令规模后出现的 Context overload、Tool explosion、编排与可观测问题，适合用“Demo 能跑但生产会坏”的案例说明规模化协作为什么需要架构约束。 | https://wavemaker.ai/blogs/from-demo-to-production-why-agentic-ai-systems-fail-and-how-to-fix-them/ |
+| 来自真实 10 Agent 生产环境的 OpenClaw 团队模板，把 Telegram topic 路由、sessions_send 标准化交接、共享上下文、升级链以及 Build→QA→Deploy 接力都落成可运行配置，适合分享“小型 AI 团队如何长期稳定协作”的工程细节。 | https://github.com/raulvidis/openclaw-multi-agent-kit |
+| 用 Claude Code Hooks 把多 Agent 的工具调用、任务 handoff、Subagent 生命周期、失败与权限事件实时写入 SQLite 并通过 WebSocket 看板追踪，适合补充“协作系统上线后如何定位是哪一个 Agent、哪次交接出了问题”的可观测性实践。 | https://github.com/disler/claude-code-hooks-multi-agent-observability |
+| 以 LangGraph + LangSmith 从两个专业 Subagent、Supervisor 路由一路补齐短/长期记忆、Human-in-the-Loop、Tracing 与 Evaluation，并用真实客服流程逐步实现，适合作为“多 Agent 不只要能协作，还要可调试、可评估”的可复现实操。 | https://github.com/FareedKhan-dev/Multi-Agent-AI-System |
+| GHC Dispatch 的 Agent Teams 文档把 Lead→专业成员→汇总验收定义成异步协作协议，强调有边界任务、可追踪 handoff、Lead 先验证再综合，并明确反对过度并行和模糊目标，适合提炼一套框架无关的团队协作纪律。 | https://github.com/boddev/ghc-dispatch/blob/master/agents/teams.md |
