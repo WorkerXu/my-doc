@@ -1,0 +1,78 @@
+name: Append AI share research a 20260827 r2
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/append-ai-share-research-a-20260827-r2.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  append-research:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Append unique research rows
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          ARTICLE='ai分享文章调研.md'
+          HISTORY='ai分享历史调研.md'
+
+          append_selected() {
+            local reason="$1"
+            local url="$2"
+            if ! grep -Fq "$url" "$HISTORY"; then
+              printf '| %s | %s |\n' "$reason" "$url" >> "$ARTICLE"
+              printf '| %s |\n' "$url" >> "$HISTORY"
+            fi
+          }
+
+          append_history_only() {
+            local url="$1"
+            if ! grep -Fq "$url" "$HISTORY"; then
+              printf '| %s |\n' "$url" >> "$HISTORY"
+            fi
+          }
+
+          apply_entries() {
+            append_selected 'Multea 把多仓库 Coding Agent 协作做成终端控制台：上层协调器拆任务、DAG 处理依赖、空闲 Agent 自动调度，并保留会话和实时输出，适合演示“跨仓并行 + 依赖调度 + 人类可观测”的研发落地；项目仍早期，也适合讨论原型走向生产还需补什么。' 'https://github.com/ashokDevs/multea'
+            append_selected '这个仓库把 GitHub Agentic Workflows 的多 Agent 编排做成可跑示例：Orchestrator 用 dispatch-workflow 串起生成与 Review Worker，Agent 默认只读，写操作走 safe outputs，并由 Actions 沙箱执行，适合分享“仓库原生 Agent 团队 + 安全写入边界 + 工作流级 handoff”。' 'https://github.com/cajetzer/cloud-agent-orchestration'
+            append_selected 'CrewCmd 把人和 Agent 放进共享频道、任务、Inbox、审批门禁与组织委派图，同时保留个人私有 runtime 与团队共享边界，适合分享多 Agent 进入真实团队后，协作空间、权限与治理如何一起设计。' 'https://github.com/rogerchappel/crewcmd'
+            append_selected 'ah-cli 把 Claude/Codex Agent 做成本机控制面：一个 daemon 管多 Agent、会话和任务组，可本地 fan-out/pipeline，再按需通过 A2A v1.0 暴露服务，文件支持 WebRTC 点对点传输，适合分享“本地状态主权 + 标准 A2A 互操作”的协作架构。' 'https://github.com/annals-ai/ah-cli'
+            append_selected 'pi-flows 用一次性的隔离子进程承载 bounded sub-agent，把仓库侦察、并行调查、实现+Review 和大任务拆解从父会话移出去，只回传紧凑结论，并带安全、成本上限与 tracing，适合分享如何控制多 Agent 的上下文污染和执行预算。' 'https://github.com/Thulr/pi-flows'
+            append_selected 'Oh My Subagents 把“父 Agent 临时拉几个子 Agent”升级成耐久团队运行时：Wave/Assignment/父等待状态一起持久化，子任务独立提交 Checkpoint，Controller 在中断后仍能恢复父任务，并支持递归 Manager 与运行时重规划，适合讲 Agent 团队的状态机、恢复和责任边界。' 'https://github.com/ringlochid/oh-my-subagents'
+            append_selected 'Ship While You Sleep 用 SQLite ledger、receipts、leases、可恢复 run 与成本 governor 管理 5 个 Claude Code Agent，核心目标是 Agent 被中断后仍从确定状态继续，适合讲长任务多 Agent 真正落地必须补上的事件账本、幂等、租约和费用治理。' 'https://github.com/regardo911/ship-while-you-sleep'
+            append_selected 'Qualestra 把 6 类 QA Agent 放在确定性 Supervisor 下协作：UI/API/业务不变量探索后必须独立复现异常，再由不可被 Agent 改写的 PASS/WARN/BLOCK Gate 决策；同时持久化证据、预算、重试、租约与审批式 Outbox，适合分享“AI 负责探索、确定性系统负责授权与放行”的生产边界。' 'https://github.com/itsvsk/Qualestra'
+            append_selected 'Forge Lab 是面向 AI 辅助开发的 open-core 多 Agent 编排项目，采用 Hub Server + 本地 Daemon + Agent Persona + 跨设备 Dashboard，并以较完整测试集覆盖工程实现，适合分享把多 Agent 从单机脚本升级为可自托管控制面的系统形态。' 'https://github.com/cogghaus/forge-lab'
+
+            append_history_only 'https://github.com/Blackhex/flowgency'
+          }
+
+          for attempt in 1 2 3; do
+            git fetch origin main
+            git reset --hard origin/main
+            apply_entries
+
+            if git diff --quiet -- "$ARTICLE" "$HISTORY"; then
+              echo 'No new entries to append.'
+              exit 0
+            fi
+
+            git add "$ARTICLE" "$HISTORY"
+            git commit -m 'docs: add fresh multi-agent collaboration research r2'
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            echo "Push conflict on attempt $attempt; retrying from latest main"
+          done
+
+          echo 'Failed to push after retries' >&2
+          exit 1
