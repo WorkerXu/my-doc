@@ -701,3 +701,7 @@
 | ClawTeam 教程从安装配置做到真实产出，覆盖自动拆分、并行执行、上下文共享、结果聚合、run/session 模式、超时与冲突处理，适合用作 OpenClaw 多 Agent 从“能组队”到“能稳定执行”的可复现实操案例。 | https://juejin.cn/post/7619214301321035839 |
 | 文章以“真正让 Agent 发挥价值的是多个 Agent 协同编排”为主线，从工作流概念推进到协作执行，适合在分享中承接单 Agent 与多 Agent 的架构边界，并讲清为什么复杂业务需要显式编排。 | https://juejin.cn/post/7642933445874188334 |
 | 从提示词工程进一步推进到多 Agent 分工协作，适合用来解释 Agent 应用从“把一个角色提示写好”演进为“按职责拆团队、按任务做协作”的思路变化，作为分享中的架构演进过渡材料。 | https://juejin.cn/post/7508355099828207643 |
+| IBM Technology 从角色、反馈与团队协作机制拆解 Agent Team，适合分享如何用明确职责和互评让多个 Agent 从并行执行走向真正协作。 | https://www.youtube.com/watch?v=kqj22mWIdjU |
+| Microsoft 365 Copilot 官方展示 collaborative agents 在企业协作中的落地形态，适合补充多 Agent 如何嵌入现有办公平台并服务团队工作流。 | https://www.youtube.com/watch?v=biWymgItJ_I |
+| IBM Technology 用 A2A 协议解释 Agent 间协作，适合分享跨 Agent、跨服务互操作的协议层基础，以及为什么生产系统需要标准化通信。 | https://www.youtube.com/watch?v=Tud9HLTk8hg |
+| 以 Mac Mini 上搭建 Multi-Agent Team 的实操展示本地化团队部署思路，适合作为低成本运行多个 Agent 并组织协作的实践案例。 | https://www.youtube.com/watch?v=_ZehNseg0Qg |
