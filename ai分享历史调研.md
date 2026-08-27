@@ -901,3 +901,8 @@
 | https://www.bilibili.com/video/BV1c8Et6wEvw |
 | https://www.bilibili.com/video/BV13iV36sE9C |
 | https://www.bilibili.com/video/BV1zWc2zjEpo |
+| https://github.com/deepseek-ai/deepseek-harness/discussions/4642 |
+| https://www.nature.com/articles/s43247-026-03962-6 |
+| https://link.springer.com/article/10.1007/s12559-026-10619-1 |
+| https://github.com/jnmetacode/agency-orchestrator |
+| https://github.com/Orkas-AI/Orkas |
