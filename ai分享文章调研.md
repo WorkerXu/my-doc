@@ -724,3 +724,9 @@
 | Golutra 是近期活跃的多 Agent 开发编排平台，把 Codex、Claude Code、OpenClaw 等统一在同一控制面里，支持并行执行、任务编排与长时间工作流，适合做“多模型 Coding Agent 如何产品化成统一工作台”的项目案例。 | https://github.com/golutra/golutra |
 | speckit-agents 把 PM Agent 与 Dev Agent 放进 Mattermost 协作，并用 Spec Kit 的 specify、plan、tasks、implement、状态机、Git worktree 隔离和人工介入串成可观察的自动交付流程，适合展示“规范驱动+聊天协作+隔离分支”如何落到代码交付。 | https://github.com/sbhavani/speckit-agents |
 | codex-orchestrator 采用 Claude Code 做协调与 QA、Codex CLI 做并行执行，并用追加式任务契约、技术栈 Profile、沙箱、任务记录和可验证验收标准约束 Worker，适合分享“协调仲裁模型+执行模型”的异构 Agent 团队如何控制质量和并发。 | https://github.com/shuaige121/codex-orchestrator |
+| AgentHub 把多 Coding Agent 协作做成可运行控制面：Coordinator 与 Executor 并行分工，配套 contract-first 任务拆解、共享进度板、文件锁、依赖跟踪、ACK/重试/幂等和崩溃恢复，适合展示可靠并行开发所需的协议与状态治理。 | https://github.com/Dmatut7/AgentHub |
+| Agent Orchestra 用结构化消息协议、共享任务 DAG、事件驱动协调以及显式状态和权限处理组织 Agent，适合分享松耦合多 Agent 协作如何把任务依赖、通信和治理从 Prompt 中抽成工程机制。 | https://github.com/kqb/agent-orchestra |
+| Flowchestra 用 Markdown + Mermaid 声明多 Agent 工作流，支持顺序、并行、条件、循环等执行模式，并把规划与执行分离，适合作为可读、可评审、可版本化的声明式编排轻量案例。 | https://github.com/Sheetaa/flowchestra |
+| Agent-Orchestration 提供可视化 DAG 编辑、持久化工作流状态、Human-in-the-Loop 触发以及 SQLite/PostgreSQL 存储，适合展示多 Agent 从代码编排走向可观察、可恢复、可人工介入的产品化运行时。 | https://github.com/Haaziq386/Agent-Orchestration |
+| Maveric Agent Framework 同时支持 low-code/pro-code、多 Agent Group、循环协作与层级 Group，并强调自评估、自批判和策略演进，适合与固定 DAG 对比更具自治性的团队组织与协作方式。 | https://github.com/maveric/agent-framework |
+| Cebus 把 GPT、Claude、Gemini、Copilot、Ollama 等模型放进同一协作空间，提供并行/轮流/角色化模式、动态 Orchestrator、Team Leader、多轮阶段式协作、会话持久化与 MCP 工具，适合展示多模型 Agent 团队怎样从群聊升级为可执行开发环境。 | https://github.com/cebus-ai/cebus |

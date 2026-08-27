@@ -867,3 +867,9 @@
 | https://github.com/B0Qi/skill-multi-agent |
 | https://openclaw.academy/blog/how-sharbel-runs-business-four-openclaw-ai-agents/ |
 | https://www.atlassian.com/blog/rovo/how-rovo-embraces-multi-agent-orchestration |
+| https://github.com/Dmatut7/AgentHub |
+| https://github.com/kqb/agent-orchestra |
+| https://github.com/Sheetaa/flowchestra |
+| https://github.com/Haaziq386/Agent-Orchestration |
+| https://github.com/maveric/agent-framework |
+| https://github.com/cebus-ai/cebus |
