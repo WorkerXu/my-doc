@@ -47,3 +47,9 @@
 | DSH-Remote 支持手机端查看会话/工作区、持续后台任务、中断任务、权限审批、环境诊断和断线自愈，可借鉴爬虫平台的远程任务控制与告警运维体验。 | https://github.com/201222-L/dsh-mobile-remote |
 | 实测用一个 Skill 让 DeepSeek Harness 直接操控真实浏览器，适合动态网页采集、登录态页面抓取和需要点击交互的爬虫执行场景。 | https://www.bilibili.com/video/BV1164d6qEtA |
 | MCP 教程覆盖 DSH 接入现成/自定义 MCP 服务、配置迁移和可视化管理，适合把各类爬虫服务统一包装成 MCP 后端并由 Harness 调用。 | https://www.bilibili.com/video/BV1xLtS6WEVG |
+| Playwright 浏览器插件通过可访问性快照和稳定 ref 驱动真实浏览器，并提供结构化抽取、截图、标签页与会话隔离，适合动态网页采集 Worker。 | https://github.com/ChenyuHeee/dsh-browser-playwright |
+| dsh-polling 把 Cron 轮询做成独立会话，支持自然语言创建、Web 管理、错过补跑与避免并发堆积，适合作为周期爬取任务中心。 | https://github.com/cnyac/dsh-polling |
+| 系统级 Cron 调度插件通过 crontab 进程外启动 headless DSH，Web UI 无需常驻，适合无人值守爬虫调度与运行历史管理。 | https://github.com/Mappedinfo/dsh-cron-scheduler |
+| 定时任务插件提供每日/每周/间隔调度、失败重试、超时、通知和无人值守权限，适合参考爬虫任务 SLA、告警与补偿机制。 | https://github.com/Jeff1573/dsh-plugin-scheduled-tasks |
+| LoongSuite 将 DSH 的 session、step、LLM 与 tool 生命周期转换为 OpenTelemetry Trace/Metric，可用于爬虫任务链路、耗时、失败与资源消耗监控。 | https://github.com/loongsuite/dsh-plugin |
+| 浏览器桥接插件直接连接现有 Chrome/Firefox 标签页并保留登录态、Session 与 Cookie，适合需要账号态和交互态的网页采集。 | https://github.com/Lum1104/dsh-browser |
