@@ -81,3 +81,6 @@
 | WebUI远程控制与执行轨迹 | https://www.youtube.com/watch?v=Aqn7EP8shJw |
 | 工作台/定时任务/Skill&MCP管理 | https://www.youtube.com/watch?v=1BXLQj8C0Ps |
 | Web UI首个Agent任务闭环 | https://www.youtube.com/watch?v=mpelxra1aL4 |
+| B站发现：任务通知+网页抓取入库 | https://github.com/halosb/dsh-workmate |
+| B站发现：可视化工作流编辑 | https://github.com/kanghelyu/dsh-deepseek-flow |
+| B站发现：WebUI 插件生命周期管理 | https://github.com/Sanqi-normal/dsh-webui-market-plugin |
