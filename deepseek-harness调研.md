@@ -30,3 +30,9 @@
 | Harness 教程介绍 Python SDK 通过 JSON-RPC stdio 驱动运行时、隔离 session 与自定义 cordis 配置，适合把 Harness 嵌入爬虫平台后端服务。 | https://zhuanlan.zhihu.com/p/2077694603986198816 |
 | 插件教程整理 dsh-automation 等插件，其中定时任务可独立创建 Agent/会话并记录工作区、权限、结果和错误，可借鉴爬虫定时调度与运行审计。 | https://zhuanlan.zhihu.com/p/2079905240350986775 |
 | 1Panel 部署教程给出 HTTPS/认证、网络来源限制、凭据保护、挂载范围与升级备份建议，适合补齐爬虫管理平台的部署安全和运维边界。 | https://zhuanlan.zhihu.com/p/2076067085524923336 |
+| 该 DSH 插件把“查询→搜索页/sitemap→URL 评分→抓取→正文提取”串成统一工具，并加入域名白名单和双层缓存，最适合参考爬虫插件的数据通路、安全边界与缓存设计。 | https://juejin.cn/post/7673531977241460736 |
+| 插件盘点同时覆盖 dsh-web-ui 的任务看板/统计面板与 dsh-computer-use 的浏览器自动化，可用于补齐爬虫管理平台的监控界面和动态网页操作能力。 | https://juejin.cn/post/7675273747710001206 |
+| 容器化实测集中暴露版本锁定、非交互式调用和沙箱边界问题，适合爬虫 Worker 镜像化、无人值守执行以及运行隔离设计。 | https://juejin.cn/post/7674094098298961960 |
+| 进阶玩法展示通过 MCP 给 Harness 接入工具以及多 Agent 协作，适合把爬虫任务 API 暴露为 MCP 工具，并让多个 Agent 分工执行采集、解析和验收。 | https://juejin.cn/post/7678161312636567598 |
+| 从安装到写出第一个可用工具插件的真机教程提供最小工程闭环，可直接参考把爬虫启动、停止、状态和结果查询封装成 DSH 插件。 | https://juejin.cn/post/7680183953518690338 |
+| 文章从 Cordis 插件、服务、依赖注入和事件机制搭出可执行 bash/fetch/文件搜索的 Mini Harness，适合理解如何把爬虫执行器、队列、存储和事件拆成可组合服务。 | https://juejin.cn/post/7673978658779955251 |
