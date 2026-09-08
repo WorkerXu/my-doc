@@ -47,3 +47,9 @@
 | DSH 移动远程控制 | https://github.com/201222-L/dsh-mobile-remote |
 | Harness 真实浏览器 Skill | https://www.bilibili.com/video/BV1164d6qEtA |
 | Harness MCP 接入教程 | https://www.bilibili.com/video/BV1xLtS6WEVG |
+| Playwright 稳定 ref 浏览器采集 | https://github.com/ChenyuHeee/dsh-browser-playwright |
+| 自然语言 Cron 轮询任务 | https://github.com/cnyac/dsh-polling |
+| 系统级 headless Cron | https://github.com/Mappedinfo/dsh-cron-scheduler |
+| 定时任务重试与通知 | https://github.com/Jeff1573/dsh-plugin-scheduled-tasks |
+| OpenTelemetry 链路观测 | https://github.com/loongsuite/dsh-plugin |
+| 登录态浏览器桥接 | https://github.com/Lum1104/dsh-browser |
