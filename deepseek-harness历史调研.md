@@ -73,3 +73,8 @@
 | GuardService 与配置分层 | https://zhuanlan.zhihu.com/p/2078079607874516597 |
 | Harness 内置 Tool 分类 | https://zhuanlan.zhihu.com/p/2074569535211020354 |
 | Docker/SSH/K8s 执行环境插件化 | https://zhuanlan.zhihu.com/p/2072691741732365313 |
+| Web UI/权限/会话长教程 | https://juejin.cn/post/7673390412729614390 |
+| 浏览器+多Agent+Web UI 插件合集 | https://juejin.cn/post/7676098169974292530 |
+| Profile/headless 命令参考 | https://juejin.cn/post/7675947280080240691 |
+| 一周真实需求避坑 | https://juejin.cn/post/7677441124442570761 |
+| 可组装 Agent 运行时定位 | https://juejin.cn/post/7673810995882672128 |
