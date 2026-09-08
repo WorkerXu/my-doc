@@ -116,3 +116,7 @@
 | 聚焦 DeepSeek Harness UI 插件原理，可参考把爬虫任务列表、运行状态、日志与监控组件做成 Harness 原生管理端扩展。 | https://www.youtube.com/watch?v=D9W4BhG9HDk |
 | 展示 DeepSeek Harness 插件生态与插件市场工具箱，可参考爬虫执行器、采集源和监控模块的发现、安装与统一管理入口。 | https://www.youtube.com/watch?v=QCxq__dLv5E |
 | 展示用 Harness 插件快速配置 MCP 和 Skill，可参考集中管理爬虫 MCP 服务、采集 Skills 与运行配置的控制面设计。 | https://www.youtube.com/watch?v=CgYZ5EzX00U |
+| 介绍 dsh-browser + argo 的浏览器与网页插件组合，可补充理解在 DSH 内把真实浏览器访问与网页能力组合为动态采集执行层。 | https://www.bilibili.com/video/BV1bC8A6vEno |
+| 展示 dsh-raw-html 与 VCP 渲染组合，可参考在爬虫平台保留原始 HTML 并提供渲染/预览能力，方便解析调试与结果核验。 | https://www.bilibili.com/video/BV1WJbW6UE9K |
+| 介绍版本自动更新与插件仓库管理两个开源插件，适合参考爬虫执行器/采集插件的版本检测、仓库维护和生命周期管理。 | https://www.bilibili.com/video/BV1Sp8m6oExn |
+| 展示零侵入可视化工作台插件与多窗口应用能力，可借鉴爬虫管理平台把任务、结果与工具操作做成 Harness 内的可视工作台。 | https://www.bilibili.com/video/BV1kw8b6bEeL |
