@@ -81,3 +81,6 @@
 | 实测覆盖 WebUI 远程控制、执行轨迹、插件系统和任务分支，可参考爬虫管理端的远程运维、任务追踪与分支执行体验。 | https://www.youtube.com/watch?v=Aqn7EP8shJw |
 | 展示自定义工作台、定时任务、快捷指令以及 Skill 与 MCP 管理，可参考把爬虫调度、执行器配置和管理 UI 集成到 Harness。 | https://www.youtube.com/watch?v=1BXLQj8C0Ps |
 | 从零跑通 Web UI 和首个 Agent 任务，适合验证爬虫平台“任务创建→执行→查看结果”的最小管理闭环与新用户操作路径。 | https://www.youtube.com/watch?v=mpelxra1aL4 |
+| dsh-workmate 同时提供长任务结束/失败 Webhook 通知、web_capture 网页正文抓取入库和最近抓取记录查询，可直接参考爬虫任务告警、采集入库与结果回看闭环。 | https://github.com/halosb/dsh-workmate |
+| DeepSeek Flow 将 WORKFLOW.md/STEP.md 映射成可视化流程图，支持节点连线、条件门、会话隔离、后台 AI 作业与持久草稿，适合设计多阶段爬取流程编排和管理界面。 | https://github.com/kanghelyu/dsh-deepseek-flow |
+| DSH WebUI 插件市场支持插件搜索、跨 Profile 安装/同步、FIFO 安装更新卸载队列、超时/重试/日志和来源白名单，可借鉴爬虫执行器/适配器的生命周期与插件管理。 | https://github.com/Sanqi-normal/dsh-webui-market-plugin |
