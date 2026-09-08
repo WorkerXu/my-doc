@@ -116,3 +116,7 @@
 | UI 插件原理 | https://www.youtube.com/watch?v=D9W4BhG9HDk |
 | 插件生态与市场工具箱 | https://www.youtube.com/watch?v=QCxq__dLv5E |
 | MCP/Skill 快速配置插件 | https://www.youtube.com/watch?v=CgYZ5EzX00U |
+| B站：浏览器与网页插件 | https://www.bilibili.com/video/BV1bC8A6vEno |
+| B站：raw HTML 渲染插件 | https://www.bilibili.com/video/BV1WJbW6UE9K |
+| B站：版本更新/插件仓库管理 | https://www.bilibili.com/video/BV1Sp8m6oExn |
+| B站：可视化工作台 | https://www.bilibili.com/video/BV1kw8b6bEeL |
