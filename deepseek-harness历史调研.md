@@ -30,3 +30,9 @@
 | Python SDK 集成 | https://zhuanlan.zhihu.com/p/2077694603986198816 |
 | 自动化定时任务插件 | https://zhuanlan.zhihu.com/p/2079905240350986775 |
 | 1Panel 安全部署 | https://zhuanlan.zhihu.com/p/2076067085524923336 |
+| 文档抓取插件管道 | https://juejin.cn/post/7673531977241460736 |
+| Web UI 与浏览器自动化插件 | https://juejin.cn/post/7675273747710001206 |
+| DSH 容器化落地 | https://juejin.cn/post/7674094098298961960 |
+| MCP 与多 Agent 进阶玩法 | https://juejin.cn/post/7678161312636567598 |
+| DSH 工具插件最小实战 | https://juejin.cn/post/7680183953518690338 |
+| Cordis Mini Harness 实战 | https://juejin.cn/post/7673978658779955251 |
