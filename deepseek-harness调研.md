@@ -92,3 +92,12 @@
 | DSH Studio 把项目、会话、终端、浏览器和插件放在同一 Desktop/Web 工作台，适合参考爬虫项目工作区、运行操作台与插件市场的一体化管理体验。 | https://github.com/euanguo/dsh-studio |
 | DeepSeek Harness Studio 提供零代码桌面端、插件发现/推荐/安装管理与视觉增强，适合参考面向非开发用户的爬虫管理平台安装、扩展器管理和桌面交付。 | https://github.com/fufankeji/deepseek-harness-studio |
 | Tencent BrowserSkill 提供 DSH 原生浏览器插件与实时 Web UI 覆盖层，可复用真实登录态浏览器，适合账号态网站采集和需要人工观察或接管的爬取任务。 | https://github.com/Tencent/BrowserSkill |
+| SSRF 防护型 WebFetch Provider 会校验公共地址、固定 DNS 解析结果并限制重定向、响应大小和并发，适合爬虫平台统一 URL 安全边界与出网控制。 | https://github.com/MostlyHarmlessxyz/dsh-safe-web-fetch |
+| 本地插件同时提供 Node fetch 与 Playwright/Chrome 渲染通道，并以子进程隔离执行，适合按页面类型切换轻量抓取和动态浏览器 Worker。 | https://github.com/junhongchashui/dsh-plugin-web-access |
+| 把 SearXNG 搜索与 Crawl4AI 抓取直接注册为 Harness 原生 `ctx.web` Provider，适合自托管“发现 URL→正文抓取”的统一采集层。 | https://github.com/cyijun/surfing-plugin |
+| fastCRW Provider 保持原生 `web_search`/`web_fetch` 接口，可自托管并按页面自动升级浏览器抓取，适合做可替换爬虫后端与反爬降级层。 | https://github.com/us/dsh-crw |
+| 统一导出 DSH 插件 Trace/Log/Metric 到 OTLP 并桥接 Session telemetry，适合给爬虫 Worker、Provider 和任务插件建立统一可观测体系。 | https://github.com/fly3366/dsh-o11y-plugin |
+| 系统代理插件支持按规则路由代理、保护私网目标并安全处理代理凭据，可借鉴爬虫平台按域名/Provider 配置代理和出网策略。 | https://github.com/khiqwq/dsh-system-proxy |
+| AgentCrawl 提供 SQLite 持久任务、检查点、取消/重试、失败记录、MCP/API 和本地 Dashboard，适合作为 Harness 下游爬虫服务或任务模型参考。 | https://github.com/JorG18/agentcrawl |
+| 浏览器集群控制面支持多 Provider 负载均衡、并发上限、排队、故障切换、持久 Profile、回放、REST/MCP 与 Dashboard，适合管理动态爬虫浏览器池。 | https://github.com/browser-gateway/browser-gateway |
+| Scraper MCP 提供批量并发、Playwright 渲染、缓存、重试、实时 Dashboard 和运行时配置，可直接作为 Harness MCP 爬取执行服务。 | https://github.com/cotdp/scraper-mcp |
