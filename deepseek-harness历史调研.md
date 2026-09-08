@@ -92,3 +92,12 @@
 | DSH Studio 管理工作台 | https://github.com/euanguo/dsh-studio |
 | Harness 零代码桌面端 | https://github.com/fufankeji/deepseek-harness-studio |
 | 登录态 BrowserSkill 插件 | https://github.com/Tencent/BrowserSkill |
+| 安全 WebFetch Provider | https://github.com/MostlyHarmlessxyz/dsh-safe-web-fetch |
+| 本地 fetch+浏览器双通道 | https://github.com/junhongchashui/dsh-plugin-web-access |
+| SearXNG+Crawl4AI Provider | https://github.com/cyijun/surfing-plugin |
+| fastCRW Web Provider | https://github.com/us/dsh-crw |
+| DSH 插件统一 OTel | https://github.com/fly3366/dsh-o11y-plugin |
+| 代理路由与凭据安全 | https://github.com/khiqwq/dsh-system-proxy |
+| SQLite 持久爬虫服务 | https://github.com/JorG18/agentcrawl |
+| 浏览器集群控制面 | https://github.com/browser-gateway/browser-gateway |
+| Scraper MCP + Dashboard | https://github.com/cotdp/scraper-mcp |
