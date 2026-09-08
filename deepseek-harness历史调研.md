@@ -66,3 +66,10 @@
 | Tensorlake microVM 沙箱 | https://github.com/tensorlakeai/dsh-tensorlake-sandbox |
 | 后台任务实时输出 | https://github.com/vlln/dsh-task-status |
 | 可视 Chrome 会话采集 | https://github.com/jiaererw/dsh-plugin-chrome |
+| Web/headless/ACP/SDK 运行形态 | https://zhuanlan.zhihu.com/p/2072102005342999515 |
+| 无特权插件树与热替换 | https://zhuanlan.zhihu.com/p/2077502279024906783 |
+| Cordis 生命周期源码解析 | https://zhuanlan.zhihu.com/p/2078170252194664835 |
+| 多源定向采集与缓存插件 | https://zhuanlan.zhihu.com/p/2077774076198794834 |
+| GuardService 与配置分层 | https://zhuanlan.zhihu.com/p/2078079607874516597 |
+| Harness 内置 Tool 分类 | https://zhuanlan.zhihu.com/p/2074569535211020354 |
+| Docker/SSH/K8s 执行环境插件化 | https://zhuanlan.zhihu.com/p/2072691741732365313 |
