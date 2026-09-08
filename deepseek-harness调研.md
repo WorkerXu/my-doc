@@ -73,3 +73,8 @@
 | 系统调研梳理 GuardService 的工具执行前检查、超时与重试，以及 Bundle/Profile/Patch 分层配置，适合爬虫平台的任务防护和环境配置管理。 | https://zhuanlan.zhihu.com/p/2078079607874516597 |
 | 内置 Tool 分类整理了文件、Shell、持久终端与 run_code 等执行能力，可作为爬虫 Worker 能力清单、权限矩阵和任务执行接口设计的参考。 | https://zhuanlan.zhihu.com/p/2074569535211020354 |
 | 深度解读指出执行环境本身也可插件化切换到本地 Docker、远程 SSH 或 K8s Pod，适合分布式爬虫 Worker 的部署与弹性运行架构。 | https://zhuanlan.zhihu.com/p/2072691741732365313 |
+| 长篇教程覆盖 Web UI、工作区、工具调用树、权限模式与会话归档，可用于设计爬虫平台的管理端操作流、任务观测与权限控制。 | https://juejin.cn/post/7673390412729614390 |
+| 插件合集同时包含 dsh-browser、dsh-agent-teams、dsh-web-ui 等，适合参考“浏览器采集 + 多 Agent 分工 + Web 管理面板”的组合架构。 | https://juejin.cn/post/7676098169974292530 |
+| 命令大全梳理 profile、headless 与插件按 profile 管理等运行方式，适合把不同爬虫 Worker/环境拆成可配置运行 profile 并支持无人值守执行。 | https://juejin.cn/post/7675947280080240691 |
+| 一周真实需求复盘聚焦环境配置、任务拆解、插件选型与预期管理，可用于制定爬虫任务模板、插件选择策略和运行边界。 | https://juejin.cn/post/7677441124442570761 |
+| 实测将 Harness 定位为可组装的 Agent 运行时底座而非成品助手，适合用作爬虫管理平台插件化内核，将采集、调度、存储、UI 与 Agent 分层组合。 | https://juejin.cn/post/7673810995882672128 |
