@@ -84,3 +84,11 @@
 | dsh-workmate 同时提供长任务结束/失败 Webhook 通知、web_capture 网页正文抓取入库和最近抓取记录查询，可直接参考爬虫任务告警、采集入库与结果回看闭环。 | https://github.com/halosb/dsh-workmate |
 | DeepSeek Flow 将 WORKFLOW.md/STEP.md 映射成可视化流程图，支持节点连线、条件门、会话隔离、后台 AI 作业与持久草稿，适合设计多阶段爬取流程编排和管理界面。 | https://github.com/kanghelyu/dsh-deepseek-flow |
 | DSH WebUI 插件市场支持插件搜索、跨 Profile 安装/同步、FIFO 安装更新卸载队列、超时/重试/日志和来源白名单，可借鉴爬虫执行器/适配器的生命周期与插件管理。 | https://github.com/Sanqi-normal/dsh-webui-market-plugin |
+| Firecrawl 官方 DSH 插件直接把 Harness 内置 `web_search`/`web_fetch` 接到 Firecrawl，并提供 JS 渲染、反爬处理与 PDF 解析，适合作为托管爬取执行层。 | https://github.com/firecrawl/dsh-firecrawl |
+| dsh-web-search 把 SearXNG、Tavily、Brave、DuckDuckGo 做自动回退并提供 URL 正文提取，可参考爬虫平台的多源搜索路由、故障降级与抓取 provider 配置。 | https://github.com/haibinwang9/dsh-web-search |
+| 安全优先的浏览器插件对每次导航和重定向重复校验域名并默认阻断私网访问，适合动态爬虫 Worker 的 SSRF 防护、域名白名单与下载隔离。 | https://github.com/coderdailyone/dsh-plugin-browser-use |
+| Session Supervisor 可按静默超时、截止时间和连续异常 turn 形成持久 incident，并支持确认与恢复审计，可用于长任务爬虫的卡死检测和运行健康监督。 | https://github.com/acosmi/dsh-plugin/tree/main/plugins/dsh-session-supervisor |
+| dsh-webhook 把签名 HTTP 事件转成 Agent 任务，并提供去重、重放、回执、冷启动和回调重试，可参考事件驱动爬取与外部触发任务入口。 | https://github.com/omdsh-dev/dsh-webhook |
+| DSH Studio 把项目、会话、终端、浏览器和插件放在同一 Desktop/Web 工作台，适合参考爬虫项目工作区、运行操作台与插件市场的一体化管理体验。 | https://github.com/euanguo/dsh-studio |
+| DeepSeek Harness Studio 提供零代码桌面端、插件发现/推荐/安装管理与视觉增强，适合参考面向非开发用户的爬虫管理平台安装、扩展器管理和桌面交付。 | https://github.com/fufankeji/deepseek-harness-studio |
+| Tencent BrowserSkill 提供 DSH 原生浏览器插件与实时 Web UI 覆盖层，可复用真实登录态浏览器，适合账号态网站采集和需要人工观察或接管的爬取任务。 | https://github.com/Tencent/BrowserSkill |
