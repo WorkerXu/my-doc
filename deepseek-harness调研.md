@@ -129,3 +129,10 @@
 | dsh-web-search-pro 集成多搜索引擎、20 类平台搜索、SQLite+LRU 缓存、Playwright 渲染、抓取历史和按站提取规则，功能形态很接近可嵌入 Harness 的轻量爬虫管理层。 | https://github.com/anweat/dsh-web-search-pro |
 | @240xu/dsh-websearch 将 11 个搜索后端并发 fan-out、URL 去重并支持部分后端故障继续工作，可参考爬虫平台的多来源发现层、容错路由和统一凭据配置。 | https://github.com/240xu/dsh-websearch |
 | dsh-read-url 自动识别 GBK/GB2312/UTF-8/Big5 并抽取正文，提供默认长度上限、缓存和 offset 续读，适合低成本正文采集、中文老站抓取及控制 Agent 上下文消耗。 | https://github.com/2672243194/dsh-read-url |
+| deepspider 是基于 DSH、Patchright/CDP 和独立语义运行时的 AI 原生智能爬虫与 JavaScript 逆向平台，可参考把浏览器证据、反爬分析和可验证采集逻辑统一纳入爬虫 Worker。 | https://github.com/ma-pony/deepspider |
+| dsh-browser4 面向智能抽取与大规模 Web 自动化提供 DSH 原生浏览器引擎，适合补充动态页面爬取、浏览器执行器标准化与规模化采集能力。 | https://github.com/platonai/dsh-browser4 |
+| dsh-xhs-collector 是基于 CDP Chrome 与住宅代理的小红书批量采集案例，提供真实批采实践，可参考垂直站点采集任务模板、代理使用与批量结果管理。 | https://github.com/nataliwhite20534-droid/dsh-xhs-collector |
+| AnySearch 为 DSH 提供 Web Search Provider 与高级搜索工具，适合作为爬虫平台“发现 URL”层的新搜索后端，并参考 Provider 化接入方式。 | https://github.com/anysearch-team/anysearch-dsh |
+| dsh-fetch-third-party 把页面抓取委托给用户配置的第三方服务，强调无直接 URL 访问、托管凭据、会话预算与本地抓取服务栈，适合参考安全抓取网关和成本控制。 | https://github.com/tallahandsome-ux/dsh-fetch-third-party |
+| 该 Playwright 插件直接为 DeepSeek Harness 提供浏览器自动化，可作为另一种动态网页 Worker 实现，便于比较不同浏览器插件的接口、部署和维护方式。 | https://github.com/Clizo1209/dsh-playwright-browser |
+| deepseek-harness-multi-user 在 Harness 基础上加入认证授权、Kafka、MySQL、Redis、Elasticsearch、CDC 与 Web 管理 UI，适合参考多人爬虫平台的租户隔离、数据管道和管理控制面。 | https://github.com/Foreverlearners-cpu/deepseek-harness-multi-user |
