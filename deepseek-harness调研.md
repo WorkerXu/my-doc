@@ -78,3 +78,6 @@
 | 命令大全梳理 profile、headless 与插件按 profile 管理等运行方式，适合把不同爬虫 Worker/环境拆成可配置运行 profile 并支持无人值守执行。 | https://juejin.cn/post/7675947280080240691 |
 | 一周真实需求复盘聚焦环境配置、任务拆解、插件选型与预期管理，可用于制定爬虫任务模板、插件选择策略和运行边界。 | https://juejin.cn/post/7677441124442570761 |
 | 实测将 Harness 定位为可组装的 Agent 运行时底座而非成品助手，适合用作爬虫管理平台插件化内核，将采集、调度、存储、UI 与 Agent 分层组合。 | https://juejin.cn/post/7673810995882672128 |
+| 实测覆盖 WebUI 远程控制、执行轨迹、插件系统和任务分支，可参考爬虫管理端的远程运维、任务追踪与分支执行体验。 | https://www.youtube.com/watch?v=Aqn7EP8shJw |
+| 展示自定义工作台、定时任务、快捷指令以及 Skill 与 MCP 管理，可参考把爬虫调度、执行器配置和管理 UI 集成到 Harness。 | https://www.youtube.com/watch?v=1BXLQj8C0Ps |
+| 从零跑通 Web UI 和首个 Agent 任务，适合验证爬虫平台“任务创建→执行→查看结果”的最小管理闭环与新用户操作路径。 | https://www.youtube.com/watch?v=mpelxra1aL4 |
