@@ -145,3 +145,7 @@
 | DSH Task Board 在侧边栏提供五态看板、任务详情、审核/驳回/重试和持久化，适合直接参考爬虫任务中心的状态流转、人工验收与失败重跑交互。 | https://juejin.cn/post/7674372498315116594 |
 | 统一 Agent 控制台可同时管理 Codex、Claude Code 与 DeepSeek Harness，适合参考爬虫平台把多个 Harness/Worker 运行时收敛到一个任务控制面。 | https://juejin.cn/post/7676748940241158171 |
 | 这篇源码分析从 Agent、Tool、Skill、MCP、Plugin 等工程概念梳理 Harness 运行结构，适合厘清爬虫执行器、工具协议和插件边界后再设计管理平台分层。 | https://juejin.cn/post/7677506567559102527 |
+| 插件开发教程聚焦从零开发 Harness 插件，适合把爬虫启动、停止、状态、结果查询等控制能力封装成可独立安装的执行插件。 | https://www.youtube.com/watch?v=kAshH5gO7xA |
+| 进阶实测覆盖 Agent Teams、动态工作流和插件创建，适合参考多阶段爬取任务的并行分工、动态编排与插件化扩展。 | https://www.youtube.com/watch?v=-sX1Ks47AqA |
+| 源码深挖从安全与工程角度解析 Harness 能力边界，适合校验爬虫 Worker 的权限、工具执行与高风险操作隔离设计。 | https://www.youtube.com/watch?v=CukbMYlDRrM |
+| 围绕“一切皆插件”解释 Harness 的插件化理念，适合把爬虫 Provider、队列、存储、监控和管理 UI 拆成可替换模块。 | https://www.youtube.com/watch?v=xe-aHJLC5UU |
