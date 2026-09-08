@@ -145,3 +145,7 @@
 | DSH Task Board 五态看板 | https://juejin.cn/post/7674372498315116594 |
 | 统一 Agent 控制台 | https://juejin.cn/post/7676748940241158171 |
 | Harness 源码架构总结 | https://juejin.cn/post/7677506567559102527 |
+| Harness 插件开发教程 | https://www.youtube.com/watch?v=kAshH5gO7xA |
+| Agent Teams/动态工作流 | https://www.youtube.com/watch?v=-sX1Ks47AqA |
+| Harness 源码安全边界 | https://www.youtube.com/watch?v=CukbMYlDRrM |
+| Everything is a plugin | https://www.youtube.com/watch?v=xe-aHJLC5UU |
