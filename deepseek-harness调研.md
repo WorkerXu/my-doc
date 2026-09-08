@@ -66,3 +66,10 @@
 | Tensorlake 沙箱把 DSH 的文件、子进程、Bash、终端和 LSP 放进短生命周期 microVM，适合把高风险或不可信爬虫 Worker 与宿主机隔离，并统一控制资源与生命周期。 | https://github.com/tensorlakeai/dsh-tensorlake-sandbox |
 | dsh-task-status 在对话区原生展示后台任务数量、状态、耗时和实时输出 tail，可直接参考爬虫任务运行进度、日志尾随和故障排查体验。 | https://github.com/vlln/dsh-task-status |
 | dsh-plugin-chrome 为每个 Session 提供独立可视 Chrome、稳定 a11y 元素引用、16 个控制工具、实时画面和人工接管，适合动态页面采集调试及需要人机协同的爬虫 Worker。 | https://github.com/jiaererw/dsh-plugin-chrome |
+| 文章明确 Web UI、headless、ACP 与 Python SDK 四种交付形态，可用于规划“管理端 + 无人值守爬虫 Worker + 平台嵌入接口”的运行边界。 | https://zhuanlan.zhihu.com/p/2072102005342999515 |
+| 架构教程把 Harness 解释为无特权插件树，并强调可逆副作用与热替换，适合设计可动态装卸且能正确回收资源的爬虫执行器、存储和监控插件。 | https://zhuanlan.zhihu.com/p/2077502279024906783 |
+| Cordis 源码解析覆盖 Context、Fiber、Service、Effect、Event 与 Loader，可用于建立爬虫 Worker 的插件生命周期、资源归属、事件通信和动态配置模型。 | https://zhuanlan.zhihu.com/p/2078170252194664835 |
+| 插件清单中的 dsh-web-search-pro 支持多搜索引擎、知乎/小红书/B站等平台定向采集与本地缓存，适合参考多来源爬虫适配和缓存层。 | https://zhuanlan.zhihu.com/p/2077774076198794834 |
+| 系统调研梳理 GuardService 的工具执行前检查、超时与重试，以及 Bundle/Profile/Patch 分层配置，适合爬虫平台的任务防护和环境配置管理。 | https://zhuanlan.zhihu.com/p/2078079607874516597 |
+| 内置 Tool 分类整理了文件、Shell、持久终端与 run_code 等执行能力，可作为爬虫 Worker 能力清单、权限矩阵和任务执行接口设计的参考。 | https://zhuanlan.zhihu.com/p/2074569535211020354 |
+| 深度解读指出执行环境本身也可插件化切换到本地 Docker、远程 SSH 或 K8s Pod，适合分布式爬虫 Worker 的部署与弹性运行架构。 | https://zhuanlan.zhihu.com/p/2072691741732365313 |
