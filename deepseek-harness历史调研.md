@@ -58,3 +58,11 @@
 | SQLite 持久任务看板 | https://github.com/ttmouse/dsh-taskboard |
 | DSH 任务编排运行看板 | https://github.com/Uddoo/dsh-dashboard |
 | SSH 远程 Worker 执行 | https://github.com/UynajGI/dsh-ssh |
+| Reef 浏览器/MCP/面板 | https://github.com/huey1in/reef |
+| Playwright MCP 桥接 | https://github.com/toothemooon/dsh-playwright-mcp |
+| 原生 SQLite 任务看板 | https://github.com/shengsheng90/DSH-taskboard |
+| Session/Team/Workflow DAG | https://github.com/LeemanCheung/dsh-task-dag |
+| 多 Agent 波次编排 | https://github.com/february2015/dsh-taskswarm |
+| Tensorlake microVM 沙箱 | https://github.com/tensorlakeai/dsh-tensorlake-sandbox |
+| 后台任务实时输出 | https://github.com/vlln/dsh-task-status |
+| 可视 Chrome 会话采集 | https://github.com/jiaererw/dsh-plugin-chrome |
