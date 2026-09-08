@@ -53,3 +53,8 @@
 | 定时任务重试与通知 | https://github.com/Jeff1573/dsh-plugin-scheduled-tasks |
 | OpenTelemetry 链路观测 | https://github.com/loongsuite/dsh-plugin |
 | 登录态浏览器桥接 | https://github.com/Lum1104/dsh-browser |
+| Playwright 无头浏览器 | https://github.com/xu1132/dsh-plugin-browser |
+| Chromium/CDP 浏览器工具 | https://github.com/dengpeihua/dsh-browser |
+| SQLite 持久任务看板 | https://github.com/ttmouse/dsh-taskboard |
+| DSH 任务编排运行看板 | https://github.com/Uddoo/dsh-dashboard |
+| SSH 远程 Worker 执行 | https://github.com/UynajGI/dsh-ssh |
