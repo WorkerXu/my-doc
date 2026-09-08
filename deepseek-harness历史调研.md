@@ -78,3 +78,6 @@
 | Profile/headless 命令参考 | https://juejin.cn/post/7675947280080240691 |
 | 一周真实需求避坑 | https://juejin.cn/post/7677441124442570761 |
 | 可组装 Agent 运行时定位 | https://juejin.cn/post/7673810995882672128 |
+| WebUI远程控制与执行轨迹 | https://www.youtube.com/watch?v=Aqn7EP8shJw |
+| 工作台/定时任务/Skill&MCP管理 | https://www.youtube.com/watch?v=1BXLQj8C0Ps |
+| Web UI首个Agent任务闭环 | https://www.youtube.com/watch?v=mpelxra1aL4 |
