@@ -23,3 +23,10 @@
 | DeepSeek Harness 管理插件套件覆盖 MCP、Skills、项目文档、规则与记忆、SSH，可借鉴把爬虫平台后台能力拆成独立 Harness 管理插件。 | https://github.com/tanleikingsley913/dsh-management-suite |
 | 多平台公开数据采集 MCP 服务，覆盖 B 站、小红书、抖音、快手、微博、贴吧、知乎等，可作为 Harness 调用垂直爬虫服务的实现样例。 | https://github.com/mcp-service/media-crawler-mcp-service |
 | SEO 爬虫 MCP 同时提供实时 Web Dashboard 和 Excel 报告，适合参考爬虫管理平台的运行可视化、结果查看与报表导出设计。 | https://github.com/hna2810/seo-crawler-mcp |
+| 知乎实战把 DeepSeek Harness 用于数据采集，给出代理 IP、PTC 批处理“拉代理→并发采→落库→出报告”、轨迹审计与配置外置建议，最贴近爬虫管理平台落地。 | https://zhuanlan.zhihu.com/p/2076352308636664606 |
+| 该回答展示 Harness 自动抓取 GitHub API 数据、生成构建脚本并用 GitHub Actions 每 6 小时刷新，适合参考采集任务自动化、验收与持续运行链路。 | https://www.zhihu.com/question/2071348486667237276/answer/2073468001341419539 |
+| Litefuse 接入文章说明如何订阅 session/event、重建 Trace Tree、统计模型/工具耗时并关联 Subagent，适合实现爬虫任务链路追踪与可观测面板。 | https://zhuanlan.zhihu.com/p/2073095845998749671 |
+| 规模化踩坑文章聚焦耗时、成本、失败定位，以及 Session 事件流、工具调用和跨机器汇聚，适合设计分布式爬虫平台的日志、指标与故障诊断。 | https://zhuanlan.zhihu.com/p/2075530029027550539 |
+| Harness 教程介绍 Python SDK 通过 JSON-RPC stdio 驱动运行时、隔离 session 与自定义 cordis 配置，适合把 Harness 嵌入爬虫平台后端服务。 | https://zhuanlan.zhihu.com/p/2077694603986198816 |
+| 插件教程整理 dsh-automation 等插件，其中定时任务可独立创建 Agent/会话并记录工作区、权限、结果和错误，可借鉴爬虫定时调度与运行审计。 | https://zhuanlan.zhihu.com/p/2079905240350986775 |
+| 1Panel 部署教程给出 HTTPS/认证、网络来源限制、凭据保护、挂载范围与升级备份建议，适合补齐爬虫管理平台的部署安全和运维边界。 | https://zhuanlan.zhihu.com/p/2076067085524923336 |
