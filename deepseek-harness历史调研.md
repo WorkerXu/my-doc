@@ -142,3 +142,6 @@
 | Subagent/Job/Goal 任务语义 | https://zhuanlan.zhihu.com/p/2073331953772897893 |
 | Harness 长驻进程托管 | https://zhuanlan.zhihu.com/p/2072783241476564313 |
 | GitHub Trending 抓取插件实战 | https://zhuanlan.zhihu.com/p/2075328252000977474 |
+| DSH Task Board 五态看板 | https://juejin.cn/post/7674372498315116594 |
+| 统一 Agent 控制台 | https://juejin.cn/post/7676748940241158171 |
+| Harness 源码架构总结 | https://juejin.cn/post/7677506567559102527 |
