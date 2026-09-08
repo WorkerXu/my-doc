@@ -16,3 +16,10 @@
 | Gerapy 是基于 Scrapy/Scrapyd 的分布式爬虫管理框架，可重点参考项目管理、部署、调度与 Web 管理界面。 | https://github.com/Gerapy/Gerapy |
 | ScrapydWeb 聚焦集群管理、日志分析、定时任务、监控告警和移动端 UI，适合借鉴管理平台的产品功能清单。 | https://github.com/my8100/scrapydweb |
 | Browserless 提供容器化浏览器池、并发与排队能力，适合解决动态网页爬取时浏览器资源管理和隔离问题。 | https://github.com/browserless/browserless |
+| DeepSeek Harness 的 MCP 管理控制台，带服务 CRUD、健康诊断和工具试调用，可直接参考把多个爬虫 MCP 服务接入统一管理面板。 | https://github.com/PerryLink/dsh-mcp-panel |
+| Crawlab 是与语言和框架解耦的分布式爬虫管理平台，适合参考蜘蛛、任务、节点和运维管理的完整产品模型。 | https://github.com/crawlab-team/crawlab |
+| Crawlab MCP 将蜘蛛 CRUD、任务运行/取消/重启、日志与文件管理暴露为 MCP 工具和资源，适合用 DeepSeek Harness MCP 客户端桥接爬虫平台能力。 | https://github.com/crawlab-team/crawlab-mcp |
+| Crawlab Lite 是 Crawlab 的轻量版本，适合参考单机或小规模场景下如何裁剪爬虫管理平台的部署与功能边界。 | https://github.com/crawlab-team/crawlab-lite |
+| DeepSeek Harness 管理插件套件覆盖 MCP、Skills、项目文档、规则与记忆、SSH，可借鉴把爬虫平台后台能力拆成独立 Harness 管理插件。 | https://github.com/tanleikingsley913/dsh-management-suite |
+| 多平台公开数据采集 MCP 服务，覆盖 B 站、小红书、抖音、快手、微博、贴吧、知乎等，可作为 Harness 调用垂直爬虫服务的实现样例。 | https://github.com/mcp-service/media-crawler-mcp-service |
+| SEO 爬虫 MCP 同时提供实时 Web Dashboard 和 Excel 报告，适合参考爬虫管理平台的运行可视化、结果查看与报表导出设计。 | https://github.com/hna2810/seo-crawler-mcp |
