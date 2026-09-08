@@ -110,3 +110,6 @@
 | RedFoxHub × DSH 一次接入 113 个数据技能与 40 个 MCP 工具，覆盖多社媒搜索、评论、热榜和定时账号订阅，适合参考多源采集适配器、任务模板与周期抓取设计。 | https://zhuanlan.zhihu.com/p/2073360129123149137 |
 | 文章把 DSH headless 作为隔离子进程嵌入 Electron 产品，并通过 MCP 复用工具、用环境变量注入凭据，适合爬虫管理平台把 Agent 运行时作为后台 Worker 并与管理 UI 隔离。 | https://zhuanlan.zhihu.com/p/2078388330799051093 |
 | 文章解析工具的 pre-execute→guard→execute→post-execute→result 流水线、Code Mode 与 MCP 接入，适合为爬虫工具建立统一权限、域名/出网策略和执行门禁。 | https://zhuanlan.zhihu.com/p/2079236658084459433 |
+| 这份新插件清单覆盖插件市场、界面增强与多源搜索等能力，适合筛选爬虫平台的采集源适配器、管理端扩展和插件安装机制。 | https://juejin.cn/post/7679542577553473590 |
+| 从插件架构、MCP、Hooks 和子代理委派对比 Harness 与 Claude Code，可用于确定爬虫服务的 MCP 接入层、任务委派和扩展边界。 | https://juejin.cn/post/7676239036387000335 |
+| 文章从 Cordis 服务、依赖注入、事件分发和可逆副作用解释“一切皆插件”，适合设计爬虫执行器生命周期、任务事件与通知/监控插件。 | https://juejin.cn/post/7673436957741039631 |
