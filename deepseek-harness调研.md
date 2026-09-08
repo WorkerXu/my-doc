@@ -36,3 +36,9 @@
 | 进阶玩法展示通过 MCP 给 Harness 接入工具以及多 Agent 协作，适合把爬虫任务 API 暴露为 MCP 工具，并让多个 Agent 分工执行采集、解析和验收。 | https://juejin.cn/post/7678161312636567598 |
 | 从安装到写出第一个可用工具插件的真机教程提供最小工程闭环，可直接参考把爬虫启动、停止、状态和结果查询封装成 DSH 插件。 | https://juejin.cn/post/7680183953518690338 |
 | 文章从 Cordis 插件、服务、依赖注入和事件机制搭出可执行 bash/fetch/文件搜索的 Mini Harness，适合理解如何把爬虫执行器、队列、存储和事件拆成可组合服务。 | https://juejin.cn/post/7673978658779955251 |
+| 讲解 Cordis、插件机制与本地搭建流程，适合梳理爬虫执行器、任务服务、存储和管理端如何拆成可组合的 Harness 能力，并验证本地运行链路。 | https://www.youtube.com/watch?v=KaQWNDe2EaU |
+| 插件开发实操可直接参考把爬虫启动、停止、状态、结果查询等能力封装成 Harness 插件，并为后续接入 MCP 爬虫服务建立扩展入口。 | https://www.youtube.com/watch?v=iieUVcoPjlI |
+| Cordis 插件完整讲解有助于理解插件依赖、组合和扩展方式，适合设计可替换的爬虫执行层、队列、存储与监控模块。 | https://www.youtube.com/watch?v=APhQxIKKq0g |
+| 以 SEO 六步自动化为例展示流程化任务思路，适合借鉴“发现目标→采集→分析→输出”的多阶段爬虫工作流编排和任务模板化。 | https://www.youtube.com/watch?v=HDN76QA9pjU |
+| 从工程视角解析 DeepSeek Harness，适合补充理解其运行时、执行链路与扩展边界，为爬虫管理平台的任务运行架构取舍提供参考。 | https://www.youtube.com/watch?v=yjHdWGWgAfk |
+| Agentic AI 速成课覆盖 Harness 驱动不同模型的工作方式，适合参考把模型层与爬虫工具层解耦，让不同模型承担调度、解析或验收角色。 | https://www.youtube.com/watch?v=legYz3Hk2rQ |
