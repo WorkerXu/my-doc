@@ -113,3 +113,6 @@
 | 新插件清单：市场/多源搜索 | https://juejin.cn/post/7679542577553473590 |
 | Harness 架构/插件/MCP 对比 | https://juejin.cn/post/7676239036387000335 |
 | Cordis 服务/事件/可逆副作用 | https://juejin.cn/post/7673436957741039631 |
+| UI 插件原理 | https://www.youtube.com/watch?v=D9W4BhG9HDk |
+| 插件生态与市场工具箱 | https://www.youtube.com/watch?v=QCxq__dLv5E |
+| MCP/Skill 快速配置插件 | https://www.youtube.com/watch?v=CgYZ5EzX00U |
