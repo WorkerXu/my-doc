@@ -29,7 +29,7 @@
 | 规模化耗时成本故障分析 | https://zhuanlan.zhihu.com/p/2075530029027550539 |
 | Python SDK 集成 | https://zhuanlan.zhihu.com/p/2077694603986198816 |
 | 自动化定时任务插件 | https://zhuanlan.zhihu.com/p/2079905240350986775 |
-| 1Panel 安全部署 | https://zhuan.zhihu.com/p/2076067085524923336 |
+| 1Panel 安全部署 | https://zhuanlan.zhihu.com/p/2076067085524923336 |
 | 文档抓取插件管道 | https://juejin.cn/post/7673531977241460736 |
 | Web UI 与浏览器自动化插件 | https://juejin.cn/post/7675273747710001206 |
 | DSH 容器化落地 | https://juejin.cn/post/7674094098298961960 |
@@ -42,3 +42,8 @@
 | SEO 多阶段自动化 | https://www.youtube.com/watch?v=HDN76QA9pjU |
 | Harness 工程结构 | https://www.youtube.com/watch?v=yjHdWGWgAfk |
 | 多模型 Agent 运行 | https://www.youtube.com/watch?v=legYz3Hk2rQ |
+| 免费搜索/抓取插件 | https://github.com/DDDMUC/dsh-free-search |
+| DSH 基础能力管理面板 | https://github.com/yxsj245/dsh-Basics-Panel |
+| DSH 移动远程控制 | https://github.com/201222-L/dsh-mobile-remote |
+| Harness 真实浏览器 Skill | https://www.bilibili.com/video/BV1164d6qEtA |
+| Harness MCP 接入教程 | https://www.bilibili.com/video/BV1xLtS6WEVG |
