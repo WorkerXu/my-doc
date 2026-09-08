@@ -53,3 +53,8 @@
 | 定时任务插件提供每日/每周/间隔调度、失败重试、超时、通知和无人值守权限，适合参考爬虫任务 SLA、告警与补偿机制。 | https://github.com/Jeff1573/dsh-plugin-scheduled-tasks |
 | LoongSuite 将 DSH 的 session、step、LLM 与 tool 生命周期转换为 OpenTelemetry Trace/Metric，可用于爬虫任务链路、耗时、失败与资源消耗监控。 | https://github.com/loongsuite/dsh-plugin |
 | 浏览器桥接插件直接连接现有 Chrome/Firefox 标签页并保留登录态、Session 与 Cookie，适合需要账号态和交互态的网页采集。 | https://github.com/Lum1104/dsh-browser |
+| 轻量 Playwright 无头浏览器插件提供渲染后页面文本、截图、点击与输入工具，并按 Agent 隔离浏览器会话，适合作为动态网页爬虫 Worker 的最小执行实现。 | https://github.com/xu1132/dsh-plugin-browser |
+| 原生 Chromium 插件通过 Puppeteer/CDP、增量 DOM、稳定元素引用和 Session 隔离提供 15 个浏览器工具，适合高交互网页采集并控制上下文开销。 | https://github.com/dengpeihua/dsh-browser |
+| 本地优先任务看板把 Kanban、列表、Gantt、工作流、仪表盘与任务级 AI 对话嵌入 DSH，并以 SQLite 持久化，适合参考爬虫任务中心与运行记录界面。 | https://github.com/ttmouse/dsh-taskboard |
+| Symphony 兼容的 DSH 任务编排与运行看板支持并发限制、失败退避、持久工作区、Runtime/Projects/Configuration 视图，可直接借鉴爬虫调度中心与 Worker 运维面板。 | https://github.com/Uddoo/dsh-dashboard |
+| SSH 远程执行插件把 subprocess、文件系统、PTY 与 LSP 无缝切到远端主机，支持 ProxyJump 与 SFTP，适合把不同服务器组织成分布式爬虫 Worker 节点。 | https://github.com/UynajGI/dsh-ssh |
