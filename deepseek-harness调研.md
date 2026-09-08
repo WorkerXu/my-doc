@@ -101,3 +101,9 @@
 | AgentCrawl 提供 SQLite 持久任务、检查点、取消/重试、失败记录、MCP/API 和本地 Dashboard，适合作为 Harness 下游爬虫服务或任务模型参考。 | https://github.com/JorG18/agentcrawl |
 | 浏览器集群控制面支持多 Provider 负载均衡、并发上限、排队、故障切换、持久 Profile、回放、REST/MCP 与 Dashboard，适合管理动态爬虫浏览器池。 | https://github.com/browser-gateway/browser-gateway |
 | Scraper MCP 提供批量并发、Playwright 渲染、缓存、重试、实时 Dashboard 和运行时配置，可直接作为 Harness MCP 爬取执行服务。 | https://github.com/cotdp/scraper-mcp |
+| 直接面向 DeepSeek Harness 的爬虫插件，适合参考如何把资料/文献采集能力作为 DSH 外置爬虫组件接入平台。 | https://github.com/Leesky10124/dsh-sky-crawler |
+| 增强型 `web_fetch` Provider 支持 CIDR/域名白名单、DNS 与重定向复核、响应上限和 Web 端即时配置，适合做爬虫平台可管控的抓取出网层。 | https://github.com/Yurzi/dsh-web-fetch-enhanced |
+| 本地 Readability 抓取 Provider 带 SSRF 防护、正文净化、响应限制和可取消 FIFO 排队，适合轻量网页 Worker 与并发队列设计。 | https://github.com/Apoze/dsh-web-fetch-local |
+| 为 `web_fetch`、`web_search` 与部分命令执行增加出网 allowlist、audit/enforce 和 OCSF 记录，适合爬虫平台的网络策略与审计层。 | https://github.com/CharlotteN7/dsh-netguard |
+| 将 `web_fetch` 串成本地抓取→本地 Ollama 整理链路，适合隐私敏感场景下的本地内容处理与结果标准化。 | https://github.com/wanghj040530/dsh-local-web |
+| 无 API Key 的 Bing 搜索 Provider，可补充爬虫平台“发现 URL”阶段的低成本搜索源，并提供 Bundle 化安装方式。 | https://github.com/SUJIElearning/dsh-search-free-nokey |
