@@ -16,3 +16,10 @@
 | Gerapy | https://github.com/Gerapy/Gerapy |
 | ScrapydWeb | https://github.com/my8100/scrapydweb |
 | Browserless | https://github.com/browserless/browserless |
+| Harness MCP 管理面板 | https://github.com/PerryLink/dsh-mcp-panel |
+| Crawlab | https://github.com/crawlab-team/crawlab |
+| Crawlab MCP | https://github.com/crawlab-team/crawlab-mcp |
+| Crawlab Lite | https://github.com/crawlab-team/crawlab-lite |
+| Harness 管理插件套件 | https://github.com/tanleikingsley913/dsh-management-suite |
+| 多平台采集 MCP | https://github.com/mcp-service/media-crawler-mcp-service |
+| SEO 爬虫 MCP 面板 | https://github.com/hna2810/seo-crawler-mcp |
