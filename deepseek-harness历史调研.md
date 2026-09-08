@@ -136,3 +136,6 @@
 | 第三方安全抓取网关 | https://github.com/tallahandsome-ux/dsh-fetch-third-party |
 | DSH Playwright 浏览器自动化 | https://github.com/Clizo1209/dsh-playwright-browser |
 | Harness 多用户管理架构 | https://github.com/Foreverlearners-cpu/deepseek-harness-multi-user |
+| 跨会话监控与派单中枢 | https://github.com/wenki2005/dsh-monitor-hub |
+| Cron/一次性 DSH 调度 | https://github.com/yangyongzhen/dsh-scheduler |
+| 持久浏览器与人工接管 | https://github.com/syncended/deepseek-harness-browser-use |
