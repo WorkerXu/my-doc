@@ -120,3 +120,12 @@
 | B站：raw HTML 渲染插件 | https://www.bilibili.com/video/BV1WJbW6UE9K |
 | B站：版本更新/插件仓库管理 | https://www.bilibili.com/video/BV1Sp8m6oExn |
 | B站：可视化工作台 | https://www.bilibili.com/video/BV1kw8b6bEeL |
+| 官方安全 HTTP 抓取 Provider | https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/web/web-fetch-http/README.md |
+| 官方模型 Web 工具层 | https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/web/tool-web/README.md |
+| Web 能力 seam 架构记录 | https://github.com/deepseek-ai/deepseek-harness/blob/master/.agents/notes/implemented/architecture/2026-06-24-web-capability-seam.md |
+| 大抓取结果 spill 机制 | https://github.com/deepseek-ai/deepseek-harness/blob/master/.agents/notes/implemented/architecture/2026-07-08-tool-output-spill-files.md |
+| Playwright/CDP Fetch Provider | https://github.com/chendefine/dsh-web-fetch-playwright |
+| 原生多协议搜索 Provider | https://github.com/hiyms/dsh-web-search-provider |
+| 多引擎持久化搜索抓取插件 | https://github.com/anweat/dsh-web-search-pro |
+| 11 后端聚合搜索 Provider | https://github.com/240xu/dsh-websearch |
+| 正文净化 URL 读取插件 | https://github.com/2672243194/dsh-read-url |
