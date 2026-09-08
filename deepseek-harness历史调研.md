@@ -84,3 +84,11 @@
 | B站发现：任务通知+网页抓取入库 | https://github.com/halosb/dsh-workmate |
 | B站发现：可视化工作流编辑 | https://github.com/kanghelyu/dsh-deepseek-flow |
 | B站发现：WebUI 插件生命周期管理 | https://github.com/Sanqi-normal/dsh-webui-market-plugin |
+| Firecrawl Harness 原生 provider | https://github.com/firecrawl/dsh-firecrawl |
+| 多引擎搜索/正文抓取 provider | https://github.com/haibinwang9/dsh-web-search |
+| 浏览器 SSRF/下载隔离 | https://github.com/coderdailyone/dsh-plugin-browser-use |
+| Session 生命周期监督 | https://github.com/acosmi/dsh-plugin/tree/main/plugins/dsh-session-supervisor |
+| Webhook 事件驱动任务 | https://github.com/omdsh-dev/dsh-webhook |
+| DSH Studio 管理工作台 | https://github.com/euanguo/dsh-studio |
+| Harness 零代码桌面端 | https://github.com/fufankeji/deepseek-harness-studio |
+| 登录态 BrowserSkill 插件 | https://github.com/Tencent/BrowserSkill |
