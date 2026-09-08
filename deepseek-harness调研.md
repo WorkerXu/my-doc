@@ -142,3 +142,6 @@
 | 文章明确区分 Subagent、Background Job 与 Goal 的生命周期、完成、取消和恢复语义，适合爬虫平台避免把“业务目标、后台执行、子任务委派”混成一个 Task 对象。 | https://zhuanlan.zhihu.com/p/2073331953772897893 |
 | cube-shell 托管 DeepSeek Harness 长驻进程的实战覆盖启停、退出码、日志、端口、Node/PATH 检测和状态页，适合参考爬虫 Worker/Agent Runtime 的进程管理与运维控制台。 | https://zhuanlan.zhihu.com/p/2072783241476564313 |
 | dsh-github-trending 插件真实实现“页面抓取→解析→缓存→定时刷新→HTTP 路由→Web 面板”，并配解析测试与 stale 兜底，适合作为爬虫插件与管理 UI 一体化的最小工程样板。 | https://zhuanlan.zhihu.com/p/2075328252000977474 |
+| DSH Task Board 在侧边栏提供五态看板、任务详情、审核/驳回/重试和持久化，适合直接参考爬虫任务中心的状态流转、人工验收与失败重跑交互。 | https://juejin.cn/post/7674372498315116594 |
+| 统一 Agent 控制台可同时管理 Codex、Claude Code 与 DeepSeek Harness，适合参考爬虫平台把多个 Harness/Worker 运行时收敛到一个任务控制面。 | https://juejin.cn/post/7676748940241158171 |
+| 这篇源码分析从 Agent、Tool、Skill、MCP、Plugin 等工程概念梳理 Harness 运行结构，适合厘清爬虫执行器、工具协议和插件边界后再设计管理平台分层。 | https://juejin.cn/post/7677506567559102527 |
