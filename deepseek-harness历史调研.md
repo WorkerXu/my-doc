@@ -129,3 +129,10 @@
 | 多引擎持久化搜索抓取插件 | https://github.com/anweat/dsh-web-search-pro |
 | 11 后端聚合搜索 Provider | https://github.com/240xu/dsh-websearch |
 | 正文净化 URL 读取插件 | https://github.com/2672243194/dsh-read-url |
+| AI 原生智能爬虫/JS 逆向 | https://github.com/ma-pony/deepspider |
+| DSH 大规模浏览器自动化 | https://github.com/platonai/dsh-browser4 |
+| 小红书 CDP 批量采集 | https://github.com/nataliwhite20534-droid/dsh-xhs-collector |
+| AnySearch DSH 搜索 Provider | https://github.com/anysearch-team/anysearch-dsh |
+| 第三方安全抓取网关 | https://github.com/tallahandsome-ux/dsh-fetch-third-party |
+| DSH Playwright 浏览器自动化 | https://github.com/Clizo1209/dsh-playwright-browser |
+| Harness 多用户管理架构 | https://github.com/Foreverlearners-cpu/deepseek-harness-multi-user |
