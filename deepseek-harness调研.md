@@ -139,3 +139,6 @@
 | 跨会话监控中枢维护会话台账、派单/回执状态机、失败自动重试与 Web 控制台，可直接参考爬虫任务中心的跨 Worker 调度、状态回收、重试和主动通知设计。 | https://github.com/wenki2005/dsh-monitor-hub |
 | DSH 定时任务插件支持 Cron/一次性触发、命令或 Webhook、状态查询、超时和重入保护，可用于周期爬取调度、回调与运行状态管理。 | https://github.com/yangyongzhen/dsh-scheduler |
 | 持久 Playwright 浏览器 Profile 与 DSH Web 交互面板支持稳定快照引用、多标签、人工接管和登录态复用，适合动态/账号态爬虫 Worker 及管理端人机协同。 | https://github.com/syncended/deepseek-harness-browser-use |
+| 文章明确区分 Subagent、Background Job 与 Goal 的生命周期、完成、取消和恢复语义，适合爬虫平台避免把“业务目标、后台执行、子任务委派”混成一个 Task 对象。 | https://zhuanlan.zhihu.com/p/2073331953772897893 |
+| cube-shell 托管 DeepSeek Harness 长驻进程的实战覆盖启停、退出码、日志、端口、Node/PATH 检测和状态页，适合参考爬虫 Worker/Agent Runtime 的进程管理与运维控制台。 | https://zhuanlan.zhihu.com/p/2072783241476564313 |
+| dsh-github-trending 插件真实实现“页面抓取→解析→缓存→定时刷新→HTTP 路由→Web 面板”，并配解析测试与 stale 兜底，适合作为爬虫插件与管理 UI 一体化的最小工程样板。 | https://zhuanlan.zhihu.com/p/2075328252000977474 |
