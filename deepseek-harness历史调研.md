@@ -101,3 +101,9 @@
 | SQLite 持久爬虫服务 | https://github.com/JorG18/agentcrawl |
 | 浏览器集群控制面 | https://github.com/browser-gateway/browser-gateway |
 | Scraper MCP + Dashboard | https://github.com/cotdp/scraper-mcp |
+| DSH 外置爬虫插件 | https://github.com/Leesky10124/dsh-sky-crawler |
+| 可配置安全抓取 Provider | https://github.com/Yurzi/dsh-web-fetch-enhanced |
+| 本地 Readability 抓取队列 | https://github.com/Apoze/dsh-web-fetch-local |
+| DSH 出网策略与审计 | https://github.com/CharlotteN7/dsh-netguard |
+| 本地 Ollama 网页处理 | https://github.com/wanghj040530/dsh-local-web |
+| 无 Key Bing 搜索 Provider | https://github.com/SUJIElearning/dsh-search-free-nokey |
