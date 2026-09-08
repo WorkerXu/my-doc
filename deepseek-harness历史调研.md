@@ -107,3 +107,6 @@
 | DSH 出网策略与审计 | https://github.com/CharlotteN7/dsh-netguard |
 | 本地 Ollama 网页处理 | https://github.com/wanghj040530/dsh-local-web |
 | 无 Key Bing 搜索 Provider | https://github.com/SUJIElearning/dsh-search-free-nokey |
+| RedFoxHub 社媒数据技能 | https://zhuanlan.zhihu.com/p/2073360129123149137 |
+| DSH headless 嵌入产品 | https://zhuanlan.zhihu.com/p/2078388330799051093 |
+| Tool Guard/MCP 执行流水线 | https://zhuanlan.zhihu.com/p/2079236658084459433 |
