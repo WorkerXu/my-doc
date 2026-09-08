@@ -23,3 +23,10 @@
 | Harness 管理插件套件 | https://github.com/tanleikingsley913/dsh-management-suite |
 | 多平台采集 MCP | https://github.com/mcp-service/media-crawler-mcp-service |
 | SEO 爬虫 MCP 面板 | https://github.com/hna2810/seo-crawler-mcp |
+| 数据采集工程实战 | https://zhuanlan.zhihu.com/p/2076352308636664606 |
+| GitHub API 定时采集实战 | https://www.zhihu.com/question/2071348486667237276/answer/2073468001341419539 |
+| Litefuse 链路可观测 | https://zhuanlan.zhihu.com/p/2073095845998749671 |
+| 规模化耗时成本故障分析 | https://zhuanlan.zhihu.com/p/2075530029027550539 |
+| Python SDK 集成 | https://zhuanlan.zhihu.com/p/2077694603986198816 |
+| 自动化定时任务插件 | https://zhuanlan.zhihu.com/p/2079905240350986775 |
+| 1Panel 安全部署 | https://zhuanlan.zhihu.com/p/2076067085524923336 |
