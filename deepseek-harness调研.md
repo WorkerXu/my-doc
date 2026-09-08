@@ -107,3 +107,6 @@
 | 为 `web_fetch`、`web_search` 与部分命令执行增加出网 allowlist、audit/enforce 和 OCSF 记录，适合爬虫平台的网络策略与审计层。 | https://github.com/CharlotteN7/dsh-netguard |
 | 将 `web_fetch` 串成本地抓取→本地 Ollama 整理链路，适合隐私敏感场景下的本地内容处理与结果标准化。 | https://github.com/wanghj040530/dsh-local-web |
 | 无 API Key 的 Bing 搜索 Provider，可补充爬虫平台“发现 URL”阶段的低成本搜索源，并提供 Bundle 化安装方式。 | https://github.com/SUJIElearning/dsh-search-free-nokey |
+| RedFoxHub × DSH 一次接入 113 个数据技能与 40 个 MCP 工具，覆盖多社媒搜索、评论、热榜和定时账号订阅，适合参考多源采集适配器、任务模板与周期抓取设计。 | https://zhuanlan.zhihu.com/p/2073360129123149137 |
+| 文章把 DSH headless 作为隔离子进程嵌入 Electron 产品，并通过 MCP 复用工具、用环境变量注入凭据，适合爬虫管理平台把 Agent 运行时作为后台 Worker 并与管理 UI 隔离。 | https://zhuanlan.zhihu.com/p/2078388330799051093 |
+| 文章解析工具的 pre-execute→guard→execute→post-execute→result 流水线、Code Mode 与 MCP 接入，适合为爬虫工具建立统一权限、域名/出网策略和执行门禁。 | https://zhuanlan.zhihu.com/p/2079236658084459433 |
