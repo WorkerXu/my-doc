@@ -139,3 +139,6 @@
 | 跨会话监控与派单中枢 | https://github.com/wenki2005/dsh-monitor-hub |
 | Cron/一次性 DSH 调度 | https://github.com/yangyongzhen/dsh-scheduler |
 | 持久浏览器与人工接管 | https://github.com/syncended/deepseek-harness-browser-use |
+| Subagent/Job/Goal 任务语义 | https://zhuanlan.zhihu.com/p/2073331953772897893 |
+| Harness 长驻进程托管 | https://zhuanlan.zhihu.com/p/2072783241476564313 |
+| GitHub Trending 抓取插件实战 | https://zhuanlan.zhihu.com/p/2075328252000977474 |
