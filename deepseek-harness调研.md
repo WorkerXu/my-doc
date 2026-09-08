@@ -42,3 +42,8 @@
 | 以 SEO 六步自动化为例展示流程化任务思路，适合借鉴“发现目标→采集→分析→输出”的多阶段爬虫工作流编排和任务模板化。 | https://www.youtube.com/watch?v=HDN76QA9pjU |
 | 从工程视角解析 DeepSeek Harness，适合补充理解其运行时、执行链路与扩展边界，为爬虫管理平台的任务运行架构取舍提供参考。 | https://www.youtube.com/watch?v=yjHdWGWgAfk |
 | Agentic AI 速成课覆盖 Harness 驱动不同模型的工作方式，适合参考把模型层与爬虫工具层解耦，让不同模型承担调度、解析或验收角色。 | https://www.youtube.com/watch?v=legYz3Hk2rQ |
+| dsh-free-search 为 Harness 增加统一搜索 provider，带多引擎自动回退、结果缓存、web_fetch 与 B站/GitHub/V2EX 等平台搜索，可直接参考爬虫平台的“多采集源适配 + 降级 + 缓存”设计。 | https://github.com/DDDMUC/dsh-free-search |
+| dsh-Basics-Panel 在 DSH 设置页可视化管理 MCP、Skills 和规则，支持状态展示、开关、搜索过滤与模块化 feature 注册表，适合作为爬虫源、执行器和策略配置的管理面板原型。 | https://github.com/yxsj245/dsh-Basics-Panel |
+| DSH-Remote 支持手机端查看会话/工作区、持续后台任务、中断任务、权限审批、环境诊断和断线自愈，可借鉴爬虫平台的远程任务控制与告警运维体验。 | https://github.com/201222-L/dsh-mobile-remote |
+| 实测用一个 Skill 让 DeepSeek Harness 直接操控真实浏览器，适合动态网页采集、登录态页面抓取和需要点击交互的爬虫执行场景。 | https://www.bilibili.com/video/BV1164d6qEtA |
+| MCP 教程覆盖 DSH 接入现成/自定义 MCP 服务、配置迁移和可视化管理，适合把各类爬虫服务统一包装成 MCP 后端并由 Harness 调用。 | https://www.bilibili.com/video/BV1xLtS6WEVG |
