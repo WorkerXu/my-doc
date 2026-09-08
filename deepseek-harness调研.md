@@ -58,3 +58,11 @@
 | 本地优先任务看板把 Kanban、列表、Gantt、工作流、仪表盘与任务级 AI 对话嵌入 DSH，并以 SQLite 持久化，适合参考爬虫任务中心与运行记录界面。 | https://github.com/ttmouse/dsh-taskboard |
 | Symphony 兼容的 DSH 任务编排与运行看板支持并发限制、失败退避、持久工作区、Runtime/Projects/Configuration 视图，可直接借鉴爬虫调度中心与 Worker 运维面板。 | https://github.com/Uddoo/dsh-dashboard |
 | SSH 远程执行插件把 subprocess、文件系统、PTY 与 LSP 无缝切到远端主机，支持 ProxyJump 与 SFTP，适合把不同服务器组织成分布式爬虫 Worker 节点。 | https://github.com/UynajGI/dsh-ssh |
+| Reef 把共享 Playwright 多标签/多 profile 浏览器、Cookie/表单能力、MCP Server 和原生状态面板打成一个 DSH 插件包，适合参考“采集 Worker + MCP 接口 + 管理控制台”一体化设计。 | https://github.com/huey1in/reef |
+| 该桥接插件把官方 Playwright MCP 的导航、交互、网络、Cookie 与 Storage 等 41 个工具动态接入 DSH，并处理重连、超时和取消，适合实现标准化浏览器爬虫执行器适配层。 | https://github.com/toothemooon/dsh-playwright-mcp |
+| 原生 Taskboard 以 SQLite 持久化项目、任务、关系、附件、工作流和自动化，并区分 Agent 提交与人工验收，适合参考爬虫任务中心的状态机、审核和持久化模型。 | https://github.com/shengsheng90/DSH-taskboard |
+| dsh-task-dag 直接从 DSH 的 Session、Agent Teams 和 Workflow 投影构建实时拓扑与 blockedBy 依赖图，可借鉴多阶段爬取 DAG、子任务依赖和运行链路可视化。 | https://github.com/LeemanCheung/dsh-task-dag |
+| TaskSwarm 按依赖 DAG 划分 wave、并行 lane 执行，带持久状态、崩溃恢复、独立审核和 Web Dashboard，适合参考大规模分片爬取的并发编排、恢复与质量门禁。 | https://github.com/february2015/dsh-taskswarm |
+| Tensorlake 沙箱把 DSH 的文件、子进程、Bash、终端和 LSP 放进短生命周期 microVM，适合把高风险或不可信爬虫 Worker 与宿主机隔离，并统一控制资源与生命周期。 | https://github.com/tensorlakeai/dsh-tensorlake-sandbox |
+| dsh-task-status 在对话区原生展示后台任务数量、状态、耗时和实时输出 tail，可直接参考爬虫任务运行进度、日志尾随和故障排查体验。 | https://github.com/vlln/dsh-task-status |
+| dsh-plugin-chrome 为每个 Session 提供独立可视 Chrome、稳定 a11y 元素引用、16 个控制工具、实时画面和人工接管，适合动态页面采集调试及需要人机协同的爬虫 Worker。 | https://github.com/jiaererw/dsh-plugin-chrome |
