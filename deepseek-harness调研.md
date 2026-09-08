@@ -136,3 +136,6 @@
 | dsh-fetch-third-party 把页面抓取委托给用户配置的第三方服务，强调无直接 URL 访问、托管凭据、会话预算与本地抓取服务栈，适合参考安全抓取网关和成本控制。 | https://github.com/tallahandsome-ux/dsh-fetch-third-party |
 | 该 Playwright 插件直接为 DeepSeek Harness 提供浏览器自动化，可作为另一种动态网页 Worker 实现，便于比较不同浏览器插件的接口、部署和维护方式。 | https://github.com/Clizo1209/dsh-playwright-browser |
 | deepseek-harness-multi-user 在 Harness 基础上加入认证授权、Kafka、MySQL、Redis、Elasticsearch、CDC 与 Web 管理 UI，适合参考多人爬虫平台的租户隔离、数据管道和管理控制面。 | https://github.com/Foreverlearners-cpu/deepseek-harness-multi-user |
+| 跨会话监控中枢维护会话台账、派单/回执状态机、失败自动重试与 Web 控制台，可直接参考爬虫任务中心的跨 Worker 调度、状态回收、重试和主动通知设计。 | https://github.com/wenki2005/dsh-monitor-hub |
+| DSH 定时任务插件支持 Cron/一次性触发、命令或 Webhook、状态查询、超时和重入保护，可用于周期爬取调度、回调与运行状态管理。 | https://github.com/yangyongzhen/dsh-scheduler |
+| 持久 Playwright 浏览器 Profile 与 DSH Web 交互面板支持稳定快照引用、多标签、人工接管和登录态复用，适合动态/账号态爬虫 Worker 及管理端人机协同。 | https://github.com/syncended/deepseek-harness-browser-use |
