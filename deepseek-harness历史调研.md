@@ -110,3 +110,6 @@
 | RedFoxHub 社媒数据技能 | https://zhuanlan.zhihu.com/p/2073360129123149137 |
 | DSH headless 嵌入产品 | https://zhuanlan.zhihu.com/p/2078388330799051093 |
 | Tool Guard/MCP 执行流水线 | https://zhuanlan.zhihu.com/p/2079236658084459433 |
+| 新插件清单：市场/多源搜索 | https://juejin.cn/post/7679542577553473590 |
+| Harness 架构/插件/MCP 对比 | https://juejin.cn/post/7676239036387000335 |
+| Cordis 服务/事件/可逆副作用 | https://juejin.cn/post/7673436957741039631 |
