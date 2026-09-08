@@ -113,3 +113,6 @@
 | 这份新插件清单覆盖插件市场、界面增强与多源搜索等能力，适合筛选爬虫平台的采集源适配器、管理端扩展和插件安装机制。 | https://juejin.cn/post/7679542577553473590 |
 | 从插件架构、MCP、Hooks 和子代理委派对比 Harness 与 Claude Code，可用于确定爬虫服务的 MCP 接入层、任务委派和扩展边界。 | https://juejin.cn/post/7676239036387000335 |
 | 文章从 Cordis 服务、依赖注入、事件分发和可逆副作用解释“一切皆插件”，适合设计爬虫执行器生命周期、任务事件与通知/监控插件。 | https://juejin.cn/post/7673436957741039631 |
+| 聚焦 DeepSeek Harness UI 插件原理，可参考把爬虫任务列表、运行状态、日志与监控组件做成 Harness 原生管理端扩展。 | https://www.youtube.com/watch?v=D9W4BhG9HDk |
+| 展示 DeepSeek Harness 插件生态与插件市场工具箱，可参考爬虫执行器、采集源和监控模块的发现、安装与统一管理入口。 | https://www.youtube.com/watch?v=QCxq__dLv5E |
+| 展示用 Harness 插件快速配置 MCP 和 Skill，可参考集中管理爬虫 MCP 服务、采集 Skills 与运行配置的控制面设计。 | https://www.youtube.com/watch?v=CgYZ5EzX00U |
