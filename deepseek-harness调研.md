@@ -120,3 +120,12 @@
 | 展示 dsh-raw-html 与 VCP 渲染组合，可参考在爬虫平台保留原始 HTML 并提供渲染/预览能力，方便解析调试与结果核验。 | https://www.bilibili.com/video/BV1WJbW6UE9K |
 | 介绍版本自动更新与插件仓库管理两个开源插件，适合参考爬虫执行器/采集插件的版本检测、仓库维护和生命周期管理。 | https://www.bilibili.com/video/BV1Sp8m6oExn |
 | 展示零侵入可视化工作台插件与多窗口应用能力，可借鉴爬虫管理平台把任务、结果与工具操作做成 Harness 内的可视工作台。 | https://www.bilibili.com/video/BV1kw8b6bEeL |
+| 官方 `dsh-web-fetch-http` 明确公网地址校验、DNS 固定、同源重定向、响应字节/字符上限与无凭据抓取策略，适合直接作为爬虫平台默认安全抓取通道和出网基线。 | https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/web/web-fetch-http/README.md |
+| 官方 `dsh-tool-web` 把 `web_search`/`web_fetch` 的工具 schema、超时、结果上限、HTML→Markdown 与 Web UI 展示统一封装，适合设计爬虫平台面向 Agent 的稳定工具契约。 | https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/web/tool-web/README.md |
+| 官方 Web capability seam 架构记录说明搜索与抓取 Provider 注册、选择、错误语义和安全边界，适合把不同爬虫/搜索后端做成可热插拔 Provider。 | https://github.com/deepseek-ai/deepseek-harness/blob/master/.agents/notes/implemented/architecture/2026-06-24-web-capability-seam.md |
+| 官方大工具输出 spill 设计以 `web_fetch` 为示例，把超大抓取结果自动落文件并保留引用，可用于长网页、批量抓取结果的上下文限流与结果留存。 | https://github.com/deepseek-ai/deepseek-harness/blob/master/.agents/notes/implemented/architecture/2026-07-08-tool-output-spill-files.md |
+| dsh-web-fetch-playwright 将 Harness 原生 `web_fetch` 接到真实 Playwright/CDP 浏览器，带 Readability 净化、并发控制、CDP 登录态和动态配置，适合动态页面爬虫 Worker。 | https://github.com/chendefine/dsh-web-fetch-playwright |
+| dsh-web-search-provider 同时支持 OpenAI Responses 与 Anthropic Messages 的原生搜索，并扩展 `open_page`/`find_in_page` 浏览动作和运行时探测，适合构建“发现→打开→定位内容”的采集链路。 | https://github.com/hiyms/dsh-web-search-provider |
+| dsh-web-search-pro 集成多搜索引擎、20 类平台搜索、SQLite+LRU 缓存、Playwright 渲染、抓取历史和按站提取规则，功能形态很接近可嵌入 Harness 的轻量爬虫管理层。 | https://github.com/anweat/dsh-web-search-pro |
+| @240xu/dsh-websearch 将 11 个搜索后端并发 fan-out、URL 去重并支持部分后端故障继续工作，可参考爬虫平台的多来源发现层、容错路由和统一凭据配置。 | https://github.com/240xu/dsh-websearch |
+| dsh-read-url 自动识别 GBK/GB2312/UTF-8/Big5 并抽取正文，提供默认长度上限、缓存和 offset 续读，适合低成本正文采集、中文老站抓取及控制 Agent 上下文消耗。 | https://github.com/2672243194/dsh-read-url |
